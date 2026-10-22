@@ -169,8 +169,10 @@ cv.addEventListener('mousedown', e => {
   if(typeof hudSlotAt === 'function'){ const hs = hudSlotAt(e.clientX, e.clientY); if(hs){ e.preventDefault(); hudSlotMouse(hs, e); return; } }   // clic sobre la barra de acciones
   if(e.button===0){ mouse.l = true; mouse.lp = true; }
   if(e.button===2){ mouse.r = true; mouse.rp = true; }
+  if(e.button===1 || e.button>=3){ e.preventDefault(); const c = 'Mouse' + e.button; if(!keys[c]) pressed[c] = true; keys[c] = true; }   // rueda y botones laterales: se pueden asignar a la barra de acciones
 });
-addEventListener('mouseup', e => { if(e.button===0) mouse.l=false; if(e.button===2) mouse.r=false; });
+addEventListener('mouseup', e => { if(e.button===0) mouse.l=false; if(e.button===2) mouse.r=false; if(e.button===1 || e.button>=3){ keys['Mouse' + e.button] = false; released['Mouse' + e.button] = true; } });
+cv.addEventListener('auxclick', e => e.preventDefault());
 cv.addEventListener('contextmenu', e => e.preventDefault());
 addEventListener('blur', () => { for(const k in keys) keys[k]=false; mouse.l = mouse.r = false; });
 function endInput(){

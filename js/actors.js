@@ -76,7 +76,7 @@ function treeCache(){
 }
 const SK = k => treeCache().n[k] || 0;                 // nodos asignados en la rama
 const MS = (k, m) => treeCache().notables.has(k + m);  // ¿tiene el notable de esa rama?
-const bagSize = () => 20 + [4,8,12,16,20].filter(m => MS('agu', m)).length;
+const bagSize = () => 20 + [4,8,12,16,20].filter(m => MS('agu', m)).length + ((G.save && G.save.bagUp) || 0)*5;   // + mejoras de mochila de Trapis (5 huecos cada una)
 // cinturón de uso rápido: huecos del equipo para consumibles y munición (se gastan antes que lo de la mochila)
 const QUICK_SLOTS = {potion:['potion','superpotion'], bandage:['bandage'], oil:['oil'], cookie:['cookie'], mushroom:['mushroom'], elfpotion:['elfpotion'], ammo:['arrows','firearrows','explosivearrows']};
 const QUICK_LABEL = {potion:'Poción de vida', bandage:'Vendas', oil:'Aceite', cookie:'Galletas', mushroom:'Setas', elfpotion:'Poción élfica', ammo:'Munición'};

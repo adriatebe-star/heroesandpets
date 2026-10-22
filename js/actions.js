@@ -23,14 +23,27 @@ const SLOT_TITLE = {lmb:'Clic izquierdo', rmb:'Clic derecho', KeyQ:'Tecla Q', Ke
                     Digit1:'Tecla 1', Digit2:'Tecla 2', Digit3:'Tecla 3', Digit4:'Tecla 4', Digit5:'Tecla 5', Digit6:'Tecla 6', Shift:'Tecla Shift', Space:'Barra espaciadora'};
 const DEFAULT_BARS = {lmb:'attack', rmb:'block', KeyQ:'swap', KeyE:'lantern', KeyR:'none', KeyT:'none',
                       Digit1:'potion', Digit2:'bandage', Digit3:'oil', Digit4:'cookie', Digit5:'mushroom', Digit6:'none', Shift:'run', Space:'jump'};
+const REMAP = ['KeyQ', 'KeyE', 'KeyR', 'KeyT', 'Digit1', 'Digit2', 'Digit3', 'Digit4', 'Digit5', 'Digit6'];   // huecos cuya tecla se puede cambiar (clic derecho)
+const RESERVED_KEYS = ['KeyW', 'KeyA', 'KeyS', 'KeyD', 'KeyF', 'KeyI', 'KeyM', 'KeyH', 'Tab', 'Escape', 'Space', 'ShiftLeft', 'ShiftRight', 'Enter'];
 function fixBars(s){
+  s.binds = Object.assign({}, s.binds || {}); for(const k of Object.keys(s.binds)) if(!REMAP.includes(k) || typeof s.binds[k] !== 'string' || s.binds[k] === k) delete s.binds[k];
   s.bars = Object.assign({}, DEFAULT_BARS, s.bars || {});
   for(const [id] of BAR_SLOTS) if(!ACTIONS[s.bars[id]]) s.bars[id] = DEFAULT_BARS[id];
   s.bars.lmb = 'attack';   // el clic izquierdo no se puede cambiar
 }
 // ---------- estado de las entradas ----------
-const slotDown = id => id==='lmb' ? mouse.l : id==='rmb' ? mouse.r : id==='Shift' ? !!(keys.ShiftLeft || keys.ShiftRight) : !!keys[id];
-const slotPressed = id => id==='lmb' ? mouse.lp : id==='rmb' ? mouse.rp : id==='Shift' ? !!(pressed.ShiftLeft || pressed.ShiftRight) : !!pressed[id];
+const bindOf = id => (G.save && G.save.binds && G.save.binds[id]) || id;   // tecla o botón asignado al hueco
+const slotDown = id => id==='lmb' ? mouse.l : id==='rmb' ? mouse.r : id==='Shift' ? !!(keys.ShiftLeft || keys.ShiftRight) : !!keys[bindOf(id)];
+const slotPressed = id => id==='lmb' ? mouse.lp : id==='rmb' ? mouse.rp : id==='Shift' ? !!(pressed.ShiftLeft || pressed.ShiftRight) : !!pressed[bindOf(id)];
+// texto corto de una tecla o botón del ratón para la barra
+function inputLabel(c){
+  if(/^Key[A-Z]$/.test(c)) return c.slice(3);
+  if(/^Digit\d$/.test(c)) return c.slice(5);
+  if(c === 'Mouse1') return 'Rueda';
+  if(/^Mouse\d$/.test(c)) return 'Ratón ' + (+c.slice(5) + 1);
+  if(/^Numpad/.test(c)) return 'N' + c.slice(6).replace('Multiply', '*').replace('Divide', '/').replace('Subtract', '-').replace('Add', '+').replace('Decimal', '.').replace('Enter', 'Ent');
+  return ({ArrowUp:'↑', ArrowDown:'↓', ArrowLeft:'←', ArrowRight:'→', Backquote:'º', Minus:'-', Equal:'=', Comma:',', Period:'.', Slash:'/', Semicolon:';', Quote:"'", BracketLeft:'[', BracketRight:']', Backslash:'\\', ControlLeft:'Ctrl', ControlRight:'Ctrl', AltLeft:'Alt', AltRight:'Alt', Backspace:'Ret', CapsLock:'Bloq', Insert:'Ins', Delete:'Supr', PageUp:'RePág', PageDown:'AvPág'})[c] || c;
+}
 const actionHeld = a => !!(G.save && G.save.bars) && BAR_SLOTS.some(([id]) => G.save.bars[id]===a && slotDown(id));
 const actionPressed = a => !!(G.save && G.save.bars) && BAR_SLOTS.some(([id]) => G.save.bars[id]===a && slotPressed(id));
 // acciones de un solo toque
@@ -95,7 +108,7 @@ function drawActionBar(HS, fs, ls){
       const f = Math.min(1, cd/10); ctx.fillStyle = 'rgba(0,0,0,.65)'; ctx.fillRect(x+3, y+3 + (B-6)*(1-f), B-6, (B-6)*f);
       ctx.font = `${fs}px ${FONT}`; ctx.textAlign = 'center'; textO(Math.ceil(cd), x+B/2, y+B/2-4, '#ffe08a'); ctx.textAlign = 'left';
     }
-    ctx.font = `${Math.round(ls*.85)}px ${FONT}`; textO(label, x+4, y+11, '#ffe08a');
+    ctx.font = `${Math.round(ls*.85)}px ${FONT}`; textO(REMAP.includes(id) ? inputLabel(bindOf(id)) : label, x+4, y+11, REMAP.includes(id) && bindOf(id) !== id ? '#9affb0' : '#ffe08a');
   });
   return yTop;
 }
@@ -121,6 +134,32 @@ addEventListener('mousedown', e => { if(!$('actMenu').classList.contains('hidden
 function hudSlotMouse(slot, e){
   if(G.menu || G.paused || UI.blocking()) return;
   if(e.button !== 0 && e.button !== 2) return;
+  if(e.button === 2 && REMAP.includes(slot.id)){ startRebind(slot); return; }   // clic derecho: asignar otra tecla o botón del ratón
   if(slot.id==='lmb') toast('El clic izquierdo no se puede cambiar', 1.6);
-  else openActionMenu(slot, e.clientX, e.clientY);
+  else openActionMenu(slot, e.clientX, e.clientY);   // clic izquierdo: elegir la acción del hueco
 }
+// ---------- cambiar la tecla de un hueco ----------
+let REBIND = null;
+function startRebind(slot){
+  closeActionMenu(); REBIND = {id:slot.id}; const p = $('bindPrompt');
+  p.textContent = `Pulsa una tecla o un botón del ratón para «${SLOT_TITLE[slot.id]}» (Esc: cancelar · Supr: restablecer)`; p.classList.remove('hidden'); sfx('ui');
+}
+function endRebind(){ REBIND = null; $('bindPrompt').classList.add('hidden'); }
+function assignBind(code){
+  const id = REBIND.id, binds = G.save.binds || (G.save.binds = {});
+  if(code === 'Escape'){ endRebind(); return; }
+  if(code === 'Delete' || code === 'Backspace'){ delete binds[id]; endRebind(); saveGame(); toast('Tecla restablecida', 1.4); sfx('ui'); return; }
+  if(RESERVED_KEYS.includes(code)){ toast('Esa tecla está reservada', 1.6); return; }
+  const other = REMAP.find(o => o !== id && bindOf(o) === code);   // si ya la usa otro hueco, se intercambian
+  const old = bindOf(id);
+  if(other){ if(old === other) delete binds[other]; else binds[other] = old; }
+  if(code === id) delete binds[id]; else binds[id] = code;
+  endRebind(); saveGame(); toast(`${SLOT_TITLE[id]}: ahora ${inputLabel(code)}`, 1.8); sfx('equip');
+}
+addEventListener('keydown', e => { if(!REBIND) return; e.preventDefault(); e.stopImmediatePropagation(); if(e.repeat) return; assignBind(e.code); }, true);
+addEventListener('mousedown', e => {
+  if(!REBIND) return;
+  e.preventDefault(); e.stopImmediatePropagation();
+  if(e.button === 0 || e.button === 2){ toast('Los clics izquierdo y derecho no se pueden asignar', 1.8); endRebind(); return; }
+  assignBind('Mouse' + e.button);
+}, true);

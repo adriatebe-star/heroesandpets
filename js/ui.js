@@ -199,6 +199,7 @@ const UI = {
       return;
     }
     $('sellAll').style.display = '';
+    if(typeof renderBagUpgrades === 'function') renderBagUpgrades(box);
     for(const o of SHOP.filter(o => o.tier <= tier)) offer(shopItem(o), o.price, () => this.buy(o));
     if(!(G.save.shopSpecials||[]).length) rollShopSpecials();
     const sp = G.save.shopSpecials || [];

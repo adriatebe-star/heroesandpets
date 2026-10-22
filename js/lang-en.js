@@ -1565,5 +1565,17 @@ const LANG_EN = {"-{} % de consumo de aceite":"-{} % oil consumption",
 "¿Vender a {} por {} oro? Podrás recomprarla en la pestaña Recomprar.":"Sell {} for {} gold? You can buy it back in the Buy back tab.",
 "Daño:":"Damage:",
 "Regenera 1,5 de vida por segundo. Luz roja.":"Regenerates 1.5 health per second. Red light.",
-"+1,5 vida/s":"+1.5 health/s"};
+"+1,5 vida/s":"+1.5 health/s",
+"Mochila grande":"Big backpack",
+"Mochila enorme":"Huge backpack",
+"Mejora de mochila":"Backpack upgrade",
+"Tu mochila ya es enorme":"Your backpack is already huge",
+"+5 huecos de mochila":"+5 backpack slots",
+"Pulsa una tecla o un botón del ratón para «{}» (Esc: cancelar · Supr: restablecer)":"Press a key or a mouse button for «{}» (Esc: cancel · Del: reset)",
+"Esa tecla está reservada":"That key is reserved",
+"Los clics izquierdo y derecho no se pueden asignar":"Left and right clicks can't be assigned",
+"Tecla restablecida":"Key reset",
+"{}: ahora {}":"{}: now {}",
+"Rueda":"Wheel",
+"Ratón {}":"Mouse {}"};
 LANG.load(LANG_EN);

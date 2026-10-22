@@ -97,7 +97,7 @@ function updateTutorial(dt){
     if(!TUT.gave){ TUT.gave = true; if(!G.inv.bag.some(x => x && x.id === 'potion') && !G.inv.equip.potion) addToBagOrStash(mkItem('potion', 2)); P.hp = Math.min(P.hp, Math.round(P.maxHp*.5)); P.potionCd = 0; UI.refresh(); }
     if((P.potionCd||0) > 0 || P.hp >= P.maxHp*.8) tutAdvance();
   }
-  else if(k === 'lamp'){ if(pressed.KeyE) tutAdvance(); }
+  else if(k === 'lamp'){ if(actionPressed('lantern')) tutAdvance(); }
 }
 // panel del tutorial (arriba al centro)
 function drawTutorial(){

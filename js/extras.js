@@ -120,3 +120,21 @@ UI.renderPetLab = function(body){
     box.append(card);
   }
 };
+
+// ---------- Trapis: mejoras de mochila (+5 huecos cada una; la segunda exige la primera) ----------
+ICON_ROWS.bigbag = {pal:{p:'#a8814a', P:'#5a3e1c', w:'#f0dcb0'}, rows:ICON_ROWS.magicbag.rows};
+ICON_ROWS.hugebag = {pal:{p:'#4a7aa8', P:'#1c3a5a', w:'#d0e8ff'}, rows:ICON_ROWS.magicbag.rows};
+for(const k of ['bigbag', 'hugebag']){ const d = ICON_ROWS[k]; ICONS[k] = bakeRows(d.rows, Object.assign({k:OUT}, d.pal)); }
+const BAG_UPGRADES = [{name:'Mochila grande', price:2000, icon:'bigbag'}, {name:'Mochila enorme', price:5000, icon:'hugebag'}];
+function renderBagUpgrades(box){
+  const s = G.save, lvl = s.bagUp || 0, up = BAG_UPGRADES[lvl];
+  const h = document.createElement('div'); h.className = 'shophead'; h.textContent = up ? 'Mejora de mochila' : 'Tu mochila ya es enorme'; box.append(h);
+  if(!up) return;
+  const el = document.createElement('div'), can = s.wallet >= up.price; el.className = 'offer special';
+  el.innerHTML = `<div class="slot" style="border-color:#e8c070"><img src="${ICONS[up.icon].toDataURL()}" draggable="false"></div><div class="oname" style="color:#e8c070">${up.name}</div><div class="sub">+5 huecos de mochila</div><div class="price ${can ? '' : 'no'}">${up.price} oro</div>`;
+  el.onclick = () => {
+    if(s.wallet < up.price){ toast('No tienes suficiente oro', 1.6); sfx('ui'); return; }
+    s.wallet -= up.price; s.bagUp = lvl + 1; refreshStats(); sfx('coin'); toast(`Compras ${up.name} por ${up.price} oro`, 2); saveGame(); UI.refresh();
+  };
+  box.append(el);
+}
