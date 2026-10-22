@@ -876,6 +876,10 @@ function orcCanvas(f, cfg){
     if(swing){ oCl(g, hx-4, hy+1, hx+14, hy-1, 2, '#121015'); oCl(g, hx-4, hy+1, hx+14, hy-1, 1, '#85592e'); oPoly(g, [[hx+14,hy-3],[hx+20,hy],[hx+14,hy+3]], '#121015'); oPoly(g, [[hx+14,hy-2],[hx+19,hy],[hx+14,hy+2]], '#d8dce4'); }
     else { oCl(g, hx+1, hy+10, hx+2, hy-26, 2, '#121015'); oCl(g, hx+1, hy+10, hx+2, hy-26, 1, '#85592e'); oPoly(g, [[hx,hy-26],[hx+2,hy-34],[hx+4,hy-26]], '#d8dce4'); oPx(g, [[hx+2,hy-28,'#ffffff']]); }
   }
+  if(wp==='greatsword'){   // espadón a dos manos: vertical en reposo y tajo horizontal al atacar
+    if(swing){ oCl(g, hx-3, hy+2, hx+20, hy+6, 4, '#121015'); oCl(g, hx-3, hy+2, hx+20, hy+6, 2, '#d8dce4'); oPoly(g, [[hx+19,hy+3],[hx+26,hy+7],[hx+19,hy+9]], '#e8ecf2'); oCl(g, hx+1, hy-2, hx+1, hy+6, 3, '#c8962e'); }
+    else { oCl(g, hx+1, hy+8, hx+3, hy-26, 4, '#121015'); oCl(g, hx+1, hy+8, hx+3, hy-26, 2, '#d8dce4'); oPoly(g, [[hx,hy-26],[hx+3,hy-35],[hx+6,hy-26]], '#e8ecf2'); oCl(g, hx-4, hy-1, hx+8, hy-1, 3, '#c8962e'); oPx(g, [[hx+2,hy-18,'#ffffff'],[hx+2,hy-8,'#ffffff']]); }
+  }
   if(wp==='lantern'){   // farol mágico en alto, colgado de una cadena
     const lx = hx+4, ly = hy-12; oCl(g, hx, hy, lx, ly+2, 2, '#c8b890');
     g.fillStyle = '#121015'; g.fillRect(lx-4, ly-2, 9, 12); g.fillStyle = '#ffe8a0'; g.fillRect(lx-3, ly-1, 7, 10); g.fillStyle = '#ffffff'; g.fillRect(lx-1, ly+1, 3, 5);
@@ -894,7 +898,7 @@ function orcCanvas(f, cfg){
     oPoly(g, [[AX-10,AY-28],[AX-6,AY-27],[AX-5,AY-17],[AX-9,AY-18]], '#4a2e1c'); oPx(g, [[AX-9,AY-30,'#e8e0c8'],[AX-7,AY-29,'#e8e0c8']]);
   }
   if(wp==='staff'){
-    oCl(g, hx+2, hy+14, hx+2, hy-22, 2, '#85592e'); g.fillStyle = '#121015'; g.fillRect(hx, hy-30, 5, 6); g.fillStyle = '#ff9a30'; g.fillRect(hx+1, hy-29, 3, 4); oPx(g, [[hx+2, hy-29, '#ffe090']]);
+    oCl(g, hx+2, hy+14, hx+2, hy-22, 2, '#85592e'); g.fillStyle = '#121015'; g.fillRect(hx, hy-30, 5, 6); g.fillStyle = (cfg.staffCol || ['#ff9a30'])[0]; g.fillRect(hx+1, hy-29, 3, 4); oPx(g, [[hx+2, hy-29, (cfg.staffCol || [0, '#ffe090'])[1]]]);
     oPoly(g, [[hx-1,hy-23],[hx+2,hy-19],[hx+5,hy-23]], '#d8ccb0');
   }
   // cabeza del héroe con piel verde

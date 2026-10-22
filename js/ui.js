@@ -498,6 +498,7 @@ const UI = {
       h += `<div class="sub">${it.rarity ? RARITY[it.rarity].name + ' · ' : ''}${kind}${it.name ? ' · ' + d.name : ''}</div>`;
       if(d.dmg){ const dm = weaponDmg(it); h += it.sharp ? `<div>Daño: <span class="sharp">${dm[0]}-${dm[1]}</span> <span class="sharp">(afilada +${it.sharp})</span></div>` : `<div>Daño: ${dm[0]}-${dm[1]}</div>`; }
       if(d.armor) h += `<div>Armadura: ${d.armor}</div>`;
+      if(d.move) h += `<div>+${d.move} % de velocidad de movimiento</div>`;
       for(const a of it.affixes || []) h += `<div class="aff${a.forged ? ' lava' : ''}">◆ ${ITEM_AFFIX[a.k].desc(a.v)}</div>`;
       if(it.gem && typeof GEMS !== 'undefined' && GEMS[it.gem]) h += `<div class="aff" style="color:${GEMS[it.gem].col}">◆ ${GEMS[it.gem].name}: ${GEMS[it.gem].desc}</div>`;
       h += `<div class="desc">${d.desc}</div>`;

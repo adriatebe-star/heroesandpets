@@ -75,6 +75,8 @@ function dawnFlash(){
   G.flash = {x:P.x, y:P.y-14, t:.4};
 }
 function updateLegends(dt){
+  if(P.breadT > 0) P.breadT -= dt;
+  if(P.weakT > 0) P.weakT -= dt;
   if(P.dead) return;
   P.dawnT = legendOn('dawntear') ? (P.dawnT ?? 30) - dt : undefined;
   if(P.dawnT !== undefined && P.dawnT <= 0){ P.dawnT = 30; dawnFlash(); }
@@ -221,6 +223,7 @@ function legendHitMod(m){
   const lit = P.lantern && (P.oil > 0 || G.sc.kind !== 'raid');
   if(lit && lt && lt.id === 'funerallamp' && UNDEAD_ART.includes(m.art) && Math.hypot(m.x-P.lx, m.y-P.ly) < 175) k *= 1.25;
   if(lit && legendOn('minerhelm') && Math.hypot(m.x-P.lx, m.y-P.ly) < 175*1.3) k *= 1.15;
+  if(lit && lt && lt.id === 'dawnlantern' && Math.hypot(m.x-P.lx, m.y-P.ly) < 175*1.4) k *= 1.2;
   return k;
 }
 function legendArrow(w){
@@ -258,6 +261,7 @@ function legendAfterHit2(m, dmg, out){
 }
 // al morir un monstruo: trofeos, esqueleto aliado y veta rica
 function legendKill(m){
+  if(legendOn('lightstaff')) legendLightBurst(m);
   if(legendOn('trophybelt')) P.trophy = Math.min(20, (P.trophy || 0) + 1);
   if(legendOn('gravespade') && Math.random() < .15){
     const mine = G.allies.filter(a => a.owner === 'spade'); if(mine.length >= 3) mine[0].life = 0;
@@ -278,7 +282,7 @@ function updateLegends2(dt){
   } else { P.chargeAcc = 0; P.chargeReady = false; }
   // gelatina: escudo de 30 cada 20 s
   if(legendOn('slimeheart')){ P.gelT = (P.gelT ?? 20) - dt; if(P.gelT <= 0){ P.gelT = 20; P.gelShield = 30; addText(P.x, P.y-56, 'Gelatina', '#9affb0', 7); ring(P.x, P.y-10, 30, '#4ad85a', .4); } }
-  else { P.gelT = undefined; P.gelShield = 0; }
+  else { P.gelT = undefined; if(!legendOn('pilgrimmedal')) P.gelShield = 0; }
   // raíces: cada 10 s inmoviliza a los cercanos
   if(legendOn('rootgloves')){
     P.rootN = (P.rootN ?? 10) - dt;
@@ -299,4 +303,35 @@ function legendExclDrop(m){
 function legendExclChest(c){
   const id = Math.random() < (c.rare ? .006 : .0015) ? legendExclPick() : null;
   if(id){ dropItem(c.x, c.y+4, mkItem(id, 1, G.sc.lvl || 1)); addText(c.x, c.y-30, '¡Objeto legendario!', '#ff9a3c', 8, -20); sfx('levelup'); }
+}
+
+// ---------- legendarios del templo sagrado (exp. 9): 2 exclusivos y el general de nivel 9 ----------
+Object.assign(ICON_ROWS, {
+  lightstaff:  {pal:{B:'#fffbd0', b:'#ffe070', d:'#a08a30'}, rows:ICON_ROWS.stick.rows},
+  pilgrimmedal:{pal:{Y:'#c8e8ff', y:'#7ab0e8', W:'#ffffff'}, rows:ICON_ROWS.dawntear.rows},
+  dawnlantern: {pal:{b:'#fff0c0', y:'#ffe070', Y:'#ffffff'}, rows:ICON_ROWS.silverlantern.rows},
+});
+for(const k of ['lightstaff', 'pilgrimmedal', 'dawnlantern']){ const d = ICON_ROWS[k]; ICONS[k] = bakeRows(d.rows, Object.assign({k:OUT}, d.pal)); }
+EX('lightstaff', 'temple', {name:'Báculo de la Luz Eterna', slot:'weapon', kind:'stick', dur:140, dmg:[40, 54],
+  desc:'Objeto legendario del templo sagrado. Luz eterna: al matar a un enemigo, explota en luz sagrada (60 % de daño en área) y te cura 5 de vida.'});
+EX('pilgrimmedal', 'temple', {name:'Medallón del Peregrino', slot:'talisman', gear:false, unique:false, fixed:[{k:'hp', v:40}, {k:'hpreg', v:1.5}],
+  desc:'Objeto legendario del templo sagrado. Bendición: cada 40 s te cubre con un escudo sagrado que absorbe 60 de daño.'});
+ITEMS.dawnlantern = {name:'Farolillo del Alba Eterna', icon:'dawnlantern', slot:'lantern', legend:true, lvl:9, oilMax:200, value:250,
+  desc:'Objeto legendario. Guarda hasta 200 de aceite, regenera 1 de aceite por segundo mientras está encendido y su luz es un 40 % mayor. Alba: los enemigos dentro de la luz reciben +20 % de daño.'};
+LEGEND_IDS.push('dawnlantern');
+EXCL_LEGENDS.temple = ['lightstaff', 'pilgrimmedal']; EXCL_IDS.push('lightstaff', 'pilgrimmedal');
+let LIGHT_BUSY = false;
+function updateLegends3(dt){
+  if(P.dead) return;
+  if(legendOn('pilgrimmedal')){ P.blessT = (P.blessT ?? 40) - dt; if(P.blessT <= 0){ P.blessT = 40; P.gelShield = Math.max(P.gelShield || 0, 60); addText(P.x, P.y-56, 'Bendición', '#c8e8ff', 8); ring(P.x, P.y-10, 34, '#c8e8ff', .4); } } else P.blessT = undefined;
+  const lt = G.inv.equip.lantern;
+  if(lt && lt.id === 'dawnlantern' && P.lantern && G.sc.kind === 'raid') P.oil = Math.min(oilMax(), P.oil + dt);
+}
+function legendLightBurst(m){
+  if(LIGHT_BUSY) return; LIGHT_BUSY = true;
+  const w = curWeapon(), dm = (w && weaponDmg(w)) || [40, 54], dmg = Math.round((dm[0] + dm[1])/2 * .6);
+  ring(m.x, m.y-8, 70, '#fff0a0', .4); burst(m.x, m.y-10, 20, ['#fff0a0', '#ffffff', '#ffe070'], [60, 200], [.3, .7], -20); sfx('alba');
+  P.hp = Math.min(P.maxHp, P.hp + 5); addText(P.x, P.y-46, '+5', '#7ad86a', 7);
+  for(const o of G.mons) if(o !== m && !o.dying && Math.hypot(o.x-m.x, o.y-m.y) < 70) hitMonster(o, dmg, {src:'player', nx:(o.x-m.x)/70, ny:(o.y-m.y)/70, k:140});
+  LIGHT_BUSY = false;
 }

@@ -45,6 +45,8 @@ function drinkElfPotion(){ P.elfT = 60; P.st = P.stMax; toast('¡Poción élfica
 function drawElfBuff(){
   const buffs = [];
   if(P.elfT > 0) buffs.push({t:P.elfT, name:'Poción élfica', col:'#3ad88a', bg:'#1e3a2e', fr:'#0c1a14', tx:'#e8fff0'});
+  if(P.breadT > 0) buffs.push({t:P.breadT, name:'Pan élfico', col:'#e8c070', bg:'#3a2c14', fr:'#1a1408', tx:'#fff4d8'});
+  if(P.weakT > 0) buffs.push({t:P.weakT, name:'Debilitado', col:'#d83a3a', bg:'#3a1414', fr:'#1a0808', tx:'#ffe0e0'});
   if(P.hallT > 0) buffs.push({t:P.hallT, name:'Seta alucinógena', col:'#b070ff', bg:'#2a1a4a', fr:'#12081e', tx:'#f0e0ff'});
   if(P.speedT > 0) buffs.push({t:P.speedT, name:'Seta comestible', col:'#ff8a3a', bg:'#3a1e0e', fr:'#1a0e06', tx:'#fff0e0'});
   buffs.forEach((bf, i) => {

@@ -234,7 +234,7 @@ const MONSTERS = {
   orcarcher:{name:'Orco arquero', art:'orcarcher', ai:'archer', hp:80, dmg:20, spd:62, r:9, xp:30, reach:0, prep:.55, range:[120,200]},
   orcshaman:{name:'Chamán orco', art:'orcshaman', ai:'caster', hp:90, dmg:22, spd:52, r:9, xp:40, reach:0, prep:.7, range:[140,220]},
   orcbrute: {name:'Bruto orco', art:'orcbrute', ai:'walk', hp:340, dmg:40, spd:44, r:14, xp:75, reach:22, prep:.65, bleedHit:true},
-  urr:      {name:'Urr, el gran jefe orco', art:'urr', ai:'urr', hp:5200, dmg:68, spd:58, r:20, xp:600, reach:20, prep:.6, boss:true, uniques:['urrhelm','urraxe','urrwall','urrboots']},
+  urr:      {name:'Urr, el gran jefe orco', art:'urr', ai:'urr', hp:5200, dmg:90, spd:58, r:20, xp:600, reach:20, prep:.6, boss:true, uniques:['urrhelm','urraxe','urrwall','urrboots']},
   skelmage:  {name:'Mago esqueleto', art:'skelmage', ai:'caster', hp:42, dmg:15, spd:55, r:8, xp:18, reach:0, prep:.7, range:[140,210]},
   wraith:    {name:'Espectro', art:'wraith', ai:'float', hp:58, dmg:14, spd:118, r:9, xp:18, reach:6, prep:.28, drain:true},
   necro:     {name:'Nigromante', art:'necro', ai:'summoner', hp:64, dmg:12, spd:50, r:8, xp:24, reach:0, prep:.8, range:[150,230]},
@@ -279,7 +279,10 @@ const EXPEDITIONS = [
   {id:'mine', from:'river', lvl:8, name:'La mina de los enanos', mapX:0.09, mapY:0.54, needKey:true,
    desc:'Galerías abandonadas bajo la montaña: túneles estrechos con una bifurcación que se rodea por la izquierda o por la derecha y una cámara del tesoro al fondo. Solo se entra con una llave de la mina (se gasta una cada vez). Aquí se encuentran las gemas.',
    monsters:'Goblins muy rápidos (con daga o arco), diablillos de fuego que escupen llamas y hombres rata'},
-  {id:'locked9', from:'mine', lvl:9, name:'???', mapX:0.04, mapY:0.7, locked:true, desc:'Todavía no sabes qué hay más allá.'},
+  {id:'temple', from:'forest', lvl:9, name:'El templo sagrado', mapX:0.12, mapY:0.02, boss:'elfmage', petExp:9,
+   desc:'Un santuario antiguo al norte del bosque élfico, ahora en manos de los elfos corrompidos. Una avenida de columnas lleva hasta la plaza sagrada, donde el brujo élfico lanza rayos que debilitan y descargas que hay que esquivar muy deprisa.',
+   monsters:'Arqueros élficos de flechas de fuego, magos élficos eléctricos y guerreros élficos pesados de espadón a dos manos... y el brujo élfico'},
+  {id:'locked10', from:'temple', lvl:10, name:'???', mapX:0.3, mapY:0.02, locked:true, desc:'Todavía no sabes qué hay más allá.'},
 ];
 // afijos de monstruo (los efectos se aplican en actors.js)
 const MON_AFFIX = {
@@ -564,6 +567,30 @@ Object.assign(PETS, {
   halo:      {exp:'8b', name:'Halo',      rarity:'legendary', look:'Ciervo luminoso de cornamenta de luz', beh:'cone', dmg:[15,21], cd:2.3, fire:'#fff0a0', legendary:true, bloom:true,
               affixes:['curandera','inspiradora','alba','dura'],
               attack:'Rayo de luz en cono (triple golpe). Floración cada 24 s: cura un 20 % de la vida al héroe y a todas las mascotas'},
+  // ---- templo sagrado (exp. 9) ----
+  paloma:    {exp:9, name:'Paloma', rarity:'normal', look:'Paloma blanca', beh:'flyer', dmg:[4,7], cd:.9, affixes:['curandera'],
+              attack:'Picotazos desde el aire'},
+  cordero:   {exp:9, name:'Cordero Dorado', rarity:'normal', look:'Cordero de lana dorada', beh:'charge', dmg:[5,8], cd:2.4, miniStun:true, affixes:['robusta'],
+              attack:'Embestida suave que aturde 0,5 s'},
+  gatotemplo:{exp:9, name:'Gato del Templo', rarity:'normal', look:'Gato blanco con collar de oro', beh:'pounce', dmg:[5,8], cd:1.4, bites:2, affixes:['agil'],
+              attack:'Doble arañazo rápido'},
+  grulla:    {exp:9, name:'Grulla Sagrada', rarity:'normal', look:'Grulla de plumas plateadas', beh:'diver', dmg:[5,8], cd:2.2, pierceDive:true, affixes:['ligera'],
+              attack:'Picada con su pico largo que atraviesa a todos los enemigos de su trayectoria'},
+  cervatillo:{exp:9, name:'Cervatillo Albo', rarity:'normal', look:'Cervatillo blanco', beh:'charge', dmg:[5,8], cd:2.4, affixes:['veloz'],
+              attack:'Cornada'},
+  incienso:  {exp:9, name:'Zorro de Incienso', rarity:'magic', look:'Zorro con humo aromático', beh:'pounce', dmg:[8,12], cd:2, slowBite:true, affixes:['rastreador','inspiradora'],
+              attack:'Mordisco que ralentiza'},
+  luminica:  {exp:9, name:'Mariposa Lumínica', rarity:'magic', look:'Mariposa de luz', beh:'flock', dmg:[8,12], cd:2.6, dust:true, affixes:['luciernaga','curandera'],
+              attack:'Polvo brillante que ralentiza a los enemigos en área'},
+  escarasagrado:{exp:9, name:'Escarabajo Sagrado', rarity:'magic', look:'Escarabajo dorado alado', beh:'diver', dmg:[8,12], cd:2.2, diveStun:true, affixes:['dura','espinosa'],
+              attack:'Picada en vuelo que aturde'},
+  leon:      {exp:9, name:'León de Mármol', rarity:'rare', look:'León de piedra blanca', beh:'charge', dmg:[14,20], cd:3, knock:true, shock:true, stone:true, affixes:['feroz','dura','centinela','valiente'],
+              attack:'Zarpazo con onda de choque que aturde; se vuelve de piedra e inmune 2 s tras un golpe fuerte'},
+  ciervoalba:{exp:9, name:'Ciervo del Alba', rarity:'rare', look:'Ciervo majestuoso de cornamenta de luz', beh:'cone', dmg:[14,20], cd:2.4, fire:'#fff0a0', affixes:['curandera','veloz','indomable','luciernaga'],
+              attack:'Rayo de luz en cono (triple golpe)'},
+  fenix:     {exp:9, name:'Fénix Sagrado', rarity:'legendary', look:'Fénix de fuego blanco', beh:'cone', dmg:[16,22], cd:2.2, fire:'#ffd070', legendary:true, rebirth:true, burn:true,
+              affixes:['ignea','curandera','inspiradora','indomable'],
+              attack:'Llamarada en cono (triple golpe). Renacer cada 25 s: una explosión de luz cura un 25 % de la vida al héroe y a todas las mascotas y quema a los enemigos cercanos'},
 });
 PET_AFFIX.eclipse = {name:'Eclipse', desc:'Cada 25 s confunde a los enemigos cercanos y da +30 % de daño al héroe durante 4 s'};
 PET_AFFIX.luna ={name:'Luz de luna', desc:'Aura que revela a los Sombríos y cura 1 de vida por segundo al héroe'};

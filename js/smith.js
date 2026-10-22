@@ -3,7 +3,8 @@
 //  Uakala, el herrero orco: reparar el equipo y mejorarlo en el yunque
 // =====================================================================
 const MAX_AFFIX = 8;                                           // máximo de afijos por objeto
-const FORGE_COST = 30;                                         // oro por tirada
+const FORGE_COST = 60;                                         // oro por tirada de forja (afijos)
+const SHARPEN_COST = 100;                                      // oro por tirada de afilado
 const FORGE_SLOTS = ['weapon', 'head', 'chest', 'hands', 'feet', 'shield'];
 UI.smMode = 'forge';
 const canSharpen = it => { const d = ITEMS[it.id]; return d.slot === 'weapon' && !d.stack && !!d.dmg; };
@@ -20,7 +21,7 @@ function gearRefs(){
 }
 const repairCost = it => Math.max(1, Math.ceil((maxDur(it) - it.dur) * .35 * (1 + (it.affixes || []).length*.25) * (it.rarity === 'unique' ? 1.6 : 1)));
 const isUnique = it => !!(ITEMS[it.id].unique || it.rarity === 'unique');
-const forgeCost = it => FORGE_COST * (isUnique(it) ? 2 : 1);   // los únicos cuestan el doble
+const forgeCost = (it, sharp) => (sharp ? SHARPEN_COST : FORGE_COST) * (isUnique(it) ? 2 : 1);   // los únicos cuestan el doble
 const canForge = it => { const d = ITEMS[it.id]; return !!d.gear && !d.stack && FORGE_SLOTS.includes(d.slot) && (it.affixes || []).length < MAX_AFFIX; };
 
 UI.openSmith = function(tab){
@@ -64,7 +65,7 @@ UI.doRepair = function(list){
 
 // --- afilar: 25 % se rompe, 25 % no pasa nada, 50 % +1 de daño base ---
 UI.doSharpen = function(sel){
-  const it = sel.it, cost = forgeCost(it);
+  const it = sel.it, cost = forgeCost(it, true);
   if(G.save.wallet < cost){ toast('No tienes suficiente oro', 1.6); return; }
   G.save.wallet -= cost; this.smHit = true; sfx('stoneHit');
   const roll = Math.random(), name = itemName(it);
@@ -84,7 +85,7 @@ function forgeUpgrade(it){
   const d = ITEMS[it.id]; it.affixes ??= [];
   const all = Object.keys(ITEM_AFFIX).filter(k => ITEM_AFFIX[k].slots.includes(d.slot)), added = [];
   // primero afijos que aún no tiene; si se agotan (cada hueco tiene solo 4-8), se repiten y suman sus valores
-  const fresh = shuffle(all.filter(k => !it.affixes.some(a => a.k === k))), want = Math.min(2, MAX_AFFIX - it.affixes.length), picks = fresh.slice(0, want);
+  const fresh = shuffle(all.filter(k => !it.affixes.some(a => a.k === k))), want = Math.min(1, MAX_AFFIX - it.affixes.length), picks = fresh.slice(0, want);
   while(picks.length < want) picks.push(pick(all));
   for(const k of picks){
     const v = rollAffix(ITEM_AFFIX[k]); it.affixes.push({k, v, forged:true}); added.push(k);
@@ -102,11 +103,11 @@ UI.renderForge = function(body){
   const sharp = this.smMode === 'sharp';
   const refs = gearRefs().filter(r => sharp ? canSharpen(r.it) : canForge(r.it)), sel = refs.find(r => r.it === this.smItem) || null;
   if(!sel) this.smItem = null;
-  const msg = this.smMsg, cost = sel ? forgeCost(sel.it) : FORGE_COST;
+  const msg = this.smMsg, cost = sel ? forgeCost(sel.it, sharp) : (sharp ? SHARPEN_COST : FORGE_COST);
   body.innerHTML = `<div class="smforge"><div><div class="smmode"><button class="${sharp ? '' : 'on'}" data-m="forge">Forjar afijos</button><button class="${sharp ? 'on' : ''}" data-m="sharp">Afilar (daño)</button></div><div class="smodds">${sharp ? 'Elige un arma de tu equipo o mochila para afilarla (solo armas; los únicos cuestan el doble):' : 'Elige un arma o una armadura de tu equipo (los objetos con 8 afijos no se pueden mejorar; los únicos cuestan el doble):'}</div><div class="smgrid" id="smGrid"></div></div>
     <div class="smanvil"><img class="anvilimg" id="anvilImg" src="${ICONS.anvil.toDataURL()}">
       <div class="smitem ${sel ? 'has' : ''}" id="smItemBox">${sel ? '' : 'Haz clic en un objeto de la izquierda para ponerlo sobre el yunque'}</div>
-      <div class="smodds">Cada tirada cuesta <b style="color:#ffe08a">${cost} de oro</b>:<br>${sharp ? '25 % se rompe · 25 % no pasa nada · 50 % sube +1 el daño base' : '25 % se rompe · 25 % no pasa nada · 50 % se mejora (+2 afijos)'}</div>
+      <div class="smodds">Cada tirada cuesta <b style="color:#ffe08a">${cost} de oro</b>:<br>${sharp ? '25 % se rompe · 25 % no pasa nada · 50 % sube +1 el daño base' : '25 % se rompe · 25 % no pasa nada · 50 % se mejora (+1 afijo)'}</div>
       <div class="smmsg ${msg ? msg.t : ''}" id="smMsg">${msg ? msg.text : ''}</div>
       <button id="smForge" ${sel && G.save.wallet >= cost ? '' : 'disabled'}>${sharp ? 'Afilar' : 'Forjar'} · ${cost} oro</button></div></div>`;
   const grid = $('smGrid');

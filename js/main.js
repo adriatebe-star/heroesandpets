@@ -3,7 +3,7 @@
 //  Juego: estado, guarida ↔ expedición, interacciones, luz y bucle
 // =====================================================================
 // el farolillo de cobre es de serie: tras morir se te devuelve uno nuevo
-function emptyEquip(){ return {w1:null, w2:null, shield:null, head:null, chest:null, hands:null, feet:null, lantern:{id:'copperlantern'}, pet:[null,null,null], tal:[null,null,null], pbag:[null,null,null,null,null], potion:null, bandage:null, oil:null, cookie:null, mushroom:null, elfpotion:null, hallshroom:null, ammo:null}; }
+function emptyEquip(){ return {w1:null, w2:null, shield:null, head:null, chest:null, hands:null, feet:null, lantern:{id:'copperlantern'}, pet:[null,null,null], tal:[null,null,null], pbag:[null,null,null,null,null], potion:null, bandage:null, oil:null, cookie:null, mushroom:null, elfpotion:null, hallshroom:null, elfbread:null, ammo:null}; }
 const G = {
   t:0, sc:null, mons:[], pets:[], projs:[], hazards:[], loot:[], parts:[], texts:[],
   allies:[], shake:0, hitstop:0, kills:0, flash:null, deathT:0,
@@ -103,7 +103,7 @@ function randomReturnPortals(sc){
 }
 function startRaid(expId='village'){
   const seed = Math.floor(Math.random()*1e9), exp = EXPEDITIONS.find(e => e.id===expId) || EXPEDITIONS[0];
-  const sc = expId==='forest' ? buildForest(seed) : expId==='mine' ? buildMine(seed) : expId==='river' ? buildRiver(seed) : expId==='castle' ? buildCastle(seed) : expId==='orccamp' ? buildOrcCamp(seed) : expId==='plains' ? buildPlains(seed) : expId==='crypt' ? buildCrypt(seed) : expId==='cemetery' ? buildCemetery(seed) : buildVillage(seed);
+  const sc = expId==='temple' ? buildTemple(seed) : expId==='forest' ? buildForest(seed) : expId==='mine' ? buildMine(seed) : expId==='river' ? buildRiver(seed) : expId==='castle' ? buildCastle(seed) : expId==='orccamp' ? buildOrcCamp(seed) : expId==='plains' ? buildPlains(seed) : expId==='crypt' ? buildCrypt(seed) : expId==='cemetery' ? buildCemetery(seed) : buildVillage(seed);
   sc.lvl = exp.lvl; sc.exp = exp; sc.petExp = exp.petExp ?? exp.lvl;
   randomReturnPortals(sc);
   resetWorld(sc);
@@ -414,7 +414,7 @@ function update(dt){
   for(const t of G.texts){ t.life -= dt; t.y += t.vy*dt; t.vy *= .94; }
   G.texts = G.texts.filter(t => t.life > 0);
   if(G.flash){ G.flash.t -= dt; if(G.flash.t <= 0) G.flash = null; }
-  updateFairies(dt); updateLegends(dt); updateLegends2(dt);
+  updateFairies(dt); updateLegends(dt); updateLegends2(dt); updateLegends3(dt);
   for(const c of G.sc.chests) if(c.pinged > 0) c.pinged -= dt;
   for(const p of G.sc.portals) if(!p.seen && Math.hypot(p.x-P.x, p.y-P.y) < 260) p.seen = true;   // los portales se marcan en el mapa al descubrirlos
   // fuegos fatuos: deambulan despacio alrededor de su sitio
@@ -442,7 +442,7 @@ function collectLights(){
   if(!P.dead){
     if(P.lantern && !(P.hallT > 0) && (P.oil > 0 || G.sc.kind!=='raid')){
       const fl = 1 + Math.sin(t*13)*.03 + Math.sin(t*7.3)*.04 + (Math.random()-.5)*.03;
-      const gm = lanternGem(); L.push({x:P.lx, y:P.ly, r:175*fl*(gm.light||1)*(legendOn('minerhelm') ? 1.3 : 1), a:1, warm:true, tint:gemTint(gm)});
+      const gm = lanternGem(); L.push({x:P.lx, y:P.ly, r:175*fl*(gm.light||1)*(legendOn('minerhelm') ? 1.3 : 1)*(G.inv.equip.lantern && G.inv.equip.lantern.id === 'dawnlantern' ? 1.4 : 1), a:1, warm:true, tint:gemTint(gm)});
     }
     L.push({x:P.x, y:P.y-16, r:44, a:.55, ambient:true});
   }

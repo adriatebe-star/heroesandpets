@@ -78,10 +78,10 @@ const SERUMS = [
   {id:'rage', name:'Suero de rabia', price:200, icon:'serum3', desc:'Aumenta el daño de la mascota un 33 %. Solo se puede inyectar una vez a cada mascota.' + SERUM_ODDS,
    ok: it => !(it.serums && it.serums.rage), done:'Inyectado',
    apply(it){ (it.serums ??= {}).rage = 1; return {msg:`¡${itemName(it)} ha sido mejorado con suero de rabia!`}; }},
-  {id:'mut', name:'Suero de mutación', price:100, icon:'serum2', desc:'Si funciona, se le añaden 2 afijos a la mascota (máximo 8 afijos).' + SERUM_ODDS,
+  {id:'mut', name:'Suero de mutación', price:300, icon:'serum2', desc:'Si funciona, se le añade 1 afijo a la mascota (máximo 8 afijos).' + SERUM_ODDS,
    ok: it => petAffixCount(it) < MAX_PET_AFFIX, done:'Máximo de afijos',
    apply(it){
-     const add = shuffle(mutationPool(it)).slice(0, Math.min(2, MAX_PET_AFFIX - petAffixCount(it)));
+     const add = shuffle(mutationPool(it)).slice(0, Math.min(1, MAX_PET_AFFIX - petAffixCount(it)));
      (it.xaff ??= []).push(...add);
      return {msg:`¡${itemName(it)} ha mutado! (+${add.length} afijo${add.length > 1 ? 's' : ''}: ${add.map(a => PET_AFFIX[a].name).join(', ')})`};
    }},
