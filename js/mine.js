@@ -5,8 +5,8 @@
 
 // ---------- gemas: botín exclusivo de la mina; Aish las engarza en el farolillo ----------
 const GEMS = {
-  ruby:      {name:'Rubí',       col:'#ff4a5a', pal:{L:'#6a0a1a', l:'#d02a40', w:'#ff7a8a', W:'#ffe0e4'}, value:150, regen:1.5, burn:true, tint:'255,40,50',
-              desc:'Regenera 1,5 de vida por segundo y quema a los enemigos dentro del área de luz. Luz roja.'},
+  ruby:      {name:'Rubí',       col:'#ff4a5a', pal:{L:'#6a0a1a', l:'#d02a40', w:'#ff7a8a', W:'#ffe0e4'}, value:150, regen:1.5, tint:'255,40,50',
+              desc:'Regenera 1,5 de vida por segundo. Luz roja.'},
   emerald:   {name:'Esmeralda',  col:'#3adc78', pal:{L:'#0a4a24', l:'#22b058', w:'#7af0a0', W:'#e0ffe8'}, value:140, regen:1.5, petRegen:1.5, tint:'50,255,110',
               desc:'Regenera 1,5 de vida por segundo a ti y a tus mascotas. Luz verde.'},
   amethyst:  {name:'Amatista',   col:'#b070ff', pal:{L:'#3a1a6a', l:'#8a48d8', w:'#c898ff', W:'#f0e4ff'}, value:120, oil:50, light:1.25, tint:'170,80,255',
@@ -52,7 +52,7 @@ function updateLanternGem(dt){
       for(const m of G.mons){
         if(m.dying || m.spawnIn < 1 || Math.hypot(m.x-P.x, m.y-P.y) > R2) continue;
         if(gm.burn) m.burnT = Math.max(m.burnT || 0, 1.5);
-        if(gm.freeze && Math.random() < .12 && !MONSTERS[m.type].boss && !(m.freezeT > 0) && !(m.freezeImmT > 0)){ m.freezeT = 1.6; m.freezeImmT = 1.6 + 8; burst(m.x, m.y-m.r, 12, ['#c8f0ff','#7ac8f0','#ffffff'], [30,100], [.3,.6], 0); ring(m.x, m.y-4, 20, '#c8f0ff', .3); }
+        if(gm.freeze && Math.random() < .12 && !MONSTERS[m.type].boss && !(m.freezeT > 0) && !(m.freezeImmT > 0)){ m.freezeT = 1.6; m.freezeImmT = 1.6 + 10; burst(m.x, m.y-m.r, 12, ['#c8f0ff','#7ac8f0','#ffffff'], [30,100], [.3,.6], 0); ring(m.x, m.y-4, 20, '#c8f0ff', .3); }
       }
     }
   }

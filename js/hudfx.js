@@ -11,7 +11,7 @@ const HERO_AFFIX_FX = {
   cazarrecompensas:{ic:'star', col:'#ffd070'}, recolectora:{ic:'arrow', col:'#d8c8a0'}, olfato:      {ic:'eye',    col:'#a8e8a0'},
   rastreador:  {ic:'eye',    col:'#7ae09a'},
 };
-const GEM_SHORT = {ruby:'+1,5 vida/s · quema a los enemigos', emerald:'+1,5 vida/s a ti y a tus mascotas', amethyst:'+50 aceite · más área de luz', topaz:'+100 aceite · −5 % de daño recibido', sapphire:'Más área de luz · +15 % de velocidad',
+const GEM_SHORT = {ruby:'+1,5 vida/s', emerald:'+1,5 vida/s a ti y a tus mascotas', amethyst:'+50 aceite · más área de luz', topaz:'+100 aceite · −5 % de daño recibido', sapphire:'Más área de luz · +15 % de velocidad',
   aquamarine:'Más área de luz · puede congelar', opal:'+100 aceite · +0,6 aceite/s', obsidian:'Sin efecto de engarce', diamond:'+50 aceite · luz ×2 · +0,9 aceite/s'};
 ITEMS.luckclover.fx = 'Doble probabilidad de mascota brillante (se gasta al encontrarla)';
 

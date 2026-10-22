@@ -111,6 +111,8 @@ const petMult = it => (it.shiny ? 1.1 : 1) * (it.serums && it.serums.super ? 1.2
 const petDmgMult = it => petMult(it) * (it.serums && it.serums.rage ? 1.33 : 1);   // el suero de rabia sube solo el daño
 const petMaxHp = it => Math.round(PETS[it.pet].hp * petMult(it) * (1 + (((typeof G !== 'undefined' && G.pt) ? (G.pt.petHp||0) + (G.pt.petAll||0) : 0))/100));
 function mkPetItem(petId, homed=false, shiny=false){ const it = {id:'pet', pet:petId, hp:0, homed, shiny}; it.hp = petMaxHp(it); return it; }
+// daño base de un arma con el afilado (+1 por cada afilado en el yunque)
+const weaponDmg = it => { const d = ITEMS[it.id] && ITEMS[it.id].dmg; if(!d) return null; const s = it.sharp || 0; return [d[0] + s, d[1] + s]; };
 function itemName(it){ return it.id==='pet' ? (it.shiny ? '★ ' : '') + PETS[it.pet].name : (it.name || ITEMS[it.id].name); }
 function itemColor(it){
   if(it.id==='pet') return RARITY[PETS[it.pet].rarity].col;

@@ -294,7 +294,7 @@ function resolveAttack(){
   }
   if(isRanged(kind)){
     const arrow = w && useArrow(); if(!arrow) return;
-    let dmg = (rollR((w && ITEMS[w.id].dmg) || ITEMS[kind].dmg) + S2.dmg) * (1 + SK('agi')*.02);
+    let dmg = (rollR((w && weaponDmg(w)) || ITEMS[kind].dmg) + S2.dmg) * (1 + SK('agi')*.02);
     const crit = Math.random() < .12 + S2.crit/100; if(crit) dmg *= 2;
     const sx = P.x + Math.cos(P.face)*10, sy = P.y - 18 + Math.sin(P.face)*6;
     const la = legendArrow(w);
@@ -317,7 +317,7 @@ function resolveAttack(){
     if(Math.abs(angDiff(Math.atan2(dy,dx), P.face)) > arc && d > m.r+P.r+4) continue;
     if(!los(G.sc, P.x, P.y-4, m.x, m.y-4)) continue;          // los muros bloquean los golpes
     hits++;
-    let dmg = legendDmgMult() * (kind==='fist' ? (big ? rand(12,16) : rand(4,7)) + S2.fist : rollR((w && ITEMS[w.id].dmg) || ITEMS[kind].dmg) + S2.dmg) * (1 + agr*.02);
+    let dmg = legendDmgMult() * (kind==='fist' ? (big ? rand(12,16) : rand(4,7)) + S2.fist : rollR((w && weaponDmg(w)) || ITEMS[kind].dmg) + S2.dmg) * (1 + agr*.02);
     if(albaActive()) dmg *= 1.1;
     let crit = Math.random() < critC; if(crit) dmg *= 2;
     const WD = w && ITEMS[w.id] || {};
@@ -492,7 +492,7 @@ function monTargets(){
   const t = [];
   if(!P.dead) t.push(P);
   // Sombra (sigilo): los enemigos la ignoran mientras no ataca
-  for(const p of G.pets) if(p.exhaustedT<=0 && p.z < 6 && !(p.def.stealth && p.state!=='engage')) t.push(p);
+  for(const p of G.pets) if(p.exhaustedT<=0 && (p.z < 6 || PET_ART[p.def.id].fly) && !(p.def.stealth && p.state!=='engage')) t.push(p);   // las voladoras también son objetivo
   return t;
 }
 function updateMonster(m, dt){
@@ -715,7 +715,7 @@ function hitMonster(m, dmg, o){
   if(o.slow) m.slowT = Math.max(m.slowT, o.slow);
   if(o.poison) m.poisonT = Math.max(m.poisonT, o.poison);
   if(o.burn){ if(!(m.burnT > 0)){ burst(m.x, m.y-m.r, 14, ['#ff5a1a','#ff8a2a','#ffc04a','#fff0a0'], [30,100], [.3,.6], -80); ring(m.x, m.y-4, 18, '#ff8a2a', .25); } m.burnT = Math.max(m.burnT, o.burn); }
-  if(o.freeze && !(m.freezeImmT > 0)){ m.freezeImmT = o.freeze + 8; m.freezeT = Math.max(m.freezeT||0, o.freeze);   // tras descongelarse, 8 s sin poder volver a congelarse
+  if(o.freeze && !(m.freezeImmT > 0)){ m.freezeImmT = o.freeze + 10; m.freezeT = Math.max(m.freezeT||0, o.freeze);   // tras descongelarse, 10 s sin poder volver a congelarse
     burst(m.x, m.y-m.r, 18, ['#c8f0ff','#7ac8f0','#ffffff'], [30,110], [.3,.7], 0); ring(m.x, m.y-4, 22, '#c8f0ff', .35); sfx('click'); }
   if(o.weaken){
     m.weakT = Math.max(m.weakT||0, o.weaken); burst(m.x, m.y-m.r, 14, ['#ffe85a','#fffbd0','#ffffff'], [40,130], [.2,.5], 0); ring(m.x, m.y-4, 20, '#ffe85a', .25);
@@ -1061,8 +1061,10 @@ function petStrike(p, m, mult=1, extra={}){
   if(p.def.steal && Math.random() < .6 && G.sc.kind==='raid'){ const gold = randi(2,5); G.raidGold += gold; addText(m.x, m.y-m.r*2-14, '+' + gold, '#ffe08a', 6); sfx('coin'); }
   G.hitstop = Math.max(G.hitstop, .02);
 }
-function damagePet(p, dmg, m, silent){
-  if(p.exhaustedT > 0 || p.z > 6 || p.stoneT > 0) return;
+function damagePet(p, dmg, m, silent, ranged){
+  const fly = PET_ART[p.def.id].fly;
+  if(p.exhaustedT > 0 || (p.z > 6 && !fly) || p.stoneT > 0) return;
+  if(fly && !ranged) dmg *= .5;   // las voladoras reciben la mitad del daño cuerpo a cuerpo; los proyectiles les hacen el daño completo
   if(petHas(p,'agil') && Math.random() < .2 && !silent){ addText(p.x, p.y-24, 'Esquiva', '#c8e8ff', 6); return; }
   if(petHas(p,'dura')) dmg *= .85;
   dmg *= Math.max(.4, 1 - (G.pt.petArmor||0)/100);
@@ -1511,7 +1513,7 @@ function updateProjs(dt){
         if(pr.root){ P.rootT = Math.max(P.rootT||0, pr.root); addText(P.x, P.y-56, '¡Inmovilizado!', '#c8a0ff', 7); ring(P.x, P.y-4, 18, '#8a60d0', .35); }
         if(pr.steal && G.raidGold > 0){ const n = Math.min(G.raidGold, randi(4,12) + (G.sc.lvl||1)); G.raidGold -= n; if(pr.mon) pr.mon.stolen = (pr.mon.stolen||0) + n; addText(P.x, P.y-68, '-' + n + ' oro', '#ffd166', 7); }
         if(pr.kind==='rock'){ const l2 = Math.hypot(pr.vx, pr.vy) || 1; P.vx += pr.vx/l2*160; P.vy += pr.vy/l2*160; } } pr.life = 0; continue; }
-      for(const p of G.pets) if(p.z < 6 && Math.hypot(p.x-pr.x, p.y-8-pr.y) < 8){ damagePet(p, pr.dmg, pr.mon); pr.life = 0; break; }
+      for(const p of G.pets) if((p.z < 6 || PET_ART[p.def.id].fly) && Math.hypot(p.x-pr.x, p.y-8-(PET_ART[p.def.id].fly ? p.z : 0)-pr.y) < 8){ damagePet(p, pr.dmg, pr.mon, false, true); pr.life = 0; break; }
       continue;
     }
     pr.hit ??= new Set();

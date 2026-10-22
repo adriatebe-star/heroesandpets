@@ -36,7 +36,7 @@ function setRef(r, it){
   else G.inv.equip[r.key] = it;
 }
 // devuelve null si el objeto cabe en el hueco, o el motivo si no
-function refRejects(r, it){
+function refRejects(r, it, skipKey){
   if(!it) return null;
   if(r.area==='stash') return UI.stashOpen ? null : 'El alijo solo está en la guarida';
   if(r.area==='bag') return null;
@@ -45,6 +45,7 @@ function refRejects(r, it){
   if(String(r.key).startsWith('tal')) return it.id !== 'pet' && ITEMS[it.id].slot === 'talisman' ? null : 'Ahí solo van talismanes';
   if(r.key.startsWith('pet')){
     if(it.id !== 'pet') return 'En este hueco solo van mascotas';
+    if(G.inv.equip.pet.some((o, k) => o && o !== it && o.pet === it.pet && ('pet' + k) !== r.key && ('pet' + k) !== (skipKey || ''))) return 'Ya llevas equipada esa mascota';   // sin mascotas repetidas
     const need = PET_LVL[+r.key[3]];
     return G.save.level >= need ? null : `Este hueco se desbloquea a nivel ${need}`;
   }
@@ -66,7 +67,7 @@ function moveItem(from, to){
     const fi = G.save.petCage.findIndex(x => !x);
     if(fi >= 0) to = {area:'cage', key:fi};
   }
-  let why = refRejects(to, a) || refRejects(from, b);
+  let why = refRejects(to, a, from.area==='eq' ? from.key : null) || refRejects(from, b, to.area==='eq' ? to.key : null);
   if(why){ toast(why, 1.8); sfx('ui'); return; }
   const d = a.id!=='pet' && ITEMS[a.id];
   if(b && d && d.stack && b.id===a.id && b.n < d.stack){
@@ -88,6 +89,8 @@ function dropRef(r){
   afterInvChange();
 }
 
+// lo vendido a Trapis se puede recomprar: precio un 50 % mayor (mínimo +2), se guardan los 60 últimos
+function noteSold(it, v){ (G.save.sold ??= []).push({item:it, price:Math.max(v + 2, Math.round(v*1.5))}); while(G.save.sold.length > 60) G.save.sold.shift(); }
 const QUICK_HINT = {potion:'poción', bandage:'venda', oil:'aceite', cookie:'galleta', mushroom:'seta', elfpotion:'élfica', ammo:'flecha'};
 const UI = {
   dlg: null, invOpen: false, screen: null, drag: null,
@@ -156,7 +159,8 @@ const UI = {
     $('stashPanel').classList.toggle('hidden', mode!=='stash' && mode!=='shop' && mode!=='cage');
     $('equipPanel').classList.remove('hidden');   // con el mercader el equipo se ve igual que con I o el alijo
     $('inv').classList.toggle('wide', mode==='stash' || mode==='cage');   // con tantos paneles, si no caben en pantalla se puede desplazar
-    $('inv').classList.toggle('shopmode', mode==='shop');   // con Trapis: 3 columnas (equipo y mochila · alijo · tienda) ajustadas a la pantalla
+    $('inv').classList.toggle('shopmode', mode==='shop');
+    if(mode==='shop'){ this.shopTab = 'buy'; const tb = $('shopTabs'); if(tb) tb.onclick = e => { const b = e.target.closest('button'); if(!b) return; this.shopTab = b.dataset.st; sfx('ui'); this.renderShop(); }; }   // con Trapis: 3 columnas (equipo y mochila · alijo · tienda) ajustadas a la pantalla
     $('shopPanel').classList.toggle('hidden', mode!=='shop');
     $('druidPanel').classList.toggle('hidden', mode!=='druid');
     sfx('ui'); this.refresh(); this.fitInv();
@@ -176,6 +180,7 @@ const UI = {
   // vende más género según la expedición más alta superada, y compra cualquier objeto (salvo mascotas)
   renderShop(){
     const tier = Math.max(1, G.save.maxExp||1), box = $('shopSlots'); box.innerHTML = '';
+    document.querySelectorAll('#shopTabs button').forEach(b => b.classList.toggle('on', b.dataset.st === (this.shopTab || 'buy')));
     const offer = (it, price, onBuy, tag) => {
       const d = ITEMS[it.id], el = document.createElement('div'); el.className = 'offer' + (tag ? ' special' : '');
       const can = G.save.wallet >= price;
@@ -185,6 +190,15 @@ const UI = {
       el.onclick = onBuy;
       box.append(el);
     };
+    if(this.shopTab === 'back'){   // recomprar lo que le has vendido a Trapis (algo más caro)
+      const sold = G.save.sold || [];
+      if(!sold.length){ const e0 = document.createElement('div'); e0.className = 'shophead'; e0.textContent = 'Aún no le has vendido nada a Trapis.'; box.append(e0); }
+      sold.slice().reverse().forEach(s0 => offer(s0.item, s0.price, () => this.buyBack(s0)));
+      $('shopNext').textContent = sold.length ? 'Trapis guarda lo que le vendes y te lo devuelve algo más caro.' : '';
+      $('sellAll').style.display = 'none';
+      return;
+    }
+    $('sellAll').style.display = '';
     for(const o of SHOP.filter(o => o.tier <= tier)) offer(shopItem(o), o.price, () => this.buy(o));
     if(!(G.save.shopSpecials||[]).length) rollShopSpecials();
     const sp = G.save.shopSpecials || [];
@@ -205,6 +219,14 @@ const UI = {
     G.save.wallet -= o.price; sfx('coin'); toast(`Compras ${itemName(it)} por ${o.price} oro`, 1.6);
     saveGame(); this.refresh();
   },
+  buyBack(s0){
+    const sold = G.save.sold || [], i = sold.indexOf(s0); if(i < 0) return;
+    if(G.save.wallet < s0.price){ toast('No tienes suficiente oro', 1.6); sfx('ui'); return; }
+    if(!addToBagOrStash(s0.item)){ toast('No tienes sitio ni en la mochila ni en el alijo', 1.8); return; }
+    G.save.wallet -= s0.price; sold.splice(i, 1);
+    sfx('coin'); toast(`Recompras ${itemName(s0.item)} por ${s0.price} oro`, 1.8);
+    refreshStats(); saveGame(); this.refresh();
+  },
   buySpecial(i){
     const s2 = G.save.shopSpecials[i]; if(!s2) return;
     if(G.save.wallet < s2.price){ toast('No tienes suficiente oro', 1.6); sfx('ui'); return; }
@@ -218,14 +240,14 @@ const UI = {
     if(!it) return;
     if(ref.area==='eq'){ toast('Quítatelo antes de venderlo', 1.6); sfx('ui'); return; }
     const v = sellValue(it);
-    if(it.id==='pet' && (it.shiny || ['rare','legendary'].includes(PETS[it.pet].rarity)) && !confirm(`¿Vender a ${itemName(it)} por ${v} oro? No podrás recuperarla.`)) return;
-    G.save.wallet += v; setRef(ref, null);
+    if(it.id==='pet' && (it.shiny || ['rare','legendary'].includes(PETS[it.pet].rarity)) && !confirm(`¿Vender a ${itemName(it)} por ${v} oro? Podrás recomprarla en la pestaña Recomprar.`)) return;
+    G.save.wallet += v; setRef(ref, null); noteSold(it, v);
     sfx('coin'); toast(`Vendes ${itemName(it)} por ${v} oro`, 1.8);
     refreshStats(); saveGame(); this.refresh();
   },
   sellAll(){
     let total = 0;
-    for(const arr of [G.inv.bag, G.save.stash]) arr.forEach((it,i) => { if(it && it.id!=='pet' && ITEMS[it.id].treasure){ total += ITEMS[it.id].value; arr[i] = null; } });
+    for(const arr of [G.inv.bag, G.save.stash]) arr.forEach((it,i) => { if(it && it.id!=='pet' && ITEMS[it.id].treasure){ total += ITEMS[it.id].value; noteSold(it, ITEMS[it.id].value); arr[i] = null; } });
     if(!total) return;
     G.save.wallet += total; sfx('coin'); toast(`Has vendido tus tesoros por ${total} oro`, 2);
     saveGame(); this.refresh();
@@ -367,11 +389,11 @@ const UI = {
     Object.keys(QUICK_SLOTS).forEach((k, i) => put(this.slotEl({area:'eq', key:k}, '', {hint:QUICK_HINT[k], cls:'qk'}), 12 + i*41, 412));
     // hoja de personaje
     const st = G.stats || gearStats(), w = curWeapon(), wd = w && ITEMS[w.id];
-    const dmg = !w ? `${8+st.fist}-${13+st.fist}` : wd.dmg ? `${wd.dmg[0]+st.dmg}-${wd.dmg[1]+st.dmg}` : '6-9';
+    const wdm = w && weaponDmg(w), dmg = !w ? `${8+st.fist}-${13+st.fist}` : wdm ? `${wdm[0]+st.dmg}-${wdm[1]+st.dmg}` : '6-9';
     const rows = [
       ['Nivel', lvl], ['Vida', `${Math.ceil(P.hp)} / ${P.maxHp}`], ['Estamina', P.stMax],
       ['Armadura', `${st.armor} (−${Math.round(armorReduction(st.armor)*100)} % daño)`],
-      ['Daño', `${dmg}${w ? '' : ' (puños)'}`], ['Crítico', `${12+st.crit} %`],
+      ['Daño', w && w.sharp ? `<span class="sharp">${dmg}</span>` : `${dmg}${w ? '' : ' (puños)'}`], ['Crítico', `${12+st.crit} %`],
       st.aspd && ['Vel. de ataque', `+${st.aspd} %`], st.move && ['Movimiento', `+${st.move} %`],
       st.leech && ['Robo de vida', `${st.leech} %`], st.sreg && ['Reg. estamina', `+${st.sreg} %`],
       st.gold && ['Oro encontrado', `+${st.gold} %`], st.oil && ['Consumo de aceite', `−${st.oil} %`],
@@ -473,7 +495,7 @@ const UI = {
       const d = ITEMS[it.id];
       const kind = d.treasure ? 'Tesoro · valor ' + d.value + ' oro' : (d.ammo || d.kind==='ammo') ? 'Munición' : d.slot ? SLOT_NAME[d.slot] : 'Consumible';
       h += `<div class="sub">${it.rarity ? RARITY[it.rarity].name + ' · ' : ''}${kind}${it.name ? ' · ' + d.name : ''}</div>`;
-      if(d.dmg) h += `<div>Daño: ${d.dmg[0]}-${d.dmg[1]}</div>`;
+      if(d.dmg){ const dm = weaponDmg(it); h += it.sharp ? `<div>Daño: <span class="sharp">${dm[0]}-${dm[1]}</span> <span class="sharp">(afilada +${it.sharp})</span></div>` : `<div>Daño: ${dm[0]}-${dm[1]}</div>`; }
       if(d.armor) h += `<div>Armadura: ${d.armor}</div>`;
       for(const a of it.affixes || []) h += `<div class="aff${a.forged ? ' lava' : ''}">◆ ${ITEM_AFFIX[a.k].desc(a.v)}</div>`;
       if(it.gem && typeof GEMS !== 'undefined' && GEMS[it.gem]) h += `<div class="aff" style="color:${GEMS[it.gem].col}">◆ ${GEMS[it.gem].name}: ${GEMS[it.gem].desc}</div>`;
@@ -510,6 +532,7 @@ function autoEquip(it){
   const E = G.inv.equip;
   if(it.id === 'pet'){
     const slots = petSlots(G.save.level), idx = E.pet.findIndex((p, k) => !p && k < slots);
+    if(E.pet.some(o => o && o.pet === it.pet)) return false;   // ya llevas esa mascota
     if(idx >= 0){ E.pet[idx] = it; return true; }
     return false;
   }

@@ -428,3 +428,10 @@ kbd{background:var(--ink);border:2px solid var(--frame);padding:1px 7px;color:va
 #mapLegends .lgi small{color:var(--muted);margin-left:auto;flex:none}
 #mapLegends .lgi.off{opacity:.4}
 #mapInfo{overflow-y:auto;overflow-x:hidden}
+
+/* afilado: números de daño azul fluorescente */
+.sharp{color:#3ad8ff;text-shadow:0 0 6px #3ad8ff,0 0 2px #a8f0ff;font-weight:bold;-webkit-background-clip:border-box;background:none}
+.smmsg.good.sharp{background:none;-webkit-background-clip:border-box;color:#3ad8ff !important;animation:none;filter:none}
+.smmode{display:flex;gap:6px;margin-bottom:8px}.smmode button{flex:1;font-size:13px;padding:6px 8px}.smmode button.on{background:#4a3a24;color:#fff2c0;box-shadow:0 0 0 2px var(--gold)}
+#shopTabs{display:flex;gap:6px;margin:4px 0 8px}#shopTabs button{flex:1;font-size:13px;padding:6px 8px}#shopTabs button.on{background:#4a3a24;color:#fff2c0;box-shadow:0 0 0 2px var(--gold)}
+.smmode{min-height:36px;align-items:stretch}.smmode button{line-height:1.2;overflow:visible}

@@ -5,6 +5,8 @@
 const MAX_AFFIX = 8;                                           // máximo de afijos por objeto
 const FORGE_COST = 30;                                         // oro por tirada
 const FORGE_SLOTS = ['weapon', 'head', 'chest', 'hands', 'feet', 'shield'];
+UI.smMode = 'forge';
+const canSharpen = it => { const d = ITEMS[it.id]; return d.slot === 'weapon' && !d.stack && !!d.dmg; };
 UI.smithOpen = false; UI.smithTab = 'repair'; UI.smItem = null; UI.smMsg = null;
 const _blocking4 = UI.blocking.bind(UI);
 UI.blocking = function(){ return _blocking4() || this.smithOpen; };
@@ -60,6 +62,23 @@ UI.doRepair = function(list){
   saveGame(); refreshStats(); UI.refresh(); this.renderSmith();
 };
 
+// --- afilar: 25 % se rompe, 25 % no pasa nada, 50 % +1 de daño base ---
+UI.doSharpen = function(sel){
+  const it = sel.it, cost = forgeCost(it);
+  if(G.save.wallet < cost){ toast('No tienes suficiente oro', 1.6); return; }
+  G.save.wallet -= cost; this.smHit = true; sfx('stoneHit');
+  const roll = Math.random(), name = itemName(it);
+  if(roll < .25){
+    setRef(sel.ref, null); this.smItem = null; sfx('breakItem'); G.shake = Math.max(G.shake, 4);
+    this.smMsg = {t:'bad', text:`¡${name} se ha roto en el yunque!`};
+  } else if(roll < .5){
+    this.smMsg = {t:'none', text:'El metal no ha cambiado... no ha pasado nada.'};
+  } else {
+    it.sharp = (it.sharp || 0) + 1; sfx('levelup'); burst(P.x, P.y-20, 14, ['#3ad8ff', '#a8f0ff', '#ffffff'], [30,100], [.4,.8], -60);
+    this.smMsg = {t:'good sharp', text:`¡${name} ha sido afilada! (+1 de daño base)`};
+  }
+  saveGame(); refreshStats(); UI.refresh(); this.renderSmith();
+};
 // --- mejorar en el yunque: 25 % se rompe, 25 % no pasa nada, 50 % se mejora (+2 afijos forjados) ---
 function forgeUpgrade(it){
   const d = ITEMS[it.id]; it.affixes ??= [];
@@ -80,17 +99,19 @@ function forgeUpgrade(it){
   return added;
 }
 UI.renderForge = function(body){
-  const refs = gearRefs().filter(r => canForge(r.it)), sel = refs.find(r => r.it === this.smItem) || null;
+  const sharp = this.smMode === 'sharp';
+  const refs = gearRefs().filter(r => sharp ? canSharpen(r.it) : canForge(r.it)), sel = refs.find(r => r.it === this.smItem) || null;
   if(!sel) this.smItem = null;
   const msg = this.smMsg, cost = sel ? forgeCost(sel.it) : FORGE_COST;
-  body.innerHTML = `<div class="smforge"><div><div class="smodds">Elige un arma o una armadura de tu equipo (los objetos con 8 afijos no se pueden mejorar; los únicos cuestan el doble):</div><div class="smgrid" id="smGrid"></div></div>
+  body.innerHTML = `<div class="smforge"><div><div class="smmode"><button class="${sharp ? '' : 'on'}" data-m="forge">Forjar afijos</button><button class="${sharp ? 'on' : ''}" data-m="sharp">Afilar (daño)</button></div><div class="smodds">${sharp ? 'Elige un arma de tu equipo o mochila para afilarla (solo armas; los únicos cuestan el doble):' : 'Elige un arma o una armadura de tu equipo (los objetos con 8 afijos no se pueden mejorar; los únicos cuestan el doble):'}</div><div class="smgrid" id="smGrid"></div></div>
     <div class="smanvil"><img class="anvilimg" id="anvilImg" src="${ICONS.anvil.toDataURL()}">
       <div class="smitem ${sel ? 'has' : ''}" id="smItemBox">${sel ? '' : 'Haz clic en un objeto de la izquierda para ponerlo sobre el yunque'}</div>
-      <div class="smodds">Cada tirada cuesta <b style="color:#ffe08a">${cost} de oro</b>:<br>25 % se rompe · 25 % no pasa nada · 50 % se mejora (+2 afijos)</div>
+      <div class="smodds">Cada tirada cuesta <b style="color:#ffe08a">${cost} de oro</b>:<br>${sharp ? '25 % se rompe · 25 % no pasa nada · 50 % sube +1 el daño base' : '25 % se rompe · 25 % no pasa nada · 50 % se mejora (+2 afijos)'}</div>
       <div class="smmsg ${msg ? msg.t : ''}" id="smMsg">${msg ? msg.text : ''}</div>
-      <button id="smForge" ${sel && G.save.wallet >= cost ? '' : 'disabled'}>Forjar · ${cost} oro</button></div></div>`;
+      <button id="smForge" ${sel && G.save.wallet >= cost ? '' : 'disabled'}>${sharp ? 'Afilar' : 'Forjar'} · ${cost} oro</button></div></div>`;
   const grid = $('smGrid');
-  if(!refs.length) grid.outerHTML = '<div class="smempty">No llevas armas ni armaduras que se puedan mejorar.</div>';
+  body.querySelectorAll('.smmode button').forEach(b => b.onclick = () => { this.smMode = b.dataset.m; this.smItem = null; this.smMsg = null; sfx('ui'); this.renderSmith(); });
+  if(!refs.length) grid.outerHTML = sharp ? '<div class="smempty">No llevas armas que se puedan afilar.</div>' : '<div class="smempty">No llevas armas ni armaduras que se puedan mejorar.</div>';
   else for(const r of refs){
     const el = document.createElement('div'); el.className = 'smslot' + (r.it === this.smItem ? ' sel' : ''); el.style.borderColor = r.it === this.smItem ? '' : itemColor(r.it);
     el.innerHTML = `<img src="${itemIconURL(r.it)}" draggable="false">${r.eq ? '<span class="tag">E</span>' : ''}`;
@@ -99,13 +120,14 @@ UI.renderForge = function(body){
   }
   if(sel){
     const it = sel.it, box = $('smItemBox'); box.innerHTML = `<img src="${itemIconURL(it)}" style="width:44px;height:44px;image-rendering:pixelated;vertical-align:middle"> <b style="color:${itemColor(it)};font-weight:normal">${itemName(it)}</b>` +
-      (it.affixes || []).map(a => `<div class="aff${a.forged ? ' lava' : ''}">◆ ${ITEM_AFFIX[a.k].desc(a.v)}</div>`).join('');
+      (sharp ? `<div>Daño: <span class="${it.sharp ? 'sharp' : ''}">${weaponDmg(it)[0]}-${weaponDmg(it)[1]}</span>${it.sharp ? ` <span class="sharp">(afilada +${it.sharp})</span>` : ''}</div>` : '') + (it.affixes || []).map(a => `<div class="aff${a.forged ? ' lava' : ''}">◆ ${ITEM_AFFIX[a.k].desc(a.v)}</div>`).join('');
   }
   $('smForge').onclick = () => this.doForge();
   if(this.smHit){ this.smHit = false; const im = $('anvilImg'); im.classList.add('hit'); }
 };
 UI.doForge = function(){
   const sel = gearRefs().find(r => r.it === this.smItem); if(!sel) return;
+  if(this.smMode === 'sharp') return this.doSharpen(sel);
   const cost = forgeCost(sel.it);
   if(G.save.wallet < cost){ toast('No tienes suficiente oro', 1.6); return; }
   G.save.wallet -= cost; this.smHit = true; sfx('stoneHit');
