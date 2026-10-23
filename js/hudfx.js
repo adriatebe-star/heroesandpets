@@ -9,7 +9,7 @@ const HERO_AFFIX_FX = {
   alba:        {ic:'sun',    col:'#fff0b0'}, luna:        {ic:'moon',   col:'#b8c8ff'}, eclipse:     {ic:'moon',   col:'#c090ff'},
   crin:        {ic:'flame',  col:'#ff8a3a'}, buscatesoros:{ic:'coin',   col:'#ffd84a'}, avariciosa:  {ic:'coin',   col:'#ffe08a'},
   cazarrecompensas:{ic:'star', col:'#ffd070'}, recolectora:{ic:'arrow', col:'#d8c8a0'}, olfato:      {ic:'eye',    col:'#a8e8a0'},
-  rastreador:  {ic:'eye',    col:'#7ae09a'},
+  rastreador:  {ic:'eye',    col:'#7ae09a'}, escudera:    {ic:'shield', col:'#8ab8ff'},
 };
 const GEM_SHORT = {ruby:'+2,5 vida/s', emerald:'+1,5 vida/s a ti y a tus mascotas', amethyst:'+50 aceite · más área de luz', topaz:'+125 aceite · −8 % de daño recibido', sapphire:'Más área de luz · +15 % de velocidad',
   aquamarine:'Más área de luz · puede congelar', opal:'+100 aceite · +0,6 aceite/s', obsidian:'Sin luz · −3 vida/s · +8 daño · +35 % reg. estamina', diamond:'+50 aceite · luz ×2 · +0,9 aceite/s'};

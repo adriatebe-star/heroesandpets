@@ -185,7 +185,7 @@ UI.renderCollection = function(body){
   const col = G.save.collection, sh = G.save.shinies, ids = Object.keys(PETS), got = ids.filter(id => col[id]).length;
   const order = {normal:0, magic:1, rare:2, legendary:3}, fallenIds = new Set(G.save.fallen.map(e => e.pet));
   let h = `<div class="colhead">Colección: <b>${got}</b> / ${ids.length} mascotas rescatadas · <b>${ids.filter(id => sh[id]).length}</b> brillantes ★ · † = caída (se puede resucitar)</div><div id="colGrid">`;
-  for(const e of EXPEDITIONS.filter(x => !x.locked)){
+  for(const e of EXPEDITIONS.filter(x => !x.locked).concat(HIDDEN_EXPEDITIONS)){
     const list = ids.filter(id => PETS[id].exp === (e.petExp ?? e.lvl)).sort((a, b) => order[PETS[a].rarity] - order[PETS[b].rarity]);
     h += `<div class="colexp"><h4>${e.lvl}. ${e.name}</h4><div class="colrow">` + list.map(id => {
       const p = PETS[id], have = !!col[id];

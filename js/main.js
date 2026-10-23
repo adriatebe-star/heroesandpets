@@ -115,8 +115,8 @@ function clearAroundInteractables(sc){
   });
 }
 function startRaid(expId='village'){
-  const seed = Math.floor(Math.random()*1e9), exp = EXPEDITIONS.find(e => e.id===expId) || EXPEDITIONS[0];
-  const sc = expId==='floatcity' ? buildFloatCity(seed) : expId==='icepeak' ? buildIcePeak(seed) : expId==='temple' ? buildTemple(seed) : expId==='forest' ? buildForest(seed) : expId==='mine' ? buildMine(seed) : expId==='river' ? buildRiver(seed) : expId==='castle' ? buildCastle(seed) : expId==='orccamp' ? buildOrcCamp(seed) : expId==='plains' ? buildPlains(seed) : expId==='crypt' ? buildCrypt(seed) : expId==='cemetery' ? buildCemetery(seed) : buildVillage(seed);
+  const seed = Math.floor(Math.random()*1e9), exp = EXPEDITIONS.find(e => e.id===expId) || HIDDEN_EXPEDITIONS.find(e => e.id===expId) || EXPEDITIONS[0];
+  const sc = RAID_BUILDERS[expId] ? RAID_BUILDERS[expId](seed) : expId==='floatcity' ? buildFloatCity(seed) : expId==='icepeak' ? buildIcePeak(seed) : expId==='temple' ? buildTemple(seed) : expId==='forest' ? buildForest(seed) : expId==='mine' ? buildMine(seed) : expId==='river' ? buildRiver(seed) : expId==='castle' ? buildCastle(seed) : expId==='orccamp' ? buildOrcCamp(seed) : expId==='plains' ? buildPlains(seed) : expId==='crypt' ? buildCrypt(seed) : expId==='cemetery' ? buildCemetery(seed) : buildVillage(seed);
   sc.lvl = exp.lvl; sc.exp = exp; sc.petExp = exp.petExp ?? exp.lvl;
   randomReturnPortals(sc);
   if(Math.random() < LEGEND_CHEST_CHANCE) addLegendChest(sc);   // a veces hay un cofre legendario
@@ -321,7 +321,7 @@ function interactables(){
   }
   if(sc.bigCage) add(sc.bigCage.x, sc.bigCage.y, 32, '[F] Jaula grande (mascotas)', () => UI.toggleInv('cage'), sc.bigCage.y-44);
   if(sc.stash) add(sc.stash.x, sc.stash.y, 30, '[F] Alijo', () => UI.toggleInv('stash'), sc.stash.y-26);
-  if(sc.portalProp) add(0, -150, 60, '[F] Portal del tiempo', () => UI.say('Portal del tiempo', [G.save.rolecsPortal ? 'El portal vibra y susurra... pero todavía no se abre.' : 'Un anillo de piedra cubierto de relojes. No reacciona a nada: le falta una llave del tiempo.']), -190);
+  if(sc.portalProp) add(0, -150, 60, '[F] Portal del tiempo', useTimePortal, -190);
   for(const c of sc.chests) if(!c.open) add(c.x, c.y, 26, c.legend ? '[F] Abrir cofre legendario' : c.rare ? '[F] Abrir cofre raro' : '[F] Abrir cofre', () => startChannel((c.legend ? 1.8 : c.rare ? 1.2 : .7)*(1 - SK('exp')*.03), 'Abriendo...', () => openChest(c)), c.y-24);
   for(const c of sc.cages) if(!c.open) add(c.x, c.y, 28, c.gift ? '[F] Abrir la jaula brillante' : '[F] Abrir jaula', () => startChannel(1.5*(1 - SK('exp')*.03)*Math.max(.3, 1 - (G.pt.cageSpd||0)/100), 'Forzando la jaula...', () => openCage(c), '#7ae09a'), c.y-36);
   for(const l of G.loot) if(l.item && l.z===0 && lootVisible(l)) add(l.x, l.y, 20, '[F] Coger ' + itemName(l.item), () => pickLoot(l), l.y-18);
@@ -435,7 +435,7 @@ function update(dt){
   for(const t of G.texts){ t.life -= dt; t.y += t.vy*dt; t.vy *= .94; }
   G.texts = G.texts.filter(t => t.life > 0);
   if(G.flash){ G.flash.t -= dt; if(G.flash.t <= 0) G.flash = null; }
-  updateFairies(dt); updateLegends(dt); updateLegends2(dt); updateLegends3(dt); updateIcePeak(dt);
+  updateFairies(dt); updateLegends(dt); updateLegends2(dt); updateLegends3(dt); updateIcePeak(dt); updateWorld12(dt);
   for(const c of G.sc.chests) if(c.pinged > 0) c.pinged -= dt;
   for(const p of G.sc.portals) if(!p.seen && Math.hypot(p.x-P.x, p.y-P.y) < 260) p.seen = true;   // los portales se marcan en el mapa al descubrirlos
   // fuegos fatuos: deambulan despacio alrededor de su sitio

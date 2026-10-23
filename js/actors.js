@@ -473,6 +473,8 @@ function damagePlayer(dmg, m, elem){
   if(monFx(m, 'slow')) P.slowT = Math.max(P.slowT||0, 2);
   if(MONSTERS[m.type].poisonHit) P.poisonT = Math.max(P.poisonT, 3);
   if(MONSTERS[m.type].bleedHit) P.bleedT = Math.max(P.bleedT||0, 4);
+  if(MONSTERS[m.type].burnHit) P.burnT = Math.max(P.burnT||0, 3);
+  if(MONSTERS[m.type].weakHit){ P.weakT = Math.max(P.weakT||0, 4); addText(P.x, P.y-62, '¡Debilitado!', '#c8b8ff', 7); }
   if(MONSTERS[m.type].electric){ P.weakT = Math.max(P.weakT||0, 3); if(Math.random() < .3 && !legendOn('yetiheart')){ P.rootT = Math.max(P.rootT||0, .6); addText(P.x, P.y-62, '¡Descarga!', '#ffe84a', 8); } burst(P.x, P.y-22, 8, ['#ffe84a','#ffffff','#9af0ff'], [30,100], [.2,.4], 0); }   // tridentes eléctricos
   if(MONSTERS[m.type].stunHit && !legendOn('yetiheart')){ P.stunT = Math.max(P.stunT||0, 1.1); addText(P.x, P.y-62, '¡Aturdido!', '#ffe08a', 8); burst(P.x, P.y-34, 8, ['#ffe08a','#ffffff'], [20,60], [.3,.6], -40); }   // yeti: golpe pesado
   if(A.includes('gelido') || MONSTERS[m.type].slowHit){ P.slowT = 2; burst(P.x, P.y-20, 6, ['#a0d8ff','#ffffff'], [20,60], [.3,.5], 0); }
@@ -548,7 +550,7 @@ function updateMonster(m, dt){
   const sc = G.sc;
   if(m.dying){ m.dying += dt; return; }
   m.spawnIn = Math.min(1, m.spawnIn + dt*2.5);
-  m.flash -= dt; m.atkCd -= dt*(m.freezeT>0 ? .4 : 1); m.lastHit += dt; m.tauntT -= dt; m.stunT -= dt; m.slowT -= dt; m.freezeT -= dt; m.freezeImmT = (m.freezeImmT||0) - dt; m.weakT -= dt; m.revealT -= dt; m.fleeT -= dt; m.fearT -= dt; if(m.markT > 0) m.markT -= dt; if(m.confuseT > 0) m.confuseT -= dt;
+  m.flash -= dt; m.atkCd -= dt*(m.freezeT>0 ? .4 : 1); m.lastHit += dt; m.tauntT -= dt; m.exposedT -= dt; m.stunT -= dt; m.slowT -= dt; m.freezeT -= dt; m.freezeImmT = (m.freezeImmT||0) - dt; m.weakT -= dt; m.revealT -= dt; m.fleeT -= dt; m.fearT -= dt; if(m.markT > 0) m.markT -= dt; if(m.confuseT > 0) m.confuseT -= dt;
   // daño en el tiempo
   if(m.poisonT > 0 || m.burnT > 0 || m.bleedT > 0){
     m.poisonT -= dt; m.burnT -= dt; m.bleedT -= dt;
@@ -573,11 +575,14 @@ function updateMonster(m, dt){
   }
   m.hop += dt*(m.art==='big' ? 5 : 7);
   const MD = MONSTERS[m.type];
+  // seguro contra jefes atascados: si algo les corta el aviso del ataque (prepT) con atkCd = 99, vuelven a atacar enseguida
+  if(MD.boss && m.awake && !(m.prepT > 0) && m.atkCd > 12 && !m.charge && !m.tele && !m.dizzy && !m.leap) m.atkCd = 1;
 
   if(m.ai==='boss'){ updateBoss(m, dt); return; }
   if(m.ai==='urr'){ updateUrr(m, dt); return; }
   if(m.ai==='elfmage'){ updateElfMage(m, dt); return; }
   if(m.ai==='guardian'){ updateGuardian(m, dt); return; }
+  if(m.ai==='brain'){ updateBrain(m, dt); return; }
   // salto en curso (afijo Saltador)
   if(m.jump){
     const j = m.jump; j.t += dt/.7;
@@ -667,7 +672,8 @@ function updateMonster(m, dt){
         m.atkCd = rand(1.8, 2.6);
         if(see){
           const lead = .25, ax = target.x + (target.vx||0)*lead*.3 - m.x, ay = target.y - 14 - (m.y - 16), al = Math.hypot(ax,ay) || 1;
-          if(MD.firearrow) G.projs.push({x:m.x + m.face*8, y:m.y-16, vx:ax/al*310, vy:ay/al*310, life:1.3, kind:'arrow', from:'mon', mon:m, dmg:m.curDmg, r:3, ang:Math.atan2(ay,ax), burn:true, fire:true});
+          if(MD.shot) G.projs.push(Object.assign({x:m.x + m.face*8, y:m.y-18, life:1.4, kind:'bolt', from:'mon', mon:m, dmg:m.curDmg, r:4, ang:Math.atan2(ay,ax)}, MD.shot, {vx:ax/al*(MD.shot.spd||300), vy:ay/al*(MD.shot.spd||300)}));
+          else if(MD.firearrow) G.projs.push({x:m.x + m.face*8, y:m.y-16, vx:ax/al*310, vy:ay/al*310, life:1.3, kind:'arrow', from:'mon', mon:m, dmg:m.curDmg, r:3, ang:Math.atan2(ay,ax), burn:true, fire:true});
           else if(MD.zap) G.projs.push({x:m.x + m.face*8, y:m.y-20, vx:ax/al*340, vy:ay/al*340, life:1.3, kind:'bolt', from:'mon', mon:m, dmg:m.curDmg, r:4, root: Math.random() < .25 ? .6 : 0, weak: Math.random() < .2 ? 3 : 0, col:['#a08800', '#ffe84a', '#ffffff']});
           else if(MD.flame) G.projs.push({x:m.x + m.face*8, y:m.y-12, vx:ax/al*250, vy:ay/al*250, life:1.1, kind:'flame', from:'mon', mon:m, dmg:m.curDmg, r:5, burn:true});
           else if(MD.dart) G.projs.push({x:m.x + m.face*8, y:m.y-14, vx:ax/al*330, vy:ay/al*330, life:1.2, kind:'dart', from:'mon', mon:m, dmg:m.curDmg, r:3, ang:Math.atan2(ay,ax), root: Math.random() < .3 ? 1.1 : 0, steal:true});
@@ -756,9 +762,12 @@ function hitMonster(m, dmg, o){
   if(m.dying) return;
   if(o.src==='pet' && o.pet && o.pet.def.affixes.includes('valiente') && m.rarity!=='normal') dmg *= 1.4;
   if(m.markT > 0) dmg *= 1.25;
+  if(m.exposedT > 0) dmg *= 1.1;   // presa fácil
+  if(o.src==='pet' && o.pet && petHas(o.pet,'cazadora') && (m.markT > 0 || m.bleedT > 0 || m.burnT > 0)) dmg *= 1.25;
   dmg *= legendHitMod(m);
   if(o.src==='player' && P.eclipseT > 0) dmg *= 1.3;
   if(o.src==='player' && P.warT > 0) dmg *= 1.25;
+  if(o.src==='player' && P.timeRingN > 0) dmg *= 1.25;
   if(o.src==='player' && P.weakT > 0) dmg *= .6;   // debilitado por los rayos del brujo élfico
   if(MONSTERS[m.type].guard && o.nx && Math.sign(-o.nx) === m.face && m.stunT <= 0){ dmg *= .4; addText(m.x, m.y-m.r*2-20, 'Bloqueo', '#c8d0e0', 6, -20); }
   dmg = Math.max(1, Math.round(dmg));
@@ -1117,13 +1126,20 @@ function petStrike(p, m, mult=1, extra={}){
   if(!PET_ART[p.def.id].fly && !los(G.sc, p.x, p.y-4, m.x, m.y-4)) return;
   const d = Math.hypot(m.x-p.x, m.y-p.y) || 1;
   if(petHas(p,'ejecutora') && m.hp < m.maxHp*.3) mult *= 1.5;
-  const crit = Math.random() < (p.def.critPounce ? .2 : .1) + (G.pt.petCrit||0) + petFx(p, 'crit')/100; if(crit) mult *= 2;
+  const crit = p.starCrit || Math.random() < (p.def.critPounce ? .2 : .1) + (G.pt.petCrit||0) + petFx(p, 'crit')/100; if(crit) mult *= 2;
   const bleed = extra.bleed || (petHas(p,'sangrienta') || petFx(p, 'bleed') || (p.def.bleed && Math.random() < p.def.bleed) ? 4 : 0);
   const stun = extra.stun || (petHas(p,'atronadora') && Math.random() < .15 ? .8 : 0) || (petFx(p, 'stun') && Math.random() < petFx(p, 'stun')/100 ? .8 : 0);
   hitMonster(m, petDamage(p)*mult, {src:'pet', pet:p, nx:(m.x-p.x)/d, ny:(m.y-p.y)/d, k:extra.k ?? 170,
     crit, poison: (petHas(p,'venenosa') || extra.poison || petFx(p, 'poison')) ? 3 : 0, slow: (petHas(p,'helada') || petFx(p, 'slow')) ? 2 : (extra.slow||0), burn: (p.def.burn || petHas(p,'ignea') || petHas(p,'crin') || petFx(p, 'burn')) ? 3 : 0, stun, bleed, mark: extra.mark || p.def.mark});
+  if(p.starCrit && crit){ p.starCrit = false; }
+  if(petHas(p,'presa') && !m.dying) m.exposedT = 4;
+  if(m.dying && petHas(p,'estelar')){ p.starCrit = true; addText(p.x, p.y-30, '¡Estelar!', '#e8d8ff', 7); }
+  if(petHas(p,'electrica') && Math.random() < .1 && !m.dying){
+    let bo = null, bd = 110; for(const o of G.mons) if(o !== m && !o.dying){ const dd = Math.hypot(o.x-m.x, o.y-m.y); if(dd < bd){ bd = dd; bo = o; } }
+    if(bo){ pixLine(m.x, m.y-12, bo.x, bo.y-12, 2, '#ffe84a'); burst(bo.x, bo.y-10, 8, ['#ffe84a', '#ffffff'], [30, 100], [.2, .4], 0); hitMonster(bo, petDamage(p)*mult*.5, {src:'pet', pet:p, nx:0, ny:0, k:0}); }
+  }
   if(m.dying && p.def.raise) raiseAlly(p, m);
-  if(petHas(p,'temible') && Math.random() < .1 && !m.dying){ m.fearT = 2; m.prepT = 0; }
+  if(petHas(p,'temible') && Math.random() < .1 && !m.dying && !MONSTERS[m.type].boss){ m.fearT = 2; m.prepT = 0; }
   if(m.dying && petHas(p,'voraz')){ p.hp = Math.min(p.maxHp, p.hp + p.maxHp*.15); addText(p.x, p.y-24, '+'+Math.round(p.maxHp*.15), '#7ad86a', 6); }
   if(petHas(p,'vampirica') && !P.dead) P.hp = Math.min(P.maxHp, P.hp+1);
   { const lf = petFx(p, 'leech'); if(lf && !P.dead) P.hp = Math.min(P.maxHp, P.hp + lf); }
@@ -1134,6 +1150,8 @@ function damagePet(p, dmg, m, silent, ranged){
   const fly = PET_ART[p.def.id].fly;
   if(p.exhaustedT > 0 || (p.z > 6 && !fly) || p.stoneT > 0) return;
   if(fly && !ranged) dmg *= .5;   // las voladoras reciben la mitad del daño cuerpo a cuerpo; los proyectiles les hacen el daño completo
+  if(ranged && petHas(p,'voladora')) dmg *= .8;
+  if(silent && petHas(p,'resiliente')) dmg *= .7;
   if(petHas(p,'agil') && Math.random() < .2 && !silent){ addText(p.x, p.y-24, 'Esquiva', '#c8e8ff', 6); return; }
   if(petHas(p,'dura')) dmg *= .85;
   { const dg = petFx(p, 'dodge'); if(dg && Math.random() < dg/100 && !silent){ addText(p.x, p.y-24, 'Esquiva', '#c8e8ff', 6); return; } }
@@ -1219,7 +1237,7 @@ function updatePet(p, dt){
     p.howlT = (p.howlT ?? 4) - dt;
     if(p.howlT <= 0 && nearestMonster(p.x, p.y, 100)){
       p.howlT = 10;
-      for(const m of G.mons) if(!m.dying && Math.hypot(m.x-p.x, m.y-p.y) < 100){ m.fearT = 2; m.prepT = 0; }
+      for(const m of G.mons) if(!m.dying && !MONSTERS[m.type].boss && Math.hypot(m.x-p.x, m.y-p.y) < 100){ m.fearT = 2; m.prepT = 0; }
       addText(p.x, p.y-30, '¡AUUUU!', '#d8e0ff', 8); ring(p.x, p.y-10, 40, '#c8d0e0', .4); sfx('howl');
     }
   }
@@ -1246,7 +1264,7 @@ function updatePet(p, dt){
   if(p.def.maelstrom && canFight){   // Krakenito: Remolino cada 24 s (un torbellino arrastra y daña a los enemigos cercanos)
     p.maelCd = (p.maelCd ?? 8) - dt;
     const tg = p.maelCd <= 0 ? nearestMonster(p.x, p.y, 240) : null;
-    if(tg){ p.maelCd = 24; G.hazards.push({type:'whirl', x:tg.x, y:tg.y, r:84, life:4, max:4, pet:p, tick:0}); ring(tg.x, tg.y-6, 70, '#c890ff', .5); addText(p.x, p.y-42, '¡Remolino!', '#c8a0ff', 9); sfx('alba'); }
+    if(tg){ p.maelCd = 24; G.hazards.push({type:'whirl', x:tg.x, y:tg.y, r:84, life:4, max:4, pet:p, tick:0}); ring(tg.x, tg.y-6, 70, '#c890ff', .5); addText(p.x, p.y-42, p.def.skillName || '¡Remolino!', '#c8a0ff', 9); sfx('alba'); }
   }
   if(p.def.blizzard && canFight){   // Boreal: Ventisca cada 24 s (congela a los enemigos cercanos y les hace daño)
     p.blizCd = (p.blizCd ?? 8) - dt;
@@ -1264,7 +1282,7 @@ function updatePet(p, dt){
       const heal = Math.round(P.maxHp*.2); P.hp = Math.min(P.maxHp, P.hp + heal); addText(P.x, P.y-48, '+' + heal, '#7ad86a', 9);
       for(const q of G.pets) if(q.hp > 0){ q.hp = Math.min(q.maxHp, q.hp + q.maxHp*.2); addText(q.x, q.y-34, '+' + Math.round(q.maxHp*.2), '#7ad86a', 7); burst(q.x, q.y-10, 8, ['#fff0a0','#a8ffb8','#ffffff'], [20,80], [.4,.8], -50); }
       for(const r2 of [30, 55, 80]) ring(p.x, p.y-8, r2, '#fff0a0', .5);
-      burst(P.x, P.y-20, 18, ['#fff0a0','#a8ffb8','#ffffff'], [40,120], [.5,1], -60); addText(p.x, p.y-42, '¡Floración!', '#fff0a0', 9); sfx('alba'); G.flash = {x:p.x, y:p.y-10, t:.3};
+      burst(P.x, P.y-20, 18, ['#fff0a0','#a8ffb8','#ffffff'], [40,120], [.5,1], -60); addText(p.x, p.y-42, p.def.skillName || '¡Floración!', '#fff0a0', 9); sfx('alba'); G.flash = {x:p.x, y:p.y-10, t:.3};
     }
   }
   // Fragua: Erupción cada 24 s (llamas bajo los enemigos cercanos que los aturden)
@@ -1299,7 +1317,7 @@ function updatePet(p, dt){
       p.warCd = 20;
       for(const o of G.mons) if(!o.dying && !MONSTERS[o.type].boss && Math.hypot(o.x-p.x, o.y-p.y) < 175){ o.fearT = 3; o.prepT = 0; }
       P.warT = 5; ring(p.x, p.y-10, 70, '#ff8a3a', .5); ring(p.x, p.y-10, 44, '#ffd070', .4);
-      burst(p.x, p.y-10, 24, ['#ff8a3a','#ffd070','#ffffff'], [60,200], [.4,.9], 0); addText(p.x, p.y-40, '¡Aullido de guerra!', '#ffb070', 8); sfx('howl');
+      burst(p.x, p.y-10, 24, ['#ff8a3a','#ffd070','#ffffff'], [60,200], [.4,.9], 0); addText(p.x, p.y-40, p.def.skillName || '¡Aullido de guerra!', '#ffb070', 8); sfx('howl');
     }
   }
   // Selene: estampida espectral cada 18 s (atraviesa muros y enemigos y los aturde)
@@ -1341,6 +1359,8 @@ function updatePet(p, dt){
   }
   // Curandera: cura 1 de vida al héroe cada 4 s
   { const hf = petFx(p, 'heal'); if(hf && canFight && P.hp < P.maxHp){ p.fhealT = (p.fhealT ?? 4) - dt; if(p.fhealT <= 0){ p.fhealT = 4; P.hp = Math.min(P.maxHp, P.hp + hf); addText(P.x, P.y-46, '+' + hf, '#7ad86a', 7); } } }
+  if(petHas(p,'escudera') && canFight){ p.shT = (p.shT ?? 6) - dt; if(p.shT <= 0){ p.shT = 12; P.gelShield = Math.max(P.gelShield || 0, 25); addText(P.x, P.y-62, 'Escudo', '#8ab8ff', 7); ring(P.x, P.y-10, 30, '#8ab8ff', .3); } }
+  if(petHas(p,'sanadora') && canFight){ p.sanT = (p.sanT ?? 4) - dt; if(p.sanT <= 0){ p.sanT = 8; for(const o of G.pets) if(o !== p && o.hp > 0 && o.hp < o.maxHp){ o.hp = Math.min(o.maxHp, o.hp + o.maxHp*.08); if(o.item) o.item.hp = o.hp; addText(o.x, o.y-30, '+' + Math.round(o.maxHp*.08), '#7ad86a', 6); } } }
   if(petHas(p,'curandera') && canFight && P.hp < P.maxHp){ p.healT = (p.healT ?? 4) - dt; if(p.healT <= 0){ p.healT = 4; P.hp = Math.min(P.maxHp, P.hp+5); addText(P.x, P.y-46, '+5', '#7ad86a', 7); } }
   // Chiflo: cada 12 s silba y revela los cofres cercanos
   if(p.def.chestPing && canFight){
@@ -1684,6 +1704,18 @@ function updateHazards(dt){
       if(Math.random() < .5){ const an = Math.random()*Math.PI*2; G.parts.push({x:h.x + Math.cos(an)*h.rad, y:h.y + Math.sin(an)*h.rad*.45, vx:0, vy:-26, life:.35, max:.35, size:2, col:pick(['#c8b898','#ff9a4a','#8a7a68'])}); }
       if(h.rad > 400) h.life = 0;
     }
+    if(h.type==='beam'){   // rayo en línea con aviso previo
+      if(h.delay > 0){ h.delay -= dt; h.life = h.max; if(h.delay <= 0){ h.fired = true; G.shake = Math.max(G.shake, 6); sfx('boom'); G.flash = {x:h.x + Math.cos(h.ang)*60, y:h.y + Math.sin(h.ang)*60, t:.2};
+        const hitSeg = t => { const rx = t.x - h.x, ry = (t.y - 14) - h.y, along = rx*Math.cos(h.ang) + ry*Math.sin(h.ang), perp = Math.abs(-rx*Math.sin(h.ang) + ry*Math.cos(h.ang)); return along > 0 && along < h.len && perp < h.w/2 + (t.r || 6); };
+        if(!P.dead && hitSeg(P) && !(P.jump || (P.jumpZ||0) > 6) && damagePlayer(h.dmg, h.mon, h.elem)){ if(h.fx === 'burn') P.burnT = Math.max(P.burnT||0, 3); else if(h.fx === 'weak') P.weakT = Math.max(P.weakT||0, 5); else if(h.fx === 'stun') P.stunT = Math.max(P.stunT||0, .9); else if(h.fx === 'slow') P.slowT = Math.max(P.slowT||0, 3); }
+        for(const p of G.pets) if(p.z < 8 && hitSeg(p)) damagePet(p, h.dmg*.7, null, false, true); } }
+    }
+    if(h.type==='pull'){   // succión: arrastra al héroe y a las mascotas hacia el centro
+      const pl = (t, k) => { const dx = h.x - t.x, dy = h.y - t.y, d = Math.hypot(dx, dy) || 1; if(d < h.r*1.6 && d > 14) moveCircle(G.sc, t, dx/d*h.str*k*dt, dy/d*h.str*k*dt); return d; };
+      if(!P.dead && !(P.jump || (P.jumpZ||0) > 6)){ const d = pl(P, 1); h.tick -= dt; if(h.tick <= 0 && d < h.r*.4){ h.tick = .5; damagePlayer(h.dmg*.35, h.mon); } }
+      for(const p of G.pets) if(p.z < 8) pl(p, .8);
+      if(Math.random() < .8){ const an = Math.random()*Math.PI*2, rr2 = h.r*(.7 + Math.random()*.6); G.parts.push({x:h.x + Math.cos(an)*rr2, y:h.y + Math.sin(an)*rr2*.6, vx:-Math.cos(an)*h.str*.8, vy:-Math.sin(an)*h.str*.5, life:.5, max:.5, size:2, col:pick(['#c8b8ff', '#ffffff', '#8a7aff'])}); }
+    }
     if(h.type==='boom' && h.life > 0 && Math.floor(h.life*8) !== Math.floor((h.life+dt)*8)) sfx('fuse');
     if(h.type==='charm' && h.life <= 0){   // canto de sirena: si te pilla, caminas hacia ella 2 s
       ring(h.x, h.y-4, h.r, '#ff9ae0', .4); burst(h.x, h.y-8, 18, ['#ff9ae0', '#ffffff', '#c8a0ff'], [30, 110], [.4, .8], -30); sfx('alba');
@@ -1754,7 +1786,7 @@ function drawArm(a){
   pixLine(a.sx, a.sy, a.x, a.y, 5, OUT);
   pixLine(a.sx, a.sy, a.x, a.y, 3, a.sd<0 ? PAL.u : PAL.t);
   const gl = G.inv.equip.hands;
-  if(a.shield){ const sid = G.inv.equip.shield && G.inv.equip.shield.id; drawSP(sid==='ironshield' ? ART.ironshield : sid==='nightaegis' ? ART.nightaegis : sid==='urrwall' ? ART.urrwall : sid==='lastwall' ? ART.lastwall : sid==='elfshield' ? ART.elfshield : sid==='holyaegis' ? ART.holyaegis : ART.buckler, a.x, a.y); }
+  if(a.shield){ const sid = G.inv.equip.shield && G.inv.equip.shield.id; drawSP(sid && ITEMS[sid] && ITEMS[sid].shieldArt ? ART[ITEMS[sid].shieldArt] : sid==='ironshield' ? ART.ironshield : sid==='nightaegis' ? ART.nightaegis : sid==='urrwall' ? ART.urrwall : sid==='lastwall' ? ART.lastwall : sid==='elfshield' ? ART.elfshield : sid==='holyaegis' ? ART.holyaegis : ART.buckler, a.x, a.y); }
   else if(gl) armorOv(ITEMS[gl.id].ov ? (a.big ? ITEMS[gl.id].ov + 'Big' : ITEMS[gl.id].ov) : (a.big ? 'bigGlove' : 'glove'), gl.rarity, a.x, a.y);
   else spr(a.big ? 'bigGlove' : 'glove', a.x, a.y, a.active ? 'hit' : null);
   if(a.weapon==='stick'){
@@ -1765,12 +1797,12 @@ function drawArm(a){
   if(a.weapon==='mace' || a.weapon==='axe'){
     const c = Math.cos(a.ang), s2 = Math.sin(a.ang), ex = a.x + c*16, ey = a.y + s2*16;
     pixLine(a.x - c*2, a.y - s2*2, ex, ey, 4, OUT); pixLine(a.x - c*2, a.y - s2*2, ex, ey, 2, '#5a3d26');
-    if(a.weapon==='mace'){ const mc = {slimemace:['#2a9a3a','#b8ffb8'], gravespade:['#5a4a30','#c8b894'], chiefhammer:['#7a1c1c','#ffd040']}[a.wid] || ['#6c7079','#c8ccd4']; b.fillStyle = OUT; b.fillRect(Math.round(ex)-3, Math.round(ey)-3, 7, 7); b.fillStyle = mc[0]; b.fillRect(Math.round(ex)-2, Math.round(ey)-2, 5, 5); b.fillStyle = mc[1]; b.fillRect(Math.round(ex)-1, Math.round(ey)-2, 2, 2);
+    if(a.weapon==='mace'){ const mc = {slimemace:['#2a9a3a','#b8ffb8'], gravespade:['#5a4a30','#c8b894'], chiefhammer:['#7a1c1c','#ffd040']}[a.wid] || W12_TINT[a.wid] || ['#6c7079','#c8ccd4']; b.fillStyle = OUT; b.fillRect(Math.round(ex)-3, Math.round(ey)-3, 7, 7); b.fillStyle = mc[0]; b.fillRect(Math.round(ex)-2, Math.round(ey)-2, 5, 5); b.fillStyle = mc[1]; b.fillRect(Math.round(ex)-1, Math.round(ey)-2, 2, 2);
       for(const [px,py] of [[-3,0],[3,0],[0,-3],[0,3]]){ b.fillStyle = '#9aa0aa'; b.fillRect(Math.round(ex)+px, Math.round(ey)+py, 1, 1); } }
     else { const hx = ex - c*3, hy = ey - s2*3; pixLine(hx + s2*1, hy - c*1, hx - s2*6, hy + c*6, 4, OUT); pixLine(hx + s2*1, hy - c*1, hx - s2*5, hy + c*5, 2, (a.wid==='urraxe' || a.wid==='kingpick') ? '#c8962e' : '#9aa0aa'); b.fillStyle = (a.wid==='urraxe' || a.wid==='kingpick') ? '#ffd040' : '#d8dce4'; b.fillRect(Math.round(hx - s2*5), Math.round(hy + c*5), 1, 1); }
   }
   if(a.weapon==='dagger'){
-    const c = Math.cos(a.ang), s2 = Math.sin(a.ang), ex = a.x + c*11, ey = a.y + s2*11, uq = G.inv.equip[curWeaponKey()] && ({countesslament:'#c8a0ff', moondagger:'#9ad8ff'})[G.inv.equip[curWeaponKey()].id];
+    const c = Math.cos(a.ang), s2 = Math.sin(a.ang), ex = a.x + c*11, ey = a.y + s2*11, uq = G.inv.equip[curWeaponKey()] && ({countesslament:'#c8a0ff', moondagger:'#9ad8ff'})[G.inv.equip[curWeaponKey()].id] || (W12_TINT[G.inv.equip[curWeaponKey()].id] || [])[0];
     pixLine(a.x - c*2, a.y - s2*2, a.x + c*2, a.y + s2*2, 3, '#3a2618');
     pixLine(a.x + c*2, a.y + s2*2, ex, ey, 3, OUT); pixLine(a.x + c*2, a.y + s2*2, ex, ey, 1, uq || '#c8ccd4');
   }
@@ -1793,7 +1825,7 @@ function drawArm(a){
     const c = Math.cos(a.ang), s = Math.sin(a.ang);
     const hx = a.x - c*3, hy = a.y - s*3, gx = a.x + c*2, gy = a.y + s*2, ex = a.x + c*21, ey = a.y + s*21;
     pixLine(hx, hy, gx, gy, 3, '#3a2618');                                         // empuñadura
-    const SW = {firesword:['#ff9a30','#ffe08a'], icesword:['#7ac8f0','#f0fcff'], lightningsword:['#e8c020','#fffbd0'], elfsword:['#8ad8b0','#f4fff8'], frostfang:['#7ac8f0','#ffb060'], currentsword:['#4aa8d8','#e8f8ff'], guardianice:['#7ac8f0','#f0fcff'], guardianfire:['#ff9a30','#ffe08a']}[a.wid];
+    const SW = {firesword:['#ff9a30','#ffe08a'], icesword:['#7ac8f0','#f0fcff'], lightningsword:['#e8c020','#fffbd0'], elfsword:['#8ad8b0','#f4fff8'], frostfang:['#7ac8f0','#ffb060'], currentsword:['#4aa8d8','#e8f8ff'], guardianice:['#7ac8f0','#f0fcff'], guardianfire:['#ff9a30','#ffe08a']}[a.wid] || W12_TINT[a.wid];
     pixLine(ex, ey, gx, gy, 4, OUT); pixLine(ex, ey, gx, gy, 2, SW ? SW[0] : '#a8acb4');        // hoja
     b.fillStyle = SW ? SW[1] : '#d8dce4'; b.fillRect(Math.round(lerp(gx,ex,.4)), Math.round(lerp(gy,ey,.4)), 1, 1);
     if(!SW){ b.fillStyle = '#8a5a3a'; b.fillRect(Math.round(lerp(gx,ex,.65)), Math.round(lerp(gy,ey,.65)), 1, 1); }   // óxido
@@ -2212,6 +2244,11 @@ function drawHazard(h){
     const t = 1 - h.life/h.max;
     pixRing(h.x, h.y, h.r, h.r*.45, '#ff5a3c', 28);
     pixRing(h.x, h.y, h.r*t, h.r*.45*t, '#ffb347', 20);
+  } else if(h.type==='beam'){
+    if(h.delay > 0){ const blink = Math.floor(G.t*14)%2, nx = -Math.sin(h.ang)*h.w/2, ny = Math.cos(h.ang)*h.w/2*.8; b.fillStyle = h.col; b.globalAlpha = blink ? .75 : .4; for(let r2 = 10; r2 < h.len; r2 += 8){ const px = h.x + Math.cos(h.ang)*r2, py = h.y + Math.sin(h.ang)*r2*.8; b.fillRect(Math.round(px + nx), Math.round(py + ny), 2, 2); b.fillRect(Math.round(px - nx), Math.round(py - ny), 2, 2); if(r2 % 24 < 8) b.fillRect(Math.round(px), Math.round(py), 2, 2); } b.globalAlpha = 1; }
+    else { const k = Math.max(0, h.life/h.max); b.globalAlpha = k; for(let r2 = 0; r2 < h.len; r2 += 6){ const px = Math.round(h.x + Math.cos(h.ang)*r2), py = Math.round(h.y + Math.sin(h.ang)*r2*.8), ww = Math.round(h.w*.5*k) + 2; b.fillStyle = h.col; b.fillRect(px - ww/2, py - ww/2, ww, ww); b.fillStyle = '#ffffff'; b.fillRect(px - 1, py - 1, 3, 3); } b.globalAlpha = 1; }
+  } else if(h.type==='pull'){
+    pixRing(h.x, h.y, h.r*(.6 + .4*((G.t*2)%1)), h.r*.45, '#8a7aff', 30); pixRing(h.x, h.y, h.r*.4, h.r*.18, '#0a0820', 20);
   } else if(h.type==='boom'){
     const t = 1 - h.life/h.max;
     if(Math.floor(G.t*(6+t*14))%2) pixRing(h.x, h.y, h.r, h.r*.45, '#ff3a1a', 30);

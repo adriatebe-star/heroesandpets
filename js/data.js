@@ -601,7 +601,7 @@ Object.assign(PETS, {
   // ---- templo sagrado (exp. 9) ----
   paloma:    {exp:9, name:'Paloma', rarity:'normal', look:'Paloma blanca', beh:'flyer', dmg:[4,7], cd:.9, affixes:['curandera'],
               attack:'Picotazos desde el aire'},
-  cordero:   {exp:9, name:'Cordero Dorado', rarity:'normal', look:'Cordero de lana dorada', beh:'charge', dmg:[5,8], cd:2.4, miniStun:true, affixes:['robusta'],
+  cordero:   {exp:9, name:'Cordero Dorado', rarity:'normal', look:'Cordero de lana dorada', beh:'charge', dmg:[5,8], cd:2.4, miniStun:true, affixes:['escudera'],
               attack:'Embestida suave que aturde 0,5 s'},
   gatotemplo:{exp:9, name:'Gato del Templo', rarity:'normal', look:'Gato blanco con collar de oro', beh:'pounce', dmg:[5,8], cd:1.4, bites:2, affixes:['agil'],
               attack:'Doble arañazo rápido'},
@@ -625,6 +625,17 @@ Object.assign(PETS, {
 });
 PET_AFFIX.eclipse = {name:'Eclipse', desc:'Cada 25 s confunde a los enemigos cercanos y da +30 % de daño al héroe durante 4 s'};
 PET_AFFIX.luna ={name:'Luz de luna', desc:'Aura que revela a los Sombríos y cura 1 de vida por segundo al héroe'};
+Object.assign(PET_AFFIX, {
+  cazadora:  {name:'Cazadora', desc:'+25 % de daño a enemigos marcados, sangrando o quemándose'},
+  escudera:  {name:'Escudera', desc:'Cada 12 s da un escudo de 25 de vida al héroe'},
+  estelar:   {name:'Estelar', desc:'Al matar a un enemigo, su siguiente ataque es crítico seguro'},
+  resiliente:{name:'Resiliente', desc:'Pierde un 30 % menos de vida por veneno y otros efectos continuos'},
+  agilc:     {name:'Ágil de combate', desc:'+12 % de esquivar golpes y +10 % de velocidad de ataque', fx:{dodge:12, aspd:10}},
+  sanadora:  {name:'Sanadora de grupo', desc:'Cada 8 s cura un 8 % de vida a las demás mascotas'},
+  presa:     {name:'Presa fácil', desc:'Sus golpes hacen que el enemigo reciba +10 % de daño de todos durante 4 s'},
+  electrica: {name:'Eléctrica', desc:'10 % de que el golpe salte a otro enemigo cercano con la mitad del daño'},
+  voladora:  {name:'Voladora', desc:'Recibe un 20 % menos de daño de proyectiles y ataques a distancia'},
+});
 // escalado por nivel de expedición (petición del usuario): cada nivel de la expedición da +12 % de vida y +10 % de daño a sus mascotas
 const PET_TIER_HP = .12, PET_TIER_DMG = .10, PET_TIER_REVIVE = .10;
 const petTier = p => Math.max(1, parseInt(p.exp) || 1);

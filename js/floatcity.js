@@ -91,6 +91,7 @@ for(const T of [LOOT.chestNormal, LOOT.chestRare]){ const r = T === LOOT.chestRa
 for(const id of ['trident', 'atlcrown', 'atlantlantern']) LOOT.monsterTable.push({w:3, id, lvl:11});
 function seaDrop(m){
   const rk = m.rarity === 'rare' ? 2 : m.rarity === 'magic' ? 1 : 0, bonus = [0, .5, 1.2][rk];
+  if(Math.random() < [.025, .05, .1][rk]){ dropItem(m.x + rand(-8, 8), m.y + rand(-4, 4), mkItem('timekey', 1)); addText(m.x, m.y-m.r*2-34, '¡Llave del tiempo!', '#bfe8f4', 7, -20); }
   if(Math.random() < [.04, .09, .18][rk]){
     const id = wpick([{w:40, id:'trident'}, {w:30, id:'atlcrown'}, {w:30, id:'atlantlantern'}]).id;
     dropItem(m.x, m.y, mkItem(id, 1, G.sc.lvl || 11, bonus)); addText(m.x, m.y-m.r*2-22, '¡Botín atlante!', '#7affea', 7, -20);
@@ -243,13 +244,8 @@ function enterTimeHall(){
 }
 function countItem(id){ let n = 0; for(const it of G.inv.bag.concat(G.save.stash, Object.values(G.inv.equip).flat())) if(it && it.id === id) n += it.n || 1; return n; }
 function talkRolecs(){
-  const s = G.save, give = () => {
-    if(!countItem('timekey')){ UI.say('Rolecs, señor del tiempo', ['Aún no tienes ninguna llave del tiempo. Los fantasmas del ascenso gélido las guardan.']); return; }
-    s.rolecsPortal = true; saveGame();
-    UI.say('Rolecs, señor del tiempo', ['Ah... una llave del tiempo. Déjame sentirla.', 'Mira: el tiempo se abre ante nosotros.', '...Pero el portal aún no está listo. Algo lo mantiene cerrado. Guarda tu llave: la necesitarás cuando llegue la hora.']);
-    sfx('alba'); ring(0, -170, 60, '#8a7aff', .6); burst(0, -172, 30, ['#8a7aff', '#ffffff', '#c8b8ff'], [40, 160], [.5, 1], -30);
-  };
-  const menu = () => UI.say('Rolecs, señor del tiempo', [{text:'¿Qué buscas en la sala del tiempo, viajero?', choice:[{label:'Entregar una llave del tiempo', fn:give}, {label:'Hablar del portal', fn:() => UI.say('Rolecs, señor del tiempo', [s.rolecsPortal ? 'El portal respira, pero todavía no se abre. Paciencia: el tiempo es lo único que nos sobra.' : 'Esa puerta de ahí no se abrirá sin una llave del tiempo.'])}, {label:'Nada, gracias'}]}]);
+  const s = G.save, give = rolecsOpenPortal;
+  const menu = () => UI.say('Rolecs, señor del tiempo', [{text:'¿Qué buscas en la sala del tiempo, viajero?', choice:[{label:'Entregar una llave del tiempo', fn:give}, {label:'Hablar del portal', fn:() => UI.say('Rolecs, señor del tiempo', [s.rolecsPortal ? 'El portal está abierto. No sé adónde lleva: cada llave elige un instante distinto.' : 'Esa puerta se abre con una llave del tiempo y solo lleva a un instante. Cada llave es un viaje.'])}, {label:'Nada, gracias'}]}]);
   if(!s.rolecsMet){
     UI.say('Rolecs, señor del tiempo', ['Silencio... el tiempo está escuchando.', 'Soy Rolecs, señor del tiempo. Llevo eras en esta sala oscura, más allá del ascenso gélido.', 'Los fantasmas de la montaña guardan las llaves del tiempo: fragmentos de instantes perdidos.', 'Tráeme una y abriré un portal hacia lo que aún no ha ocurrido.'], () => { s.rolecsMet = true; saveGame(); menu(); });
     return;
@@ -302,12 +298,12 @@ Object.assign(PETS, {
   hipo:      {exp:11, name:'Hipo', rarity:'normal', look:'Caballito de mar', beh:'ranged', proj:'splash', dmg:[7, 10], cd:1.7, affixes:['luciernaga'], attack:'Lanza burbujas que ralentizan al enemigo'},
   tortuguita:{exp:11, name:'Tortuguita', rarity:'normal', look:'Tortuga marina', beh:'charge', dmg:[7, 10], cd:2.4, miniStun:true, affixes:['dura'], attack:'Embestida con el caparazón que aturde 0,5 s'},
   estrellita:{exp:11, name:'Estrellita', rarity:'normal', look:'Estrella de mar', beh:'pounce', dmg:[6, 9], cd:1.4, bites:2, affixes:['curandera'], attack:'Doble zarpazo rápido'},
-  gaviotin:  {exp:11, name:'Gaviotín', rarity:'normal', look:'Gaviota', beh:'flyer', dmg:[6, 9], cd:.9, affixes:['ligera'], attack:'Picotazos desde el aire'},
+  gaviotin:  {exp:11, name:'Gaviotín', rarity:'normal', look:'Gaviota', beh:'flyer', dmg:[6, 9], cd:.9, affixes:['voladora'], attack:'Picotazos desde el aire'},
   medusin:   {exp:11, name:'Medusín', rarity:'magic', look:'Medusa luminosa', beh:'flock', dmg:[11, 15], cd:2.6, dust:true, affixes:['luciernaga', 'helada'], attack:'Polvo brillante que ralentiza a los enemigos en área'},
   pulpito:   {exp:11, name:'Pulpito', rarity:'magic', look:'Pulpo violeta', beh:'pounce', dmg:[11, 15], cd:1.7, bites:2, affixes:['feroz', 'agil'], attack:'Doble golpe de tentáculo'},
-  voltio:    {exp:11, name:'Voltio', rarity:'magic', look:'Anguila eléctrica', beh:'cone', dmg:[11, 15], cd:2.4, fire:'#ffe84a', affixes:['atronadora', 'veloz'], attack:'Descarga eléctrica en cono (triple golpe) que a veces aturde'},
+  voltio:    {exp:11, name:'Voltio', rarity:'magic', look:'Anguila eléctrica', beh:'cone', dmg:[11, 15], cd:2.4, fire:'#ffe84a', affixes:['atronadora', 'electrica'], attack:'Descarga eléctrica en cono (triple golpe) que a veces aturde'},
   dientes:   {exp:11, name:'Dientes', rarity:'rare', look:'Tiburón blanco', beh:'pounce', dmg:[20, 28], cd:1.8, bites:2, bleed:1, affixes:['feroz', 'sangrienta', 'veloz', 'vampirica'], attack:'Doble mordisco con sangrado'},
-  beluga:    {exp:11, name:'Beluga', rarity:'rare', look:'Ballena beluga', beh:'charge', dmg:[20, 28], cd:3, knock:true, shock:true, affixes:['robusta', 'dura', 'curandera', 'valiente'], attack:'Coletazo con onda de choque que aturde'},
+  beluga:    {exp:11, name:'Beluga', rarity:'rare', look:'Ballena beluga', beh:'charge', dmg:[20, 28], cd:3, knock:true, shock:true, affixes:['robusta', 'escudera', 'curandera', 'valiente'], attack:'Coletazo con onda de choque que aturde'},
   krakenito: {exp:11, name:'Krakenito', rarity:'legendary', look:'Kraken bebé', beh:'cone', dmg:[20, 26], cd:2.2, fire:'#9a6ae8', legendary:true, maelstrom:true, affixes:['helada', 'dura', 'inspiradora', 'indomable'],
               attack:'Latigazo de tentáculos en cono (triple golpe). Remolino cada 24 s: un torbellino arrastra y daña a los enemigos cercanos'},
 });
