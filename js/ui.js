@@ -405,7 +405,7 @@ const UI = {
     for(let i=0;i<3;i++) put(this.slotEl({area:'eq', key:'pet'+i}, 'Mascota '+(i+1), lvl < PET_LVL[i] ? {locked:PET_LVL[i]} : {hint:'mascota', cls:'petslot'}), 12 + i*106, 322);
     // cinturón de uso rápido: pociones, vendas, aceite, galletas, setas, poción élfica y munición
     const bh = document.createElement('div'); bh.className = 'qkh'; bh.textContent = 'Cinturón de uso rápido'; put(bh, 12, 392);
-    Object.keys(QUICK_SLOTS).forEach((k, i) => put(this.slotEl({area:'eq', key:k}, '', {hint:QUICK_HINT[k], cls:'qk'}), 12 + i*41, 412));
+    Object.keys(QUICK_SLOTS).forEach((k, i) => put(this.slotEl({area:'eq', key:k}, '', {hint:QUICK_HINT[k], cls:'qk'}), 12 + (i%7)*41, 412 + Math.floor(i/7)*44));   // 7 por fila
     // hoja de personaje
     const st = G.stats || gearStats(), w = curWeapon(), wd = w && ITEMS[w.id];
     const wdm = w && weaponDmg(w), dmg = !w ? `${8+st.fist}-${13+st.fist}` : wdm ? `${wdm[0]+st.dmg}-${wdm[1]+st.dmg}` : '6-9';
@@ -417,6 +417,7 @@ const UI = {
       st.leech && ['Robo de vida', `${st.leech} %`], st.sreg && ['Reg. estamina', `+${st.sreg} %`],
       st.gold && ['Oro encontrado', `+${st.gold} %`], st.oil && ['Consumo de aceite', `−${st.oil} %`],
       st.petdmg && ['Daño de mascotas', `+${st.petdmg} %`], st.thorns && ['Espinas', st.thorns],
+      st.eleRes && ['Resist. elemental', `${st.eleRes} %`], st.poisRes && ['Resist. veneno', `${st.poisRes} %`], st.bleedRes && ['Resist. sangrado', `${st.bleedRes} %`], st.hpreg && ['Reg. de vida (equipo)', `${st.hpreg}/s`],
       SK('agi') && ['Esquivar golpes', `${SK('agi') + (MS('agi',10) ? 5 : 0)} %`], SK('agu') && ['Reg. de vida', `${(SK('agu')*.1).toFixed(1)}/s`],
       (G.save.skillPts||0) && ['Puntos de Gonzalo', `${G.save.skillPts} sin gastar`],
     ].filter(Boolean);
@@ -798,7 +799,7 @@ function drawMapView(x, y, size, view, big, layer){
     if(shape==='diamond'){ ctx.beginPath(); ctx.moveTo(px, py-r-1); ctx.lineTo(px+r+1, py); ctx.lineTo(px, py+r+1); ctx.lineTo(px-r-1, py); ctx.fill(); }
     else ctx.fillRect(px-r, py-r, r*2, r*2);
   };
-  for(const c of sc.chests) if(!c.open && mmSeen(c.x, c.y)) dot(c.x, c.y, c.rare ? '#c8a0ff' : '#e8c070', 3.5*ms);
+  for(const c of sc.chests) if(!c.open && mmSeen(c.x, c.y)) dot(c.x, c.y, c.legend ? '#ff9a3c' : c.rare ? '#c8a0ff' : '#e8c070', 3.5*ms);
   for(const c of sc.cages) if(!c.open && (mmSeen(c.x, c.y) || (hasPetAffix('rastreador') && Math.hypot(c.x-P.x, c.y-P.y) < 640))) dot(c.x, c.y, '#7ae09a', 5*ms, 'diamond');
   for(const n of sc.npcs) dot(n.x, n.y, '#9ad0ff', 3*ms);
   if(sc.stash) dot(sc.stash.x, sc.stash.y, '#c8a0ff', 3*ms);
@@ -861,7 +862,7 @@ function drawBigMap(){
   ctx.textAlign = 'center'; ctx.font = `${9*S}px ${FONT}`; textO(sc.name, x + size/2, y - 22, '#ffd8a0');
   // leyenda e instrucciones: panel fijo en el lado derecho de la pantalla (no se mueve con el mapa)
   const legend = sc.kind==='raid'
-    ? [['#ffffff','Tú'], ['#e0a060','Caballo (salida)'], ['#9a7aff','Portal (salida)'], ['#7ae09a','Jaula'], ['#e8c070','Cofre'], ['#c8a0ff','Cofre raro']]
+    ? [['#ffffff','Tú'], ['#e0a060','Caballo (salida)'], ['#9a7aff','Portal (salida)'], ['#7ae09a','Jaula'], ['#e8c070','Cofre'], ['#c8a0ff','Cofre raro'], ['#ff9a3c','Cofre legendario']]
     : [['#ffffff','Tú'], ['#9ad0ff','Personajes'], ['#e0a060','Caballo'], ['#c8a0ff','Alijo']];
   const help = ['Ctrl + arrastrar: mover', 'Rueda: acercar / alejar', '[Tab] cerrar'];
   ctx.font = `${5*S}px ${FONT}`; ctx.textAlign = 'left';
@@ -892,7 +893,7 @@ function drawWorldOverlay(){
   for(const c of G.sc.chests){
     if(c.open || !(hasPetAffix('olfato') || MS('exp',5) || c.pinged > 0) || Math.hypot(c.x-P.x, c.y-P.y) > (c.pinged > 0 ? 520 : 320)) continue;
     const [sx, sy] = toScreen(c.x, c.y-22), bob = Math.sin(G.t*4)*3;
-    ctx.fillStyle = c.rare ? '#c8a0ff' : '#ffe08a';
+    ctx.fillStyle = c.legend ? '#ff9a3c' : c.rare ? '#c8a0ff' : '#ffe08a';
     ctx.beginPath(); ctx.moveTo(sx, sy+bob+8); ctx.lineTo(sx-6, sy+bob); ctx.lineTo(sx+6, sy+bob); ctx.fill();
   }
   if(hasPetAffix('rastreador')) for(const c of G.sc.cages){

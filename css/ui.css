@@ -445,3 +445,5 @@ kbd{background:var(--ink);border:2px solid var(--frame);padding:1px 7px;color:va
 .slot .plv{position:absolute;top:1px;left:2px;font-size:9px;line-height:11px;background:rgba(0,0,0,.72);color:#ffe8b0;padding:0 3px;border-radius:2px;pointer-events:none}
 .lfnote{font-size:12px;color:#9a8e78;margin:8px 0}
 .neg{color:#ff7a6a}
+
+.doll{height:512px}

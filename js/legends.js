@@ -76,6 +76,7 @@ function dawnFlash(){
 }
 function updateLegends(dt){
   if(P.breadT > 0) P.breadT -= dt;
+  if(P.boneT > 0) P.boneT -= dt;
   if(P.weakT > 0) P.weakT -= dt;
   if(P.dead) return;
   P.dawnT = legendOn('dawntear') ? (P.dawnT ?? 30) - dt : undefined;

@@ -77,6 +77,12 @@ const ITEM_AFFIX = {
   bounce: {sfx:'del Rebote',      roll:[10,30], stat:'bounceCh', minLvl:5, kinds:['bow','crossbow'], slots:['weapon'], desc:v=>`${v} % de probabilidad de que el proyectil rebote en otro enemigo`},
   flamearea:{sfx:'del Dragón',    roll:[15,40], stat:'flameArea', minLvl:5, kinds:['flamethrower'], slots:['weapon'], desc:v=>`+${v} % de área y distancia de la llamarada`},
   flameoil: {sfx:'del Ahorro',    roll:[15,40], stat:'flameOil',  minLvl:5, kinds:['flamethrower'], slots:['weapon'], desc:v=>`-${v} % de aceite consumido por disparo`},
+  // ---- afijos de armadura (casco, pechera, guantes y botas) desde la expedición 5
+  eleres:   {sfx:'del Aislante',      roll:[5,15],  stat:'eleRes',   minLvl:5, slots:['chest','head','hands','feet'], desc:v=>`-${v} % de daño recibido de frío, fuego y rayo`},
+  armorplus:{sfx:'del Bastión',       roll:[3,6],   stat:'armor',    minLvl:5, slots:['chest','head','hands','feet'], desc:v=>`+${v} de armadura adicional`},
+  poisres:  {sfx:'del Antídoto',      roll:[10,30], stat:'poisRes',  minLvl:5, slots:['chest','head','hands','feet'], desc:v=>`-${v} % de daño por veneno`},
+  bleedres: {sfx:'del Coagulante',    roll:[10,30], stat:'bleedRes', minLvl:5, slots:['chest','head','hands','feet'], desc:v=>`-${v} % de daño por sangrado`},
+  hpregen:  {sfx:'de la Regeneración',roll:[1,3],   stat:'hpreg',    minLvl:5, slots:['chest','head','hands','feet'], desc:v=>`+${v} de vida por segundo`},
 };
 const RARE_ITEM_NAMES = ['Muerdehuesos','Sombraluz','Rompenoches','Ojo de Cuervo','Lágrima Gris','Colmillo Viejo','Susurro Helado',
                          'Paso Ligero','Canto Fúnebre','Raíz Antigua','Velo de Ceniza','Hueso de Luna','Ascua Fría','Último Aliento'];
@@ -251,7 +257,7 @@ const MONSTERS = {
   orcarcher:{name:'Orco arquero', art:'orcarcher', ai:'archer', hp:80, dmg:20, spd:62, r:9, xp:30, reach:0, prep:.55, range:[120,200]},
   orcshaman:{name:'Chamán orco', art:'orcshaman', ai:'caster', hp:90, dmg:22, spd:52, r:9, xp:40, reach:0, prep:.7, range:[140,220]},
   orcbrute: {name:'Bruto orco', art:'orcbrute', ai:'walk', hp:340, dmg:40, spd:44, r:14, xp:75, reach:22, prep:.65, bleedHit:true},
-  urr:      {name:'Urr, el gran jefe orco', art:'urr', ai:'urr', hp:5200, dmg:90, spd:58, r:20, xp:600, reach:20, prep:.6, boss:true, uniques:['urrhelm','urraxe','urrwall','urrboots']},
+  urr:      {name:'Urr, el gran jefe orco', art:'urr', ai:'urr', hp:4160, dmg:72, spd:58, r:20, xp:600, reach:20, prep:.6, boss:true, uniques:['urrhelm','urraxe','urrwall','urrboots']},
   skelmage:  {name:'Mago esqueleto', art:'skelmage', ai:'caster', hp:42, dmg:15, spd:55, r:8, xp:18, reach:0, prep:.7, range:[140,210]},
   wraith:    {name:'Espectro', art:'wraith', ai:'float', hp:58, dmg:14, spd:118, r:9, xp:18, reach:6, prep:.28, drain:true},
   necro:     {name:'Nigromante', art:'necro', ai:'summoner', hp:64, dmg:12, spd:50, r:8, xp:24, reach:0, prep:.8, range:[150,230]},

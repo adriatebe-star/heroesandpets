@@ -156,7 +156,7 @@ function zapStrike(h){
   G.shake = Math.max(G.shake, 5); sfx('boom');
   for(let i = 0; i < 10; i++) G.parts.push({x:h.x + rand(-3, 3), y:h.y - i*14, vx:0, vy:0, life:.18, max:.18, size:3, col:i % 2 ? '#ffffff' : '#ffe84a'});
   burst(h.x, h.y-6, 22, ['#ffe84a', '#ffffff', '#a8c8ff'], [60, 220], [.25, .6], 0); ring(h.x, h.y-4, h.r, '#ffe84a', .3);
-  if(!P.dead && Math.hypot(P.x-h.x, (P.y-h.y)*1.2) < h.r && damagePlayer(h.dmg, h.mon) && h.weak) P.weakT = Math.max(P.weakT || 0, h.weak);
+  if(!P.dead && Math.hypot(P.x-h.x, (P.y-h.y)*1.2) < h.r && damagePlayer(h.dmg, h.mon, 'light') && h.weak) P.weakT = Math.max(P.weakT || 0, h.weak);
   for(const p of G.pets) if(Math.hypot(p.x-h.x, p.y-h.y) < h.r) damagePet(p, h.dmg*.6, null, false, true);
 }
 function drawZap(h){

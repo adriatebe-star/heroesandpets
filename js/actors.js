@@ -22,7 +22,7 @@ const WEAPON = {   // alcance, arco de golpe, duración, empuje, estela
 function newPlayer(x, y){
   return {x, y, r:7, vx:0, vy:0, face:0, dx:1, dy:0, hp:100, maxHp:100, st:100, stMax:100, stDelay:0,
     punchT:0, punchDur:.2, combo:0, comboT:0, hitDone:false, atkKind:'fist', dashT:0, dashCd:0, inv:0, jump:null, jumpZ:0,
-    gallopT:0, eclipseT:0, walk:0, moving:false, running:false, blocking:false, slowT:0, speedT:0, hallT:0, breadT:0, weakT:0, poisonT:0,
+    boneT:0, gallopT:0, eclipseT:0, walk:0, moving:false, running:false, blocking:false, slowT:0, speedT:0, hallT:0, breadT:0, weakT:0, poisonT:0,
     lantern:true, oil:100, dead:false, lx:0, ly:0, noStamT:0};
 }
 const curWeaponKey = () => G.activeW===0 ? 'w1' : 'w2';
@@ -189,10 +189,10 @@ function updatePlayer(dt){
   P.dashCd -= dt; P.inv -= dt; if(P.potionCd > 0) P.potionCd -= dt;
   if(P.infernoT > 0){ P.infernoT -= dt; for(const m of G.mons) if(!m.dying && Math.hypot(m.x-P.x, m.y-P.y) < 62) m.burnT = Math.max(m.burnT, 1.2); if(Math.random() < dt*50){ const an = Math.random()*Math.PI*2; G.parts.push({x:P.x+Math.cos(an)*52, y:P.y-8+Math.sin(an)*38, vx:0, vy:-40, life:.4, max:.4, size:2.5, col:pick(['#ff5a1a','#ff8a2a','#ffc04a'])}); } } P.slowT -= dt; P.speedT -= dt; P.noStamT -= dt; if(P.gallopT > 0) P.gallopT -= dt; if(P.eclipseT > 0) P.eclipseT -= dt; if(P.warT > 0) P.warT -= dt;
 
-  if(P.bleedT > 0){ P.bleedT -= dt; P.bleedAcc = (P.bleedAcc||0) + 3*dt; if(P.bleedAcc >= 1){ const d = Math.floor(P.bleedAcc); P.bleedAcc -= d; hurtPlayer(d, '#c8202a'); } }
+  if(P.bleedT > 0){ P.bleedT -= dt; P.bleedAcc = (P.bleedAcc||0) + 3*dt*(1 - Math.min(.8, (S2.bleedRes||0)/100)); if(P.bleedAcc >= 1){ const d = Math.floor(P.bleedAcc); P.bleedAcc -= d; hurtPlayer(d, '#c8202a'); } }
   if(P.regenT > 0){ P.regenT -= dt; P.hp = Math.min(P.maxHp, P.hp + 6*dt); if(Math.random() < dt*8) G.parts.push({x:P.x+rand(-6,6), y:P.y-rand(8,26), vx:0, vy:-20, life:.5, max:.5, size:1.5, col:'#7ad86a'}); }
-  if(P.burnT > 0){ P.burnT -= dt; P.burnAcc = (P.burnAcc||0) + 5*dt; if(P.burnAcc >= 1){ const d = Math.floor(P.burnAcc); P.burnAcc -= d; hurtPlayer(d, '#ff8a2a'); } if(Math.random() < dt*30) G.parts.push({x:P.x+rand(-5,5), y:P.y-rand(4,26), vx:0, vy:-30, life:.4, max:.4, size:2, col:pick(['#ff5a1a','#ffc04a'])}); }
-  if(P.poisonT > 0){ P.poisonT -= dt; P.poisonAcc = (P.poisonAcc||0) + 4*dt; if(P.poisonAcc >= 1){ const d=Math.floor(P.poisonAcc); P.poisonAcc-=d; hurtPlayer(d, '#8ad04a'); } }
+  if(P.burnT > 0){ P.burnT -= dt; P.burnAcc = (P.burnAcc||0) + 5*dt*(1 - Math.min(.8, (S2.eleRes||0)/100)); if(P.burnAcc >= 1){ const d = Math.floor(P.burnAcc); P.burnAcc -= d; hurtPlayer(d, '#ff8a2a'); } if(Math.random() < dt*30) G.parts.push({x:P.x+rand(-5,5), y:P.y-rand(4,26), vx:0, vy:-30, life:.4, max:.4, size:2, col:pick(['#ff5a1a','#ffc04a'])}); }
+  if(P.poisonT > 0){ P.poisonT -= dt; P.poisonAcc = (P.poisonAcc||0) + 4*dt*(1 - Math.min(.8, (S2.poisRes||0)/100)); if(P.poisonAcc >= 1){ const d=Math.floor(P.poisonAcc); P.poisonAcc-=d; hurtPlayer(d, '#8ad04a'); } }
   // Selene (luz de luna) cura al héroe
   if(G.pets.some(p => p.def.moonlight) && P.hp < P.maxHp) P.hp = Math.min(P.maxHp, P.hp + dt);
 
@@ -366,7 +366,7 @@ function resolveAttack(){
 function useConsumable(id){
   let ref = stackRefs([id])[0];
   if(!ref && id==='potion'){ id = 'superpotion'; ref = stackRefs([id])[0]; }
-  if(!ref){ toast({potion:'No tienes pociones de vida', superpotion:'No tienes pociones de vida', bandage:'No tienes vendas', cookie:'No tienes galletas', oil:'No tienes frascos de aceite', mushroom:'No tienes setas', elfpotion:'No tienes pociones élficas', hallshroom:'No tienes setas alucinógenas', elfbread:'No tienes pan élfico'}[id]); return; }
+  if(!ref){ toast({potion:'No tienes pociones de vida', superpotion:'No tienes pociones de vida', bandage:'No tienes vendas', cookie:'No tienes galletas', oil:'No tienes frascos de aceite', mushroom:'No tienes setas', elfpotion:'No tienes pociones élficas', petbone:'No tienes huesos para mascota', hallshroom:'No tienes setas alucinógenas', elfbread:'No tienes pan élfico'}[id]); return; }
   const it = ref.it;
   if(id==='oil'){
     if(G.sc.kind!=='raid'){ toast('En la guarida la linterna no gasta aceite', 1.5); return; }
@@ -399,6 +399,9 @@ function useConsumable(id){
     eatHallShroom();
   } else if(id==='elfbread'){
     eatElfBread();
+  } else if(id==='petbone'){
+    if(!G.pets.length){ toast('No llevas ninguna mascota', 1.4); return; }
+    eatBone();
   } else {
     P.speedT = 60; toast('¡Velocidad aumentada durante 1 minuto!', 1.5); sfx('eat');
     burst(P.x, P.y-20, 10, ['#ff6060','#f5f0e0'], [20,60], [.4,.8], -60);
@@ -414,7 +417,7 @@ function hurtPlayer(dmg, col='#ff5a5a'){
   if(P.hp <= 0) killPlayer();
 }
 // golpe de un monstruo al héroe
-function damagePlayer(dmg, m){
+function damagePlayer(dmg, m, elem){
   if(P.dead || P.inv > 0 || P.dashT > 0 || P.jumpZ > 5) return false;   // en el aire no te alcanzan
   const S2 = G.stats || gearStats();
   const mc = m && m.type && MONSTERS[m.type];
@@ -438,6 +441,7 @@ function damagePlayer(dmg, m){
     UI.refresh();
   }
   dmg *= 1 - armorReduction(S2.armor);
+  if(elem) dmg *= 1 - Math.min(.8, (S2.eleRes||0)/100);   // resistencia elemental: frío, fuego y rayo
   if(P.gelShield > 0){ const ab = Math.min(P.gelShield, dmg); P.gelShield -= ab; dmg -= ab; addText(P.x, P.y-62, 'Gelatina', '#9affb0', 6); }
   if(legendOn('ashcrown') && !m.dying){ m.weakT = Math.max(m.weakT || 0, 3); }
   if(P.infernoT > 0) dmg *= .8;                               // llamarada infernal de Cerbero                          // armadura
@@ -1110,6 +1114,7 @@ function damagePet(p, dmg, m, silent, ranged){
   { const dg = petFx(p, 'dodge'); if(dg && Math.random() < dg/100 && !silent){ addText(p.x, p.y-24, 'Esquiva', '#c8e8ff', 6); return; } }
   dmg *= Math.max(.2, 1 - petFx(p, 'dr')/100);
   dmg *= Math.max(.4, 1 - (G.pt.petArmor||0)/100);
+  if(P.boneT > 0) dmg *= .8;   // hueso para mascota: +5 de armadura
   p.hp -= dmg; p.flash = .12; p.regenT = 4;
   if(p.def.stone && p.hp > 0 && dmg >= p.maxHp*.08){ p.stoneT = 2; addText(p.x, p.y-30, '¡Piedra!', '#c8ccd4', 7); burst(p.x, p.y-10, 10, ['#8a8a92','#c8ccd4','#5a5a62'], [30,100], [.3,.6], 200); sfx('breakItem'); }
   if(!silent) addText(p.x, p.y-24, '-'+Math.round(dmg), '#ff9a9a', 7);
@@ -1160,7 +1165,7 @@ function separatePets(dt){
 function updatePet(p, dt){
   const sc = G.sc, art = PET_ART[p.def.id], fly = art.fly;
   p.cd -= dt; p.flash -= dt; p.regenT -= dt;
-  if(G.pt.petRegen && p.hp > 0 && p.hp < p.maxHp) p.hp = Math.min(p.maxHp, p.hp + G.pt.petRegen*dt);
+  { const reg = (G.pt.petRegen||0) + (P.boneT > 0 ? 5 : 0); if(reg && p.hp > 0 && p.hp < p.maxHp) p.hp = Math.min(p.maxHp, p.hp + reg*dt); }
   // rescate: si una mascota de tierra queda atrapada en un obstáculo, reaparece junto al héroe
   if(!fly && p.exhaustedT <= 0 && blocked(sc, p.x, p.y, 2)){ p.stuckT = (p.stuckT||0) + dt; if(p.stuckT > .5){ const sp = freeSpotNear(P.x-24, P.y+8); p.x = sp.x; p.y = sp.y; p.stuckT = 0; } } else p.stuckT = 0;
   p.item.hp = p.hp;
@@ -1563,7 +1568,7 @@ function updateProjs(dt){
     if(!pr.ghost && blocked(G.sc, pr.x, pr.y+10, 1)){ pr.life = 0; if(pr.explode) explodeAt(pr.x - pr.vx*dt, pr.y - pr.vy*dt, pr.dmg); else { sfx('stoneHit'); burst(pr.x, pr.y, 4, ['#7e7a72','#57534d'], [30,80], [.15,.3]); } continue; }
     // flechas de los monstruos: dañan al héroe y a las mascotas de tierra
     if(pr.from==='mon'){
-      if(!P.dead && Math.hypot(P.x-pr.x, P.y-14-pr.y) < P.r+5){ if(damagePlayer(pr.dmg, pr.mon)){ if(pr.slow) P.slowT = pr.slow; if(pr.weak) P.weakT = Math.max(P.weakT || 0, pr.weak); if(pr.poison) P.poisonT = Math.max(P.poisonT, 4);
+      if(!P.dead && Math.hypot(P.x-pr.x, P.y-14-pr.y) < P.r+5){ if(damagePlayer(pr.dmg, pr.mon, (pr.burn || pr.fire) ? 'fire' : (pr.weak || pr.kind==='zap') ? 'light' : pr.elem)){ if(pr.slow) P.slowT = pr.slow; if(pr.weak) P.weakT = Math.max(P.weakT || 0, pr.weak); if(pr.poison) P.poisonT = Math.max(P.poisonT, 4);
         if(pr.burn) P.burnT = Math.max(P.burnT||0, 3);
         if(pr.root){ P.rootT = Math.max(P.rootT||0, pr.root); addText(P.x, P.y-56, '¡Inmovilizado!', '#c8a0ff', 7); ring(P.x, P.y-4, 18, '#8a60d0', .35); }
         if(pr.steal && G.raidGold > 0){ const n = Math.min(G.raidGold, randi(4,12) + (G.sc.lvl||1)); G.raidGold -= n; if(pr.mon) pr.mon.stolen = (pr.mon.stolen||0) + n; addText(P.x, P.y-68, '-' + n + ' oro', '#ffd166', 7); }
@@ -1640,7 +1645,7 @@ function updateHazards(dt){
     if(h.type==='boom' && h.life > 0 && Math.floor(h.life*8) !== Math.floor((h.life+dt)*8)) sfx('fuse');
     if(h.type==='frost' && h.life <= 0){
       burst(h.x, h.y-6, 26, ['#a0d8ff','#e8f4ff','#ffffff'], [60,200], [.3,.7], 0); ring(h.x, h.y-4, h.r, '#c8ecff', .3);
-      if(!P.dead && Math.hypot(P.x-h.x, P.y-h.y) < h.r){ damagePlayer(h.dmg, h.mon); P.slowT = 2.5; }
+      if(!P.dead && Math.hypot(P.x-h.x, P.y-h.y) < h.r){ damagePlayer(h.dmg, h.mon, 'frost'); P.slowT = 2.5; }
       for(const p of G.pets) if(Math.hypot(p.x-h.x, p.y-h.y) < h.r) damagePet(p, h.dmg*.6, null);
     }
     if(h.type==='boom' && h.life <= 0){
@@ -2123,8 +2128,8 @@ function drawHazard(h){
   }
 }
 function drawChest(c){
-  drawSP(ART.chest[c.rare ? 'rare' : 'normal'][c.open ? 1 : 0], c.x, c.y);
-  if(c.rare && !c.open && Math.random() < .06) G.parts.push({x:c.x+rand(-8,8), y:c.y-rand(4,14), vx:0, vy:-15, life:.6, max:.6, size:1, col:'#ffe08a'});
+  drawSP(ART.chest[c.legend ? 'legend' : c.rare ? 'rare' : 'normal'][c.open ? 1 : 0], c.x, c.y);
+  if(c.rare && !c.open && Math.random() < (c.legend ? .18 : .06)) G.parts.push({x:c.x+rand(-8,8), y:c.y-rand(4,14), vx:0, vy:-15, life:.6, max:.6, size:1, col:c.legend ? pick(['#ff9a3a','#ffe08a','#ffffff']) : '#ffe08a'});
 }
 function drawCage(c){
   drawSP(ART.cageBack, c.x, c.y);

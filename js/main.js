@@ -3,7 +3,7 @@
 //  Juego: estado, guarida ↔ expedición, interacciones, luz y bucle
 // =====================================================================
 // el farolillo de cobre es de serie: tras morir se te devuelve uno nuevo
-function emptyEquip(){ return {w1:null, w2:null, shield:null, head:null, chest:null, hands:null, feet:null, lantern:{id:'copperlantern'}, pet:[null,null,null], tal:[null,null,null], pbag:[null,null,null,null,null], potion:null, bandage:null, oil:null, cookie:null, mushroom:null, elfpotion:null, hallshroom:null, elfbread:null, ammo:null}; }
+function emptyEquip(){ return {w1:null, w2:null, shield:null, head:null, chest:null, hands:null, feet:null, lantern:{id:'copperlantern'}, pet:[null,null,null], tal:[null,null,null], pbag:[null,null,null,null,null], potion:null, bandage:null, oil:null, cookie:null, mushroom:null, elfpotion:null, hallshroom:null, elfbread:null, bone:null, ammo:null}; }
 const G = {
   t:0, sc:null, mons:[], pets:[], projs:[], hazards:[], loot:[], parts:[], texts:[],
   allies:[], shake:0, hitstop:0, kills:0, flash:null, deathT:0,
@@ -106,6 +106,7 @@ function startRaid(expId='village'){
   const sc = expId==='temple' ? buildTemple(seed) : expId==='forest' ? buildForest(seed) : expId==='mine' ? buildMine(seed) : expId==='river' ? buildRiver(seed) : expId==='castle' ? buildCastle(seed) : expId==='orccamp' ? buildOrcCamp(seed) : expId==='plains' ? buildPlains(seed) : expId==='crypt' ? buildCrypt(seed) : expId==='cemetery' ? buildCemetery(seed) : buildVillage(seed);
   sc.lvl = exp.lvl; sc.exp = exp; sc.petExp = exp.petExp ?? exp.lvl;
   randomReturnPortals(sc);
+  if(Math.random() < LEGEND_CHEST_CHANCE) addLegendChest(sc);   // a veces hay un cofre legendario
   G.save.sold = [];   // Trapis olvida lo recomprable al salir a una expedición
   resetWorld(sc);
   for(const sp of G.sc.monsterSpawns) for(const e of sp.pack){
@@ -305,7 +306,7 @@ function interactables(){
   }
   if(sc.bigCage) add(sc.bigCage.x, sc.bigCage.y, 32, '[F] Jaula grande (mascotas)', () => UI.toggleInv('cage'), sc.bigCage.y-44);
   if(sc.stash) add(sc.stash.x, sc.stash.y, 30, '[F] Alijo', () => UI.toggleInv('stash'), sc.stash.y-26);
-  for(const c of sc.chests) if(!c.open) add(c.x, c.y, 26, c.rare ? '[F] Abrir cofre raro' : '[F] Abrir cofre', () => startChannel((c.rare ? 1.2 : .7)*(1 - SK('exp')*.03), 'Abriendo...', () => openChest(c)), c.y-24);
+  for(const c of sc.chests) if(!c.open) add(c.x, c.y, 26, c.legend ? '[F] Abrir cofre legendario' : c.rare ? '[F] Abrir cofre raro' : '[F] Abrir cofre', () => startChannel((c.legend ? 1.8 : c.rare ? 1.2 : .7)*(1 - SK('exp')*.03), 'Abriendo...', () => openChest(c)), c.y-24);
   for(const c of sc.cages) if(!c.open) add(c.x, c.y, 28, c.gift ? '[F] Abrir la jaula brillante' : '[F] Abrir jaula', () => startChannel(1.5*(1 - SK('exp')*.03)*Math.max(.3, 1 - (G.pt.cageSpd||0)/100), 'Forzando la jaula...', () => openCage(c), '#7ae09a'), c.y-36);
   for(const l of G.loot) if(l.item && l.z===0 && lootVisible(l)) add(l.x, l.y, 20, '[F] Coger ' + itemName(l.item), () => pickLoot(l), l.y-18);
   list.sort((a,c) => a.d-c.d);
@@ -320,6 +321,7 @@ function updateChannel(dt){
 }
 function openChest(c){
   c.open = true; sfx('chest');
+  if(c.legend){ openLegendChest(c); return; }
   const T = c.rare ? LOOT.chestRare : LOOT.chestNormal, n = randi(T.rolls[0], T.rolls[1]), lvl = G.sc.lvl || 1;
   const table = lootFor(T.table, lvl), bonus = c.rare ? .5 : 0;
   const goldMult = (hasPetAffix('buscatesoros') ? 1.15 : 1) * (1 + (G.stats ? G.stats.gold : 0)/100) * (1 + (lvl-1)*.35);
