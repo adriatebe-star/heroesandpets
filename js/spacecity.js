@@ -158,18 +158,18 @@ regPets(['satelitin', 'astrogato', 'monoastro', 'robotin', 'cometin', 'tortugaor
 }, PET_SHAPES);
 
 // ---------- el mapa: módulos de la estación unidos por pasillos ----------
-const SPC_FLOOR = ['#20242e', '#262a36', '#2c3140', '#343a4c'];
+const SPC_FLOOR = ['#3a4254', '#434c60', '#4c566c', '#566178'];
 function buildSpace(seed){
   return buildRectWorld({id:'space', name:'La ciudad orbital Odisea', lvl:12, petExp:'12c', cols:3, rows:4, nodeW:[300, 380], nodeH:[250, 320], boss:{w:600, h:500}, spacingX:480, spacingY:420,
-    solid:'wall', darkness:.94, loops:.35, warm:false, lightA:.7, corridor:60,
-    floor:(x, y, e) => e ? '#0e1016' : ((x % 32 < 2 || y % 32 < 2) ? '#14171f' : SPC_FLOOR[tq(vnoise(x/12, y/12, 531)*.5 + hash(x, y, 532)*.3, x, y, 4)]),
+    solid:'wall', darkness:.88, loops:.35, warm:false, lightA:.9, corridor:60,
+    floor:(x, y, e) => e ? '#2a303e' : ((x % 32 < 2 || y % 32 < 2) ? '#2a303e' : SPC_FLOOR[tq(vnoise(x/12, y/12, 531)*.5 + hash(x, y, 532)*.3, x, y, 4)]),
     void:(x, y, near) => near ? '#0a0b10' : (hash(x, y, 533) > .995 ? '#c8d8ff' : hash(x, y, 534) > .985 ? '#4a5a8a' : '#04040a'),
     groups:[['ape', 'ape', 'drone'], ['astro', 'drone'], ['robot', 'drone'], ['ape', 'astro', 'drone'], ['astro', 'astro', 'robot']],
     decor:(sc, n, H) => {
       const cnt = Math.round(n.w*n.h/9000);
       for(let i = 0; i < cnt; i++){
         const p = H.pointOn(n, 12); if(!p) continue; const r = H.R();
-        if(r < .4) propSprite(sc, ART.crate, p.x, p.y, {t:'r', x:p.x - 8, y:p.y - 6, w:16, h:6}, [9, 3]);
+        if(r < .4) propSprite(sc, SPC_CRATE, p.x, p.y, {t:'r', x:p.x - 9, y:p.y - 6, w:18, h:6}, [10, 3]);
         else if(r < .75){ const con = propSprite(sc, SPC_CONSOLE, p.x, p.y, {t:'r', x:p.x - 12, y:p.y - 6, w:24, h:6}, [12, 3]); sc.lights.push({x:p.x, y:p.y - 14, r:70, a:.5, warm:false, flick:.12}); }
         else propSprite(sc, SPC_TANK, p.x, p.y, {t:'c', x:p.x, y:p.y - 3, r:8}, [8, 3]);
       }
@@ -182,8 +182,15 @@ function buildSpace(seed){
 const SPC_CONSOLE = SP(paintSprite(26, 20, [
   {r:[1, 8, 24, 11], c:['#2a2e3a', '#4a5060', '#8a90a0'], tex:821}, {r:[3, 1, 20, 9], c:['#14161c', '#2a2e3a']}, {r:[5, 3, 16, 5], c:['#0a3a4a', '#1a8aa0', '#7affea']},
   {p:[[6, 13, '#ff3a3a'], [9, 13, '#ffd84a'], [12, 13, '#7affea'], [18, 14, '#7affea'], [21, 14, '#ff3a3a']]}]), 13, 18);
+const SPC_CRATE = SP(paintSprite(20, 18, [
+  {r:[1, 3, 18, 14], c:['#2a2e3a', '#5a6074', '#9aa2b8'], tex:822}, {r:[3, 5, 14, 10], c:['#3a4054', '#6a7288']}, {l:[1, 3, 19, 17, .8], c:'#2a2e3a'}, {l:[19, 3, 1, 17, .8], c:'#2a2e3a'},
+  {r:[1, 1, 18, 3], c:['#c8cee0', '#e8ecf4']}, {p:[[3, 6, '#ffd84a'], [5, 6, '#14161c'], [7, 6, '#ffd84a'], [15, 13, '#7affea']]}]), 10, 16);
 const SPC_TANK = SP(paintSprite(18, 28, [
   {r:[2, 4, 14, 20], c:['#0a3a4a', '#1a8aa0', '#7affea']}, {e:[9, 4, 7, 3], c:['#6a707e', '#c8cee0']}, {e:[9, 24, 7, 3], c:['#2a2e3a', '#5a6074']}, {l:[5, 6, 5, 22, 1], c:['#c8ecff', '#ffffff']}, {p:[[11, 12, '#e8fffa'], [8, 17, '#e8fffa'], [12, 20, '#e8fffa']]}]), 9, 26);
 const SPC_MONOLITH = SP(paintSprite(18, 64, [
   {poly:[[2, 62], [4, 2], [14, 2], [16, 62]], c:['#02020a', '#0a0a14', '#1c1c2c']}, {l:[4, 3, 4, 60, 1], c:['#2a2a44', '#4a4a6a']}, {l:[14, 3, 14, 60, 1], c:['#14142a', '#2a2a44']}]), 9, 62);
 RAID_BUILDERS.space = buildSpace;
+
+// dificultad del nivel 12 (petición del usuario): los monstruos de las tres expediciones tienen el doble de vida y un 60 % más de daño
+for(const id of ['raptor', 'dilo', 'trike', 'ptero', 'rknight', 'rarcher', 'morgana', 'hound', 'ape', 'astro', 'drone', 'robot']){ MONSTERS[id].hp = Math.round(MONSTERS[id].hp*2); MONSTERS[id].dmg = Math.round(MONSTERS[id].dmg*1.6); }
+for(const id of ['rex', 'arthur', 'argos']){ MONSTERS[id].hp *= 2; MONSTERS[id].dmg *= 2; }   // jefes del nivel 12: ×2 de vida y de daño (petición del usuario)

@@ -92,6 +92,11 @@ function bossChargeStart(m){ m.charge = {dx:Math.cos(m.aim), dy:Math.sin(m.aim),
 function updateBrain(m, dt){
   const sc = G.sc, MD = MONSTERS[m.type], B = BRAINS[MD.brain];
   m.walk += dt*3;
+  if(m.awake && !P.dead){   // enrage: pasados 3 minutos de combate hace más daño y ataca más deprisa
+    m.fightT = (m.fightT || 0) + dt;
+    if(m.fightT > 180 && !m.enraged){ m.enraged = true; m.dmg *= 1.5; toast('¡' + MD.name + ' se enfurece!', 3); sfx('howl'); G.shake = Math.max(G.shake, 8); ring(m.x, m.y - 30, 90, '#ff3a2a', .6); }
+    if(m.enraged){ m.atkCd -= dt*.4; if(Math.random() < dt*6) G.parts.push({x:m.x + rand(-20, 20), y:m.y - rand(10, 50), vx:0, vy:-30, life:.5, max:.5, size:2, col:'#ff3a2a'}); }
+  }
   if(!m.awake){
     if((inBossRoom(P.x, P.y) && !P.dead) || m.hp < m.maxHp){ m.awake = true; m.atkCd = 1.8; G.bossFight = m; toast(B.wake, 3); sfx('howl'); G.shake = Math.max(G.shake, 7); ring(m.x, m.y-30, 70, B.col || '#ffffff', .5); }
     return;
@@ -176,10 +181,11 @@ function buildRectWorld(cfg, seed){
   const walk = (x, y) => { const gx = Math.floor((x - X0)/CELL), gy = Math.floor((y - Y0)/CELL); return gx >= 0 && gx < GW && gy >= 0 && gy < GH && grid[gy*GW + gx] === 1; };
   if(cfg.solid === 'water') sc.waterAt = (x, y) => !walk(x, y); else sc.solidAt = (x, y) => !walk(x, y);
   sc.walk = walk;
+  const HX = new Map(), hx = c => { let v = HX.get(c); if(!v){ v = hex(c); HX.set(c, v); } return v; };
   sc.ground = (x, y) => {
-    if(walk(x, y)){ const e = !walk(x - 5, y) || !walk(x + 5, y) || !walk(x, y - 5) || !walk(x, y + 5); return cfg.floor(x, y, e); }
+    if(walk(x, y)){ const e = !walk(x - 5, y) || !walk(x + 5, y) || !walk(x, y - 5) || !walk(x, y + 5); return hx(cfg.floor(x, y, e)); }
     const near = walk(x - 9, y) || walk(x + 9, y) || walk(x, y - 9) || walk(x, y + 9);
-    return cfg.void(x, y, near);
+    return hx(cfg.void(x, y, near));
   };
   sc.spawn = {x:start.x, y:start.y + start.h/2 - 40};
   sc.horse = {x:start.x - 60, y:start.y + start.h/2 - 22, dir:1};
@@ -201,11 +207,11 @@ function buildRectWorld(cfg, seed){
     const p = pointOn(n, 14); if(!p) continue;
     const cage = {x:p.x, y:p.y, pet:null, open:false}; cage.col = addCollider(sc, {t:'r', x:cage.x - 12, y:cage.y - 8, w:24, h:8}); sc.cages.push(cage);
   }
-  const rar = far => { const roll = R(); return roll < .03 + far*.06 ? 'rare' : roll < .2 + far*.16 ? 'magic' : 'normal'; };
+  const rar = far => { const roll = R(); return roll < .1 + far*.12 ? 'rare' : roll < .42 + far*.25 ? 'magic' : 'normal'; };
   for(const n of nodes){
     if(n === start || n.boss) continue;
     const far = clamp((Y1 - n.y)/(Y1 - Y0), 0, 1), pack = []; let hasRare = false;
-    const types = cfg.groups[Math.floor(R()*cfg.groups.length)], cnt = 3 + Math.floor(R()*3) + (far > .5 ? 1 : 0);
+    const types = cfg.groups[Math.floor(R()*cfg.groups.length)], cnt = Math.round((3 + Math.floor(R()*3) + (far > .5 ? 1 : 0))*1.35);
     for(let k = 0; k < cnt; k++){ let r = rar(far); if(r === 'rare' && hasRare) r = 'magic'; if(r === 'rare') hasRare = true; pack.push({type:types[Math.floor(R()*types.length)], rarity:r}); }
     sc.monsterSpawns.push({x:Math.round(n.x), y:Math.round(n.y + 20), pack});
   }
@@ -251,6 +257,14 @@ ITEMS.timering = {name:'Anillo del Tiempo', icon:'timering', slot:'talisman', le
   desc:'Objeto legendario. Instante eterno: cada 20 s el tiempo se ralentiza 3 s para los enemigos que tengas cerca (a menos de 260 px) y tú atacas un 25 % más rápido.'};
 LEGEND_IDS.push('timering');
 function updateWorld12(dt){
+  if(G.sc && G.sc.lvl === 12 && !P.dead){   // élites del nivel 12: los raros dan +30 % de daño a los monstruos que tienen cerca (aura roja)
+    G.auraT = (G.auraT || 0) - dt;
+    for(const m of G.mons) if(!m.dying && m.rarity === 'rare' && !MONSTERS[m.type].boss){
+      for(const o of G.mons) if(o !== m && !o.dying && Math.hypot(o.x - m.x, o.y - m.y) < 150) o.auraT = .3;
+      if(G.auraT <= 0) ring(m.x, m.y - 4, 150, '#ff5a3a', .5);
+    }
+    if(G.auraT <= 0) G.auraT = 1;
+  }
   if(P.dead) return;
   if(P.timeRingN > 0) P.timeRingN -= dt;
   if(legendOn('timering')){

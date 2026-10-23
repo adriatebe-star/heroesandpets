@@ -133,7 +133,27 @@ ICON_ROWS.bigbag = {pal:{p:'#a8814a', P:'#5a3e1c', w:'#f0dcb0'}, rows:ICON_ROWS.
 ICON_ROWS.hugebag = {pal:{p:'#4a7aa8', P:'#1c3a5a', w:'#d0e8ff'}, rows:ICON_ROWS.magicbag.rows};
 for(const k of ['bigbag', 'hugebag']){ const d = ICON_ROWS[k]; ICONS[k] = bakeRows(d.rows, Object.assign({k:OUT}, d.pal)); }
 const BAG_UPGRADES = [{name:'Mochila grande', price:2000, icon:'bigbag'}, {name:'Mochila enorme', price:5000, icon:'hugebag'}];
+// ---------- Trapis: ampliaciones del alijo (+20 huecos cada una, en orden) ----------
+ICON_ROWS.stashup1 = {pal:{p:'#6a9a5a', P:'#244a1c', w:'#e0f4d0'}, rows:ICON_ROWS.magicbag.rows};
+ICON_ROWS.stashup2 = {pal:{p:'#9a6ac8', P:'#3a1c5a', w:'#f0e0ff'}, rows:ICON_ROWS.magicbag.rows};
+ICON_ROWS.stashup3 = {pal:{p:'#e8b84a', P:'#6a4a10', w:'#fff4c0'}, rows:ICON_ROWS.magicbag.rows};
+for(const k of ['stashup1', 'stashup2', 'stashup3']){ const d = ICON_ROWS[k]; ICONS[k] = bakeRows(d.rows, Object.assign({k:OUT}, d.pal)); }
+const STASH_UPGRADES = [{name:'Alijo ampliado', price:3000, icon:'stashup1'}, {name:'Alijo grande', price:6000, icon:'stashup2'}, {name:'Alijo enorme', price:12000, icon:'stashup3'}];
+const stashSize = () => STASH_SIZE + ((G.save && G.save.stashUp) || 0)*20;
+function renderStashUpgrades(box){
+  const s = G.save, lvl = s.stashUp || 0, up = STASH_UPGRADES[lvl];
+  const h = document.createElement('div'); h.className = 'shophead'; h.textContent = up ? 'Ampliar el alijo' : 'Tu alijo ya es enorme'; box.append(h);
+  if(!up) return;
+  const el = document.createElement('div'), can = s.wallet >= up.price; el.className = 'offer special';
+  el.innerHTML = `<div class="slot" style="border-color:#e8c070"><img src="${ICONS[up.icon].toDataURL()}" draggable="false"></div><div class="oname" style="color:#e8c070">${up.name}</div><div class="sub">+20 huecos de alijo</div><div class="price ${can ? '' : 'no'}">${up.price} oro</div>`;
+  el.onclick = () => {
+    if(s.wallet < up.price){ toast('No tienes suficiente oro', 1.6); sfx('ui'); return; }
+    s.wallet -= up.price; s.stashUp = lvl + 1; refreshStats(); sfx('coin'); toast(`Compras ${up.name} por ${up.price} oro`, 2); saveGame(); UI.refresh();
+  };
+  box.append(el);
+}
 function renderBagUpgrades(box){
+  renderStashUpgrades(box);
   const s = G.save, lvl = s.bagUp || 0, up = BAG_UPGRADES[lvl];
   const h = document.createElement('div'); h.className = 'shophead'; h.textContent = up ? 'Mejora de mochila' : 'Tu mochila ya es enorme'; box.append(h);
   if(!up) return;

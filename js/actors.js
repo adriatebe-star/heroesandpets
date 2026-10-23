@@ -64,6 +64,7 @@ function refreshStats(){
   P.maxHp = 100 + (G.save.level-1)*10 + s.hp + SK('agu')*4;
   P.stMax = 100 + s.stam + SK('car')*3;
   while(G.inv.bag.length < bagSize()) G.inv.bag.push(null);
+  while(G.save.stash.length < stashSize()) G.save.stash.push(null);
   if(P.maxHp > oldMax) P.hp += P.maxHp - oldMax;
   P.hp = Math.min(P.hp, P.maxHp); P.st = Math.min(P.st, P.stMax);
   G.stats = s;
@@ -392,7 +393,7 @@ function useConsumable(id){
     if((P.potionCd||0) > 0){ toast(`Poción en enfriamiento (${Math.ceil(P.potionCd)} s)`, 1); return; }
     if(P.hp >= P.maxHp){ toast('Ya tienes la vida al máximo', 1); return; }
     const heal = id==='superpotion' ? 100 : 40;
-    P.hp = Math.min(P.maxHp, P.hp+heal); P.poisonT = 0; P.potionCd = 10;
+    P.hp = Math.min(P.maxHp, P.hp+heal); P.poisonT = 0; P.potionCd = (G.sc && G.sc.lvl >= 12) ? 15 : 10;
     addText(P.x, P.y-46, '+' + heal, '#7ad86a', 9); sfx('potion');
     burst(P.x, P.y-20, 10, ['#ff6a6a','#ffd0d0'], [20,60], [.4,.8], -60);
   } else if(id==='bandage'){
@@ -550,7 +551,7 @@ function updateMonster(m, dt){
   const sc = G.sc;
   if(m.dying){ m.dying += dt; return; }
   m.spawnIn = Math.min(1, m.spawnIn + dt*2.5);
-  m.flash -= dt; m.atkCd -= dt*(m.freezeT>0 ? .4 : 1); m.lastHit += dt; m.tauntT -= dt; m.exposedT -= dt; m.stunT -= dt; m.slowT -= dt; m.freezeT -= dt; m.freezeImmT = (m.freezeImmT||0) - dt; m.weakT -= dt; m.revealT -= dt; m.fleeT -= dt; m.fearT -= dt; if(m.markT > 0) m.markT -= dt; if(m.confuseT > 0) m.confuseT -= dt;
+  m.flash -= dt; m.atkCd -= dt*(m.freezeT>0 ? .4 : 1); m.lastHit += dt; m.tauntT -= dt; m.exposedT -= dt; m.auraT -= dt; m.stunT -= dt; m.slowT -= dt; m.freezeT -= dt; m.freezeImmT = (m.freezeImmT||0) - dt; m.weakT -= dt; m.revealT -= dt; m.fleeT -= dt; m.fearT -= dt; if(m.markT > 0) m.markT -= dt; if(m.confuseT > 0) m.confuseT -= dt;
   // daño en el tiempo
   if(m.poisonT > 0 || m.burnT > 0 || m.bleedT > 0){
     m.poisonT -= dt; m.burnT -= dt; m.bleedT -= dt;
@@ -566,7 +567,7 @@ function updateMonster(m, dt){
   { const rg = monFx(m, 'regen'); if(rg && m.lastHit > 3 && m.hp < m.maxHp) m.hp = Math.min(m.maxHp, m.hp + m.maxHp*rg/100*dt); }
   const furious = A.includes('furioso') && m.hp < m.maxHp*.5;
   let spd = m.baseSpd * (furious ? 1.3 : 1) * (m.slowT>0 ? .5 : 1) * (m.freezeT>0 ? .4 : 1);
-  m.curDmg = m.dmg * (furious ? 1.5 : 1) * (m.weakT>0 ? .6 : 1);
+  m.curDmg = m.dmg * (furious ? 1.5 : 1) * (m.weakT>0 ? .6 : 1) * (m.auraT > 0 ? 1.3 : 1);
   // congelado: paralizado del todo (no se mueve, no ataca ni anima) hasta que se descongela
   if(m.freezeT > 0 && !MONSTERS[m.type].boss){
     m.prepT = 0; m.atkCd = Math.max(m.atkCd, .3); m.vx = m.vy = 0;
