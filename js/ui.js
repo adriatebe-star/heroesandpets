@@ -516,8 +516,8 @@ const UI = {
       h += `<div class="sub">${it.rarity ? RARITY[it.rarity].name + ' · ' : ''}${kind}${it.name ? ' · ' + d.name : ''}</div>`;
       if(d.dmg){ const dm = weaponDmg(it); h += it.sharp ? `<div>Daño: <span class="sharp">${dm[0]}-${dm[1]}</span> <span class="sharp">(afilada +${it.sharp})</span></div>` : `<div>Daño: ${dm[0]}-${dm[1]}</div>`; }
       if(d.armor) h += `<div>Armadura: ${d.armor}</div>`;
-      if(d.move) h += `<div>+${d.move} % de velocidad de movimiento</div>`;
-      for(const a of it.affixes || []) h += `<div class="aff${a.forged ? ' lava' : ''}">◆ ${ITEM_AFFIX[a.k].desc(a.v)}</div>`;
+      if(d.move) h += d.move > 0 ? `<div>+${d.move} % de velocidad de movimiento</div>` : `<div class="neg">-${-d.move} % de velocidad de movimiento</div>`;
+      for(const a of it.affixes || []) h += `<div class="aff${a.forged ? ' lava' : ''}">◆ ${ITEM_AFFIX[a.k].desc(a.v, a.w)}</div>`;
       if(it.gem && typeof GEMS !== 'undefined' && GEMS[it.gem]) h += `<div class="aff" style="color:${GEMS[it.gem].col}">◆ ${GEMS[it.gem].name}: ${GEMS[it.gem].desc}</div>`;
       h += `<div class="desc">${d.desc}</div>`;
       if(it.dur !== undefined) h += `<div class="sub">Durabilidad: ${it.dur} / ${maxDur(it)}</div>`;
@@ -832,7 +832,7 @@ function drawMinimap(x, y, size){
 function bigMapRect(){
   const v = SETTINGS.mapView, size = Math.max(160, Math.round(Math.min(W*.7, H - 330)*v.z));
   let x = Math.round(W/2 - size/2 + v.dx), y = Math.round(Math.max(70, (H - 250 - size)/2 + 40) + v.dy);
-  return {x:clamp(x, 60 - size, W - 60), y:clamp(y, 30, H - 60), size};
+  return {x:clamp(x, 60 - size, W - 60), y:clamp(y, 60 - size, H - 60), size};
 }
 let BMdrag = null, BMcursor = false;
 function updateBigMapDrag(){
@@ -858,20 +858,20 @@ function drawBigMap(){
   if(under){ ctx.globalAlpha = 1 - a; ctx.drawImage(under, rx, ry); ctx.globalAlpha = 1; }
   drawMapView(x, y, size, view, true, 'icons');   // los iconos (jugador, cofres, portales…) nunca se vuelven transparentes
   ctx.restore();
-  ctx.font = `${5*S}px ${FONT}`; ctx.textAlign = 'left'; textO('Ctrl + arrastrar: mover el mapa', x + 8, y + size - 22, '#e8d8b0'); textO('Rueda del ratón: acercar / alejar', x + 8, y + size - 10, '#e8d8b0');
   ctx.textAlign = 'center'; ctx.font = `${9*S}px ${FONT}`; textO(sc.name, x + size/2, y - 22, '#ffd8a0');
-  ctx.font = `${6*S}px ${FONT}`;
+  // leyenda e instrucciones: panel fijo en el lado derecho de la pantalla (no se mueve con el mapa)
   const legend = sc.kind==='raid'
     ? [['#ffffff','Tú'], ['#e0a060','Caballo (salida)'], ['#9a7aff','Portal (salida)'], ['#7ae09a','Jaula'], ['#e8c070','Cofre'], ['#c8a0ff','Cofre raro']]
     : [['#ffffff','Tú'], ['#9ad0ff','Personajes'], ['#e0a060','Caballo'], ['#c8a0ff','Alijo']];
-  ctx.textAlign = 'left';
-  const widths = legend.map(([,t]) => ctx.measureText(t).width + 40), total = widths.reduce((a,c)=>a+c, 0);
-  let lx = W/2 - total/2;
-  legend.forEach(([c, t], i) => {
-    ctx.fillStyle = '#0c0a0e'; ctx.fillRect(lx, y+size+18, 12, 12); ctx.fillStyle = c; ctx.fillRect(lx+2, y+size+20, 8, 8);
-    textO(t, lx+18, y+size+25); lx += widths[i];
-  });
-  ctx.textAlign = 'center'; textO('[Tab] cerrar', W/2, y+size+48, '#a89a80');
+  const help = ['Ctrl + arrastrar: mover', 'Rueda: acercar / alejar', '[Tab] cerrar'];
+  ctx.font = `${5*S}px ${FONT}`; ctx.textAlign = 'left';
+  const lh = Math.round(9*S), pw = Math.round(Math.max(...help.map(t => ctx.measureText(t).width), ...legend.map(([,t]) => ctx.measureText(t).width + 16)) + 16), ph = lh*(help.length + legend.length) + 22;
+  const px = W - pw - 12, py = Math.round(Math.min(H*.46, H - ph - 150));
+  ctx.fillStyle = 'rgba(12,10,14,.82)'; ctx.fillRect(px, py, pw, ph); ctx.strokeStyle = '#7a5e36'; ctx.lineWidth = 2; ctx.strokeRect(px, py, pw, ph);
+  let ty = py + 10 + lh/2;
+  for(const t of help){ textO(t, px + 8, ty, '#e8d8b0'); ty += lh; }
+  ty += 4; ctx.fillStyle = '#4a3a24'; ctx.fillRect(px + 8, ty - lh/2, pw - 16, 1); ty += 6;
+  for(const [c, t] of legend){ ctx.fillStyle = '#0c0a0e'; ctx.fillRect(px + 8, ty - 5, 11, 11); ctx.fillStyle = c; ctx.fillRect(px + 10, ty - 3, 7, 7); textO(t, px + 25, ty); ty += lh; }
   ctx.textAlign = 'left';
 }
 

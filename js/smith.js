@@ -22,7 +22,7 @@ function gearRefs(){
 const repairCost = it => Math.max(1, Math.ceil((maxDur(it) - it.dur) * .35 * (1 + (it.affixes || []).length*.25) * (it.rarity === 'unique' ? 1.6 : 1)));
 const isUnique = it => !!(ITEMS[it.id].unique || it.rarity === 'unique');
 const forgeCost = (it, sharp) => (sharp ? SHARPEN_COST : FORGE_COST) * (isUnique(it) ? 2 : 1);   // los únicos cuestan el doble
-const canForge = it => { const d = ITEMS[it.id]; return !!d.gear && !d.stack && FORGE_SLOTS.includes(d.slot) && (it.affixes || []).length < MAX_AFFIX; };
+const canForge = it => { const d = ITEMS[it.id]; return !!d.gear && !d.stack && FORGE_SLOTS.includes(d.slot) && (it.affixes || []).length < MAX_AFFIX && affixPool(it, d, Math.max(1, G.save.maxExp||1)).length > 0; };
 
 UI.openSmith = function(tab){
   this.smithOpen = true; if(tab) this.smithTab = tab; this.smMsg = null; G.bigMap = false;
@@ -83,12 +83,11 @@ UI.doSharpen = function(sel){
 // --- mejorar en el yunque: 25 % se rompe, 25 % no pasa nada, 50 % se mejora (+2 afijos forjados) ---
 function forgeUpgrade(it){
   const d = ITEMS[it.id]; it.affixes ??= [];
-  const all = Object.keys(ITEM_AFFIX).filter(k => ITEM_AFFIX[k].slots.includes(d.slot)), added = [];
-  // primero afijos que aún no tiene; si se agotan (cada hueco tiene solo 4-8), se repiten y suman sus valores
-  const fresh = shuffle(all.filter(k => !it.affixes.some(a => a.k === k))), want = Math.min(1, MAX_AFFIX - it.affixes.length), picks = fresh.slice(0, want);
-  while(picks.length < want) picks.push(pick(all));
+  const added = [];
+  // los afijos no se repiten: solo se añade uno que el objeto aún no tenga (y que pueda llevar por su tipo y nivel)
+  const picks = shuffle(affixPool(it, d, Math.max(1, G.save.maxExp||1))).slice(0, Math.min(1, MAX_AFFIX - it.affixes.length));
   for(const k of picks){
-    const v = rollAffix(ITEM_AFFIX[k]); it.affixes.push({k, v, forged:true}); added.push(k);
+    const af = mkAffix(k), v = af.v; it.affixes.push({...af, forged:true}); added.push(k);
     if(k === 'dur' && it.maxDur){ const nm = Math.round(it.maxDur*(1 + v/100)); it.dur += nm - it.maxDur; it.maxDur = nm; }
   }
   it.forged = (it.forged || 0) + 1;

@@ -57,11 +57,11 @@ function drawElfBuff(){}
 
 // ---------- monstruos ----------
 Object.assign(MONSTERS, {
-  rivercrab:  {name:'Cangrejo del río', art:'rivercrab', ai:'walk', hp:380, dmg:43, spd:84, r:10, xp:40, reach:12, prep:.35},
-  rivertroll: {name:'Trol de río', art:'rivertroll', ai:'archer', hp:1200, dmg:83, spd:50, r:15, xp:125, reach:0, prep:.95, range:[130,230], rock:true},
-  delfthief:  {name:'Elfo oscuro ladrón', art:'delfthief', ai:'archer', hp:320, dmg:31, spd:98, r:8, xp:65, reach:0, prep:.45, range:[80,150], dart:true, elf:true},
-  delfarcher: {name:'Elfo oscuro arquero', art:'delfarcher', ai:'archer', hp:290, dmg:54, spd:76, r:8, xp:70, reach:0, prep:.6, range:[160,250], elf:true},
-  hungrybear: {name:'Oso hambriento', art:'hungrybear', ai:'walk', hp:1120, dmg:87, spd:80, r:14, xp:115, reach:18, prep:.5, bleedHit:true},
+  rivercrab:  {name:'Cangrejo del río', art:'rivercrab', ai:'walk', hp:380, dmg:34, spd:84, r:10, xp:40, reach:12, prep:.35},
+  rivertroll: {name:'Trol de río', art:'rivertroll', ai:'archer', hp:1200, dmg:66, spd:50, r:15, xp:125, reach:0, prep:.95, range:[130,230], rock:true},
+  delfthief:  {name:'Elfo oscuro ladrón', art:'delfthief', ai:'archer', hp:320, dmg:25, spd:98, r:8, xp:65, reach:0, prep:.45, range:[80,150], dart:true, elf:true},
+  delfarcher: {name:'Elfo oscuro arquero', art:'delfarcher', ai:'archer', hp:290, dmg:43, spd:76, r:8, xp:70, reach:0, prep:.6, range:[160,250], elf:true},
+  hungrybear: {name:'Oso hambriento', art:'hungrybear', ai:'walk', hp:1120, dmg:70, spd:80, r:14, xp:115, reach:18, prep:.5, bleedHit:true},
 });
 Object.assign(RARE_PREFIX, {
   rivercrab:['Pinzas','Tenaza','Caparazón','Marisma'], rivertroll:['Pedrusco','Cantero','Cascada','Lodazal'],
@@ -118,10 +118,11 @@ for(const id of ['rivercrab','rivertroll','delfthief','delfarcher','hungrybear']
 
 // ---------- mapa: una franja larga junto al río, en zona rocosa ----------
 const RV_GRAVEL = ['#2c2e32','#35383d','#40444a','#4c5057'].map(hex), RV_MOSS = ['#1e2a22','#27362b','#314436','#3c523f'].map(hex), RV_SAND = ['#4a4640','#58534b','#665f55'].map(hex);
+const RV_PLANK = ['#4a301a','#5e3f22','#6f4a2a','#7c5632'].map(hex), RV_RAIL = hex('#2e1e10'), RV_RAIL_TOP = hex('#8a6238');
 const RV_WATER = ['#10263c','#183654','#204868','#2a5c80'].map(hex), RV_FOAM = hex('#9cc4d8'), RV_EDGE = hex('#2a3640');
 function buildRiver(seed){
   const R = rng(seed), rr = (a,c) => a + R()*(c-a);
-  const X0 = -560, X1 = 560, Y0 = -1750, Y1 = 1250;
+  const X0 = -780, X1 = 560, Y0 = -1750, Y1 = 1250;
   const sc = baseScene('river', 'El río travieso', X0, Y0, X1, Y1);
   sc.kind = 'raid'; sc.darkness = .94; sc.seed = seed; sc.lvl = 7;
   sc.spawn = {x:70, y:Y1-120};
@@ -130,9 +131,19 @@ function buildRiver(seed){
   if(!G.save.aishHome){ const an = {id:'aish', name:'Aish', x:112, y:Y1-96, dir:-1}; sc.npcs.push(an); an.col = addCollider(sc, {t:'c', x:112, y:Y1-98, r:9}); sc.lights.push({x:112, y:Y1-112, r:140, a:.8, warm:true, flick:.05}); }   // el elfo de luz espera junto al caballo
   // el río serpentea por el oeste del mapa; las rocas y la orilla forman el pasillo por el que se avanza
   const rx = y => -330 + 95*Math.sin(y/360) + 38*Math.sin(y/140 + 1), hw = y => 62 + 14*Math.sin(y/220);
-  for(let y = Y0; y < Y1; y += 14) addCollider(sc, {t:'r', x:rx(y) - hw(y), y, w:hw(y)*2, h:16});
+  // tres puentes de madera para cruzar al otro lado del río (el agua bloquea salvo en ellos)
+  const BH = 22, bridges = [-1050, -300, 450].map(by => { const y = Y0 + Math.round((by - Y0)/14)*14 + 7; return {y, x:Math.round(rx(y)), bl:Math.round(hw(y) + 28)}; });
+  const onBridgeRow = y => bridges.some(b => y + 16 > b.y - BH && y < b.y + BH);
+  for(let y = Y0; y < Y1; y += 14) if(!onBridgeRow(y)) addCollider(sc, {t:'r', x:rx(y) - hw(y), y, w:hw(y)*2, h:16});
+  for(const b of bridges){ addCollider(sc, {t:'r', x:b.x - b.bl, y:b.y - BH, w:b.bl*2, h:4}); addCollider(sc, {t:'r', x:b.x - b.bl, y:b.y + BH - 4, w:b.bl*2, h:4}); }   // barandillas
   sc.ground = (x,y) => {
     if(x < X0 || x > X1 || y < Y0 || y > Y1) return RV_GRAVEL[0];
+    for(const b of bridges){   // tablones del puente
+      const dy = y - b.y; if(Math.abs(dy) >= BH || Math.abs(x - b.x) >= b.bl) continue;
+      if(Math.abs(dy) > BH - 3) return RV_RAIL; if(Math.abs(dy) > BH - 5) return RV_RAIL_TOP;
+      const px = x - b.x + 2000; if(px % 7 === 0) return RV_PLANK[0];
+      return RV_PLANK[1 + ((Math.floor(px/7) + (hash(x, y, 720) > .93 ? 1 : 0)) % 3)];
+    }
     const dr = Math.abs(x - rx(y)) + (vnoise(x/14,y/14,701)-.5)*8, w = hw(y);
     if(dr < w){
       if(dr > w - 2.5) return RV_FOAM;
@@ -151,6 +162,7 @@ function buildRiver(seed){
     if(x < X0+70 || x > X1-50 || y < Y0+60 || y > Y1-50) return false;
     if(Math.hypot(x-sc.spawn.x, y-sc.spawn.y) < 120 || Math.hypot(x-sc.horse.x, y-sc.horse.y) < 60) return false;
     if(Math.abs(x - rx(y)) < hw(y) + 30) return false;
+    if(bridges.some(b => Math.abs(y - b.y) < 70 && Math.abs(x - b.x) < b.bl + 70)) return false;   // los accesos a los puentes quedan despejados
     return !blocked(sc, x, y, r+6);
   };
   const point = (r, minSpawn=0, y0=Y0+80, y1=Y1-120) => {
@@ -177,13 +189,13 @@ function buildRiver(seed){
     for(let k=0;k<3;k++){ const x = c.x + rr(-44,44), y = c.y + rr(10,34); if(free(x,y,8)) propSprite(sc, R()<.5 ? ART.crate : ART.barrel, Math.round(x), Math.round(y), R()<.5 ? {t:'r', x:x-7, y:y-9, w:15, h:10, low:true} : {t:'c', x, y:y-2, r:6, low:true}, [7,2]); }
   }
   let sd = seed*13;
-  for(let i=0;i<150;i++){ const p = point(12, 130); if(p) propRock(sc, p.x, p.y, ++sd); }          // zona rocosa: muchas rocas
-  for(let i=0;i<22;i++){ const p = point(14, 130); if(p){ propRock(sc, p.x, p.y, ++sd); propRock(sc, p.x+rr(-18,18), p.y+rr(-12,12), ++sd); propRock(sc, p.x+rr(-18,18), p.y+rr(-12,12), ++sd); } }   // peñascos
+  for(let i=0;i<70;i++){ const p = point(12, 130); if(p) propRock(sc, p.x, p.y, ++sd); }          // zona rocosa (menos rocas que antes)
+  for(let i=0;i<10;i++){ const p = point(14, 130); if(p){ propRock(sc, p.x, p.y, ++sd); propRock(sc, p.x+rr(-18,18), p.y+rr(-12,12), ++sd); propRock(sc, p.x+rr(-18,18), p.y+rr(-12,12), ++sd); } }   // peñascos
   for(let i=0;i<26;i++){ const p = point(12, 140); if(p) propTree(sc, p.x, p.y, ++sd, true); }
   for(let i=0;i<30;i++){ const p = point(9, 120); if(p) propBush(sc, p.x, p.y, ++sd); }
   for(let i=0;i<30;i++){ const p = point(4, 200); if(p) propSprite(sc, i%3 ? ART.bones : ART.skullpile, p.x, p.y, {t:'c', x:p.x, y:p.y-2, r:5, low:true}); }
   // árboles y rocas del otro lado del río (decorado inalcanzable)
-  for(let y = Y0+40; y < Y1-40; y += 60) if(R() < .7){ const x = rx(y) - hw(y) - rr(40, 150); if(x > X0+10) propTree(sc, Math.round(x), y, ++sd, R()<.4); }
+  for(let y = Y0+40; y < Y1-40; y += 60) if(R() < .7 && !bridges.some(b => Math.abs(y - b.y) < 80)){ const x = rx(y) - hw(y) - rr(40, 150); if(x > X0+10) propTree(sc, Math.round(x), y, ++sd, R()<.4); }
   for(let i=0;i<1500;i++){
     const x = Math.round(rr(X0, X1)), y = Math.round(rr(Y0, Y1));
     if(Math.abs(x - rx(y)) < hw(y) + 4) continue;
@@ -217,11 +229,11 @@ function buildRiver(seed){
     for(let k=0;k<n;k++){ let r = rar(far); if(r==='rare' && hasRare) r = 'magic'; if(r==='rare') hasRare = true; pack.push({type:types[Math.floor(R()*types.length)], rarity:r}); }
     sc.monsterSpawns.push({x:p.x, y:p.y, pack});
   };
-  for(let i=0;i<9;i++){ const p = bankPoint(Y0+200, Y1-300); if(p) mkPack(['rivercrab'], 3 + Math.floor(R()*3), p); }
-  for(let i=0;i<7;i++){ const p = point(18, 420); if(p) mkPack(['rivertroll', 'rivertroll', 'rivercrab'], 1 + Math.floor(R()*2), p); }
-  for(let i=0;i<8;i++){ const p = point(16, 420); if(p) mkPack(['delfthief', 'delfthief', 'delfarcher'], 2 + Math.floor(R()*2), p); }
-  for(let i=0;i<7;i++){ const p = point(16, 420); if(p) mkPack(['delfarcher', 'delfarcher', 'delfthief'], 2 + Math.floor(R()*2), p); }
-  for(let i=0;i<7;i++){ const p = point(18, 420); if(p) mkPack(['hungrybear'], 1 + Math.floor(R()*2), p); }
+  for(let i=0;i<6;i++){ const p = bankPoint(Y0+200, Y1-300); if(p) mkPack(['rivercrab'], 2 + Math.floor(R()*3), p); }
+  for(let i=0;i<4;i++){ const p = point(18, 420); if(p) mkPack(['rivertroll', 'rivertroll', 'rivercrab'], 1 + Math.floor(R()*2), p); }
+  for(let i=0;i<5;i++){ const p = point(16, 420); if(p) mkPack(['delfthief', 'delfthief', 'delfarcher'], 1 + Math.floor(R()*2), p); }
+  for(let i=0;i<4;i++){ const p = point(16, 420); if(p) mkPack(['delfarcher', 'delfarcher', 'delfthief'], 1 + Math.floor(R()*2), p); }
+  for(let i=0;i<4;i++){ const p = point(18, 420); if(p) mkPack(['hungrybear'], 1 + Math.floor(R()*2), p); }
   for(const c of camps) sc.monsterSpawns.push({x:Math.round(c.x), y:Math.round(c.y + 60), pack:[{type:'delfthief', rarity: R()<.3 ? 'magic' : 'normal'}, {type:'delfarcher', rarity:'normal'}, {type:'delfthief', rarity:'normal'}]});
   return sc;
 }

@@ -24,14 +24,14 @@ function bindSound(root){
 
 // ---------- menú principal ----------
 // ---------- configuración ----------
-const SETTINGS = {hpHero:false, hpPets:false, mapAlpha:.97, lootFilter:{normal:true, magic:true, rare:true, cons:true, legend:true, gold:true, gems:true}, mapView:{dx:0, dy:0, z:1}};
+const SETTINGS = {hpHero:false, hpPets:false, mapAlpha:.97, lootFilter:{normal:true, magic:true, rare:true, pink:true, cons:true, legend:true, gold:true, gems:true}, mapView:{dx:0, dy:0, z:1}};
 try { const v = JSON.parse(localStorage.getItem('heroes-pets-settings')); if(v){ if(typeof v.hpHero==='boolean') SETTINGS.hpHero = v.hpHero; if(typeof v.hpPets==='boolean') SETTINGS.hpPets = v.hpPets; if(typeof v.mapAlpha==='number') SETTINGS.mapAlpha = Math.max(.15, Math.min(1, v.mapAlpha)); if(v.lootFilter) for(const k in SETTINGS.lootFilter) if(typeof v.lootFilter[k]==='boolean') SETTINGS.lootFilter[k] = v.lootFilter[k]; if(v.mapView) for(const k of ['dx','dy','z']) if(typeof v.mapView[k]==='number') SETTINGS.mapView[k] = v.mapView[k]; } } catch(e){}
 const saveSettings = () => { try { localStorage.setItem('heroes-pets-settings', JSON.stringify(SETTINGS)); } catch(e){} };
 const configHTML = () => `<div class="vols">
   <label class="vrow"><span style="width:auto;flex:1">Mostrar la vida sobre el héroe</span><input type="checkbox" id="cfgHero" ${SETTINGS.hpHero ? 'checked' : ''}></label>
   <label class="vrow"><span style="width:auto;flex:1">Mostrar la vida sobre las mascotas</span><input type="checkbox" id="cfgPets" ${SETTINGS.hpPets ? 'checked' : ''}></label>
   <label class="vrow"><span style="width:150px">Opacidad del mapa [Tab]</span><input type="range" min="15" max="100" value="${Math.round(SETTINGS.mapAlpha*100)}" id="cfgMap"><b>${Math.round(SETTINGS.mapAlpha*100)}%</b></label></div>`;
-const LOOT_FILTER_ROWS = [['normal','Objetos de rareza normal'], ['magic','Objetos mágicos'], ['rare','Objetos raros'], ['cons','Consumibles y otros (munición, tesoros, llaves)'], ['legend','Objetos legendarios y únicos'], ['gold','Oro'], ['gems','Piedras preciosas']];
+const LOOT_FILTER_ROWS = [['normal','Normales (blancos: objetos, flechas, lanzas, piedras, pociones)'], ['magic','Mágicos (azules: objetos, flechas de fuego, pociones superiores)'], ['rare','Raros (amarillos: objetos y flechas explosivas)'], ['pink','Consumibles rosas (aceite, setas, galletas, vendas)'], ['cons','Otros consumibles (poción élfica, tesoros, llaves…)'], ['legend','Objetos legendarios y únicos'], ['gold','Oro'], ['gems','Piedras preciosas']];
 const lootFilterHTML = () => '<div class="vols">' + LOOT_FILTER_ROWS.map(([k, t]) => `<label class="vrow"><span style="width:auto;flex:1">${t}</span><input type="checkbox" data-lf="${k}" ${SETTINGS.lootFilter[k] !== false ? 'checked' : ''}></label>`).join('') + '</div><p class="lfnote">Lo que desmarques no se verá en el suelo ni se podrá coger. El oro desmarcado se sigue recogiendo solo al pasar cerca. Las mascotas siempre se ven.</p>';
 function bindConfig(root){
   root.querySelectorAll('[data-lf]').forEach(c => c.onchange = () => { SETTINGS.lootFilter[c.dataset.lf] = c.checked; saveSettings(); sfx('ui'); });

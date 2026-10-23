@@ -233,7 +233,7 @@ function rollShopSpecials(){
   const tier = Math.max(1, G.save.maxExp||1), pool = SHOP.filter(o => o.tier <= tier && ITEMS[o.id].gear);
   G.save.shopSpecials = [];
   for(let i=0;i<4 && pool.length;i++){
-    const o = pick(pool), rar = Math.random() < .2 ? 'rare' : 'magic', it = mkGear(o.id, rar);
+    const o = pick(pool), rar = Math.random() < .2 ? 'rare' : 'magic', it = mkGear(o.id, rar, tier);
     G.save.shopSpecials.push({item:it, price:Math.round(o.price * (rar==='rare' ? 4 : 2.2) * (1 + it.affixes.length*.1))});
   }
 }

@@ -20,6 +20,7 @@ const ORIG = {};   // copia de los datos originales (el editor la usa para «res
     if(o != null) o[p[p.length - 1]] = val;
   }
   for(const k in ITEM_AFFIX){ const a = ITEM_AFFIX[k]; if(typeof a.descTpl === 'string' && !(a.desc && a.custom)) a.desc = tplFn(a.descTpl); }
+  for(const id in PETS) PETS[id].affixes = [...new Set(PETS[id].affixes)];   // los afijos no se repiten
   // la vida de las mascotas sale de su rareza salvo que se haya fijado a mano
   for(const id in PETS){ const p = PETS[id]; if(!(O.set && O.set['PETS.' + id + '.hp'] !== undefined)) p.hp = petBaseHp(p); }
   // traducciones al inglés escritas en el editor

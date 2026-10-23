@@ -66,6 +66,17 @@ const ITEM_AFFIX = {
   petdmg: {sfx:'del Pastor',      roll:[8,20],  slots:['head','hands','chest'],          desc:v=>`+${v} % de daño de tus mascotas`},
   thorns: {sfx:'del Erizo',       roll:[2,5],   slots:['chest','shield'],                desc:v=>`Devuelve ${v} de daño a quien te golpea`},
   dur:    {sfx:'del Herrero',     roll:[25,60], slots:['weapon','shield'],               desc:v=>`+${v} % de durabilidad`},
+  // ---- afijos de la expedición 5 en adelante (roll2 = segundo valor; kinds = solo para esas armas; chance = rareza del afijo)
+  firedmg:{sfx:'de las Brasas',   roll:[4,10],  roll2:[10,30], stat:'fireDmg', stat2:'fireCh', minLvl:5, slots:['weapon'], desc:(v,w='{w}')=>`+${v} de daño de fuego (${w} % de probabilidad de quemar)`},
+  litdmg: {sfx:'de la Tormenta',  roll:[4,10],  roll2:[10,25], stat:'litDmg',  stat2:'litCh',  minLvl:5, slots:['weapon'], desc:(v,w='{w}')=>`+${v} de daño de rayo (${w} % de probabilidad de debilitar)`},
+  icedmg: {sfx:'de la Escarcha',  roll:[4,10],  roll2:[8,20],  stat:'iceDmg',  stat2:'iceCh',  minLvl:5, slots:['weapon'], desc:(v,w='{w}')=>`+${v} de daño de hielo (${w} % de probabilidad de congelar)`},
+  bleed:  {sfx:'del Desollador',  roll:[10,30], roll2:[3,8],   stat:'bleedCh', stat2:'bleedDur', minLvl:5, slots:['weapon'], desc:(v,w='{w}')=>`${v} % de probabilidad de causar sangrado (durante ${w} s)`},
+  poison: {sfx:'de la Víbora',    roll:[10,30], roll2:[3,8],   stat:'poisonCh', stat2:'poisonDur', minLvl:5, kinds:['bow','crossbow'], slots:['weapon'], desc:(v,w='{w}')=>`${v} % de probabilidad de envenenar (durante ${w} s)`},
+  multi:  {sfx:'de la Ráfaga',    roll:[5,12],  stat:'multiCh',  minLvl:5, kinds:['bow','crossbow'], chance:.2, slots:['weapon'], desc:v=>`${v} % de probabilidad de disparar un proyectil adicional`},
+  pierce: {sfx:'del Perforador',  roll:[10,30], stat:'pierceCh', minLvl:5, kinds:['bow','crossbow'], slots:['weapon'], desc:v=>`${v} % de probabilidad de atravesar enemigos`},
+  bounce: {sfx:'del Rebote',      roll:[10,30], stat:'bounceCh', minLvl:5, kinds:['bow','crossbow'], slots:['weapon'], desc:v=>`${v} % de probabilidad de que el proyectil rebote en otro enemigo`},
+  flamearea:{sfx:'del Dragón',    roll:[15,40], stat:'flameArea', minLvl:5, kinds:['flamethrower'], slots:['weapon'], desc:v=>`+${v} % de área y distancia de la llamarada`},
+  flameoil: {sfx:'del Ahorro',    roll:[15,40], stat:'flameOil',  minLvl:5, kinds:['flamethrower'], slots:['weapon'], desc:v=>`-${v} % de aceite consumido por disparo`},
 };
 const RARE_ITEM_NAMES = ['Muerdehuesos','Sombraluz','Rompenoches','Ojo de Cuervo','Lágrima Gris','Colmillo Viejo','Susurro Helado',
                          'Paso Ligero','Canto Fúnebre','Raíz Antigua','Velo de Ceniza','Hueso de Luna','Ascua Fría','Último Aliento'];
@@ -76,14 +87,18 @@ function rollRarity(lvl=1, bonus=0){
 }
 // tirada de un afijo; con `skew` los valores altos son muy raros (p. ej. 35 % de movimiento en botas ≈ 0,4 %)
 function rollAffix(a){ return a.skew ? Math.round(a.roll[0] + (a.roll[1]-a.roll[0])*Math.pow(Math.random(), a.skew)) : randi(a.roll[0], a.roll[1]); }
-function mkGear(id, rarity='normal'){
+// afijos que puede llevar aún un objeto: de su hueco y tipo de arma, de su nivel y sin repetir ninguno que ya tenga
+const affixPool = (it, d, lvl) => Object.keys(ITEM_AFFIX).filter(k => { const a = ITEM_AFFIX[k]; return a.slots.includes(d.slot) && !(it.affixes || []).some(x => x.k === k) && (!a.minLvl || lvl >= a.minLvl) && (!a.kinds || a.kinds.includes(d.kind)); });
+const mkAffix = k => { const a = ITEM_AFFIX[k], o = {k, v:rollAffix(a)}; if(a.roll2) o.w = randi(a.roll2[0], a.roll2[1]); return o; };
+function mkGear(id, rarity='normal', lvl=1){
   const d = ITEMS[id], it = {id, rarity, affixes:[]};
   if(d.unique){ it.rarity = d.legend ? 'legendary' : 'unique'; it.affixes = (d.fixed || []).map(a => ({...a})); }
   else if(rarity !== 'normal'){
     const n = rarity==='magic' ? randi(1,2) : randi(3,4);
-    const pool = shuffle(Object.keys(ITEM_AFFIX).filter(k => ITEM_AFFIX[k].slots.includes(d.slot)));
-    for(const k of pool.slice(0, n)){ const a = ITEM_AFFIX[k]; it.affixes.push({k, v:rollAffix(a)}); }
-    it.name = rarity==='magic' ? `${d.name} ${ITEM_AFFIX[it.affixes[0].k].sfx}` : pick(RARE_ITEM_NAMES);
+    const pool = shuffle(affixPool(it, d, lvl).filter(k => Math.random() < (ITEM_AFFIX[k].chance ?? 1)));
+    for(const k of pool.slice(0, n)) it.affixes.push(mkAffix(k));
+    if(!it.affixes.length) it.rarity = 'normal';
+    else it.name = rarity==='magic' ? `${d.name} ${ITEM_AFFIX[it.affixes[0].k].sfx}` : pick(RARE_ITEM_NAMES);
   }
   if(d.dur){
     const bonus = it.affixes.find(a => a.k==='dur');
@@ -95,7 +110,7 @@ function mkGear(id, rarity='normal'){
 function mkItem(id, n=1, lvl=1, bonus=0){
   if(id==='treasure') id = pick(TREASURES);
   const d = ITEMS[id];
-  if(d.gear) return mkGear(id, d.unique ? 'unique' : rollRarity(lvl, bonus));
+  if(d.gear) return mkGear(id, d.unique ? 'unique' : rollRarity(lvl, bonus), lvl);
   const it = {id};
   if(d.legend){ it.rarity = 'legendary'; it.affixes = (d.fixed || []).map(a => ({...a})); }   // talismán / farolillo legendario
   if(d.stack) it.n = Math.min(n, d.stack);
@@ -114,9 +129,11 @@ function mkPetItem(petId, homed=false, shiny=false){ const it = {id:'pet', pet:p
 // daño base de un arma con el afilado (+1 por cada afilado en el yunque)
 const weaponDmg = it => { const d = ITEMS[it.id] && ITEMS[it.id].dmg; if(!d) return null; const s = it.sharp || 0; return [d[0] + s, d[1] + s]; };
 function itemName(it){ return it.id==='pet' ? (it.shiny ? '★ ' : '') + PETS[it.pet].name : (it.name || ITEMS[it.id].name); }
+const RAR_COL = {normal:'#f4f0e8', magic:'#6aa8ff', rare:'#f2d14b', pink:'#ff8ac8'};
 function itemColor(it){
   if(it.id==='pet') return RARITY[PETS[it.pet].rarity].col;
   if(ITEMS[it.id].treasure) return '#e8c070';
+  if(ITEMS[it.id].rar) return RAR_COL[ITEMS[it.id].rar];   // consumibles y munición por color (blanco, azul, amarillo, rosa)
   if(it.rarity && it.rarity!=='normal') return RARITY[it.rarity].col;
   return '#e8e2d4';
 }
@@ -322,13 +339,14 @@ const PET_AFFIX = {
   rastreador:  {name:'Rastreador', desc:'Detecta las jaulas desde mucho más lejos (también en el mapa)'},
   olfato:      {name:'Olfato',       desc:'Marca los cofres cercanos'},
   buscatesoros:{name:'Buscatesoros', desc:'+15 % de oro y +5 % de probabilidad de tesoro'},
-  avariciosa:  {name:'Avariciosa',   desc:'Recoge sola las monedas cercanas'},
+  avariciosa:  {name:'Avariciosa',   desc:'Recoge sola las monedas y los consumibles rosas cercanos'},
   luciernaga:  {name:'Luciérnaga',   desc:'Desprende luz y la linterna gasta un 20 % menos'},
   valiente:    {name:'Valiente',     desc:'+40 % de daño contra mágicos y raros'},
   espinosa:    {name:'Espinosa',     desc:'Devuelve el 20 % del daño que recibe'},
   alba:        {name:'Luz del alba', desc:'Aura de luz propia; +10 % de daño del héroe dentro de ella'},
 };
-const PET_HP = {normal:120, magic:165, rare:255, legendary:330};   // vida duplicada y luego +50 % (petición del usuario)
+const PET_HP = {normal:156, magic:215, rare:332, legendary:429};   // +30 % de vida a todas las mascotas (petición del usuario)
+   // vida duplicada y luego +50 % (petición del usuario)
 const PETS = {
   bigotes: {name:'Bigotes',  rarity:'normal', look:'Gato atigrado', beh:'pounce', dmg:[4,6],  cd:1.3, affixes:['agil'],
             attack:'Arañazo: salta y araña rápido'},

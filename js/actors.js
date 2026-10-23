@@ -47,7 +47,7 @@ function gearStats(){
     if(d.move) s.move += d.move;
     if(d.dmgFist) s.fist += d.dmgFist;
     if(d.crit) s.crit += d.crit;
-    for(const a of it.affixes || []){ const st = affixStat(a.k); s[st] = (s[st]||0) + a.v; }
+    for(const a of it.affixes || []){ const st = affixStat(a.k); s[st] = (s[st]||0) + a.v; const A = ITEM_AFFIX[a.k]; if(A && A.stat2 && a.w !== undefined) s[A.stat2] = (s[A.stat2]||0) + a.w; }
   }
   for(const it of E.tal || []) if(it) for(const a of it.affixes || []){ const st = affixStat(a.k); s[st] = (s[st]||0) + a.v; }   // talismanes con bonos fijos (legendarios)
   s.move += (typeof lanternGem === 'function' ? lanternGem().move : 0) || 0;
@@ -119,6 +119,7 @@ function lootClass(l){
   const it = l.item; if(!it || it.id === 'pet') return 'pet';
   const d = ITEMS[it.id]; if(d.gem) return 'gems';
   if(it.rarity === 'legendary' || it.rarity === 'unique') return 'legend';
+  if(d.rar) return d.rar;   // normal | magic | rare | pink (consumibles y munición por color)
   if(!d.gear) return 'cons';
   return it.rarity === 'rare' ? 'rare' : it.rarity === 'magic' ? 'magic' : 'normal';
 }
@@ -258,7 +259,7 @@ function attack(){
   const w = curWeapon();
   const kind = !w ? 'fist' : ITEMS[w.id].kind;
   if(isRanged(kind) && !hasArrows()){ toast('No tienes flechas en la mochila', 1.2); mouse.l = false; return; }
-  if(kind==='flamethrower' && G.sc.kind==='raid'){ if(P.oil < 1.8){ toast('Sin aceite para el lanzallamas', 1.2); mouse.l = false; return; } P.oil -= 1.8; }
+  if(kind==='flamethrower' && G.sc.kind==='raid'){ if(P.oil < 1.8){ toast('Sin aceite para el lanzallamas', 1.2); mouse.l = false; return; } P.oil -= 1.8*(1 - Math.min(.6, ((G.stats && G.stats.flameOil) || 0)/100)); }
   let cost = (STAM[kind] ?? STAM.fist) * stamMul() * (MS('car',10) ? .85 : 1);
   const combo = kind==='fist' ? (P.comboT>0 ? (P.combo%3)+1 : 1) : 1;
   if(kind==='fist' && combo===3) cost = STAM.fist3 * stamMul() * (MS('car',10) ? .85 : 1);
@@ -308,20 +309,24 @@ function resolveAttack(){
   }
   if(isRanged(kind)){
     const arrow = w && useArrow(); if(!arrow) return;
-    let dmg = (rollR((w && weaponDmg(w)) || ITEMS[kind].dmg) + S2.dmg) * (1 + SK('agi')*.02);
+    let dmg = (rollR((w && weaponDmg(w)) || ITEMS[kind].dmg) + S2.dmg + eleFlat(S2)) * (1 + SK('agi')*.02);
     const crit = Math.random() < .12 + S2.crit/100; if(crit) dmg *= 2;
     const sx = P.x + Math.cos(P.face)*10, sy = P.y - 18 + Math.sin(P.face)*6;
     const la = legendArrow(w);
-    G.projs.push({x:sx, y:sy, vx:Math.cos(P.face)*(kind==='crossbow' ? 640 : 560), vy:Math.sin(P.face)*(kind==='crossbow' ? 640 : 560), life:.75, kind:'arrow', from:'player', dmg, crit, r:3, ang:P.face, pierce:(MS('agi',20) ? 1 : 0) + la.pierce, homing:la.homing, markHit:la.mark, fire: arrow==='fire', explode: arrow==='explosive'});
+    G.projs.push({x:sx, y:sy, vx:Math.cos(P.face)*(kind==='crossbow' ? 640 : 560), vy:Math.sin(P.face)*(kind==='crossbow' ? 640 : 560), life:.75, kind:'arrow', from:'player', dmg, crit, r:3, ang:P.face, pierce:(MS('agi',20) ? 1 : 0) + la.pierce + (Math.random()*100 < (S2.pierceCh||0) ? 3 : 0), homing:la.homing, markHit:la.mark, fire: arrow==='fire', explode: arrow==='explosive', fxS:{fireCh:S2.fireCh, litCh:S2.litCh, iceCh:S2.iceCh, bleedCh:S2.bleedCh, bleedDur:S2.bleedDur, poisonCh:S2.poisonCh, poisonDur:S2.poisonDur}, bounce: Math.random()*100 < (S2.bounceCh||0) ? 1 : 0});
+    if(Math.random()*100 < (S2.multiCh||0)){   // proyectil adicional (sin gastar otra flecha)
+      const p0 = G.projs[G.projs.length-1], an = P.face + (Math.random() < .5 ? -.13 : .13), sp = Math.hypot(p0.vx, p0.vy);
+      G.projs.push({...p0, vx:Math.cos(an)*sp, vy:Math.sin(an)*sp, ang:an, bounce:0});
+    }
     wearWeapon(w); return;
   }
   if(kind==='flamethrower'){   // gran llamarada: chorro de fuego y llamas que quedan en el suelo
-    const fx = Math.cos(P.face), fy = Math.sin(P.face); P.flameT = .32;
-    for(let i=0;i<14;i++){ const sp = rand(120,260), an = P.face + rand(-.28,.28); G.parts.push({x:P.x + fx*12, y:P.y - 16 + fy*6, vx:Math.cos(an)*sp, vy:Math.sin(an)*sp*.8 - 10, life:rand(.25,.45), max:.45, size:rand(2,4), col:pick(['#ff5a1a','#ff8a2a','#ffc04a','#fff0a0'])}); }
-    if(!(G.t - (P.flameAt||0) < .4)){ P.flameAt = G.t; const fxp = P.x + fx*70, fyp = P.y + fy*70; if(!blocked(G.sc, fxp, fyp, 4)) G.hazards.push({type:'fire', x:fxp, y:fyp, r:36, life:1.6, max:1.6}); }
+    const fx = Math.cos(P.face), fy = Math.sin(P.face), fa = 1 + (S2.flameArea||0)/100; P.flameT = .32;
+    for(let i=0;i<14;i++){ const sp = rand(120,260)*fa, an = P.face + rand(-.28,.28); G.parts.push({x:P.x + fx*12, y:P.y - 16 + fy*6, vx:Math.cos(an)*sp, vy:Math.sin(an)*sp*.8 - 10, life:rand(.25,.45), max:.45, size:rand(2,4), col:pick(['#ff5a1a','#ff8a2a','#ffc04a','#fff0a0'])}); }
+    if(!(G.t - (P.flameAt||0) < .4)){ P.flameAt = G.t; const fxp = P.x + fx*70*fa, fyp = P.y + fy*70*fa; if(!blocked(G.sc, fxp, fyp, 4)) G.hazards.push({type:'fire', x:fxp, y:fyp, r:36, life:1.6, max:1.6}); }
   }
   const big = kind==='fist' && P.combo===3, W2 = WEAPON[kind];
-  const agr = SK('agr'), reach = (big ? 58 : W2.reach) * (1 + agr*.01), arc = (big ? 1.2 : W2.arc) * (MS('agr',10) ? 1.15 : 1);
+  const agr = SK('agr'), reach = (big ? 58 : W2.reach) * (1 + agr*.01) * (kind==='flamethrower' ? 1 + (S2.flameArea||0)/100 : 1), arc = (big ? 1.2 : W2.arc) * (MS('agr',10) ? 1.15 : 1) * (kind==='flamethrower' ? Math.min(1.5, 1 + (S2.flameArea||0)/200) : 1);
   const critC = .12 + S2.crit/100 + (MS('agr',5) ? .05 : 0) + (MS('agr',15) ? .05 : 0);
   let hits = 0;
   for(const m of G.mons){
@@ -331,12 +336,13 @@ function resolveAttack(){
     if(Math.abs(angDiff(Math.atan2(dy,dx), P.face)) > arc && d > m.r+P.r+4) continue;
     if(!los(G.sc, P.x, P.y-4, m.x, m.y-4)) continue;          // los muros bloquean los golpes
     hits++;
-    let dmg = legendDmgMult() * (kind==='fist' ? (big ? rand(12,16) : rand(4,7)) + S2.fist : rollR((w && weaponDmg(w)) || ITEMS[kind].dmg) + S2.dmg) * (1 + agr*.02);
+    let dmg = legendDmgMult() * (kind==='fist' ? (big ? rand(12,16) : rand(4,7)) + S2.fist : rollR((w && weaponDmg(w)) || ITEMS[kind].dmg) + S2.dmg + eleFlat(S2)) * (1 + agr*.02);
     if(albaActive()) dmg *= 1.1;
     let crit = Math.random() < critC; if(crit) dmg *= 2;
     const WD = w && ITEMS[w.id] || {};
     const fx2 = {stun: WD.stunChance && Math.random() < WD.stunChance ? 1 : 0, bleed: WD.bleedChance && Math.random() < WD.bleedChance ? 4 : 0, poison: WD.poisonChance && Math.random() < WD.poisonChance ? 4 : 0,
       burn: WD.burnChance && Math.random() < WD.burnChance ? 4 : 0, freeze: WD.freezeChance && Math.random() < WD.freezeChance ? 2.5 : 0, weaken: WD.weakChance && Math.random() < WD.weakChance ? 5 : 0};
+    { const ar = affixRoll(S2); for(const k in ar) if(ar[k] > (fx2[k]||0)) fx2[k] = ar[k]; }   // afijos de fuego, rayo, hielo, sangrado y veneno
     const lg = legendMelee(w, m, crit, fx2); if(lg.addCrit){ dmg *= 2; crit = true; }
     hitMonster(m, dmg, {src:'player', nx:dx/(d||1), ny:dy/(d||1), k: (big ? 520 : W2.k)*(lg.kMul || 1), crit, melee:true, ...fx2});
     legendAfterHit(m, dmg, crit, lg);
@@ -1569,11 +1575,16 @@ function updateProjs(dt){
     for(const m of G.mons){
       if(m.dying || pr.hit.has(m) || Math.hypot(m.x-pr.x, m.y-8-pr.y) > m.r+pr.r+2) continue;
       const l = Math.hypot(pr.vx,pr.vy) || 1;
-      if(pr.from==='player') hitMonster(m, pr.dmg, {src:'player', nx:pr.vx/l, ny:pr.vy/l, k: pr.kind==='arrow' ? 140 : 180, crit:pr.crit, burn: pr.fire ? 3 : 0, mark: pr.markHit ? 1 : 0, markT: 5});
+      if(pr.from==='player') hitMonster(m, pr.dmg, {src:'player', nx:pr.vx/l, ny:pr.vy/l, k: pr.kind==='arrow' ? 140 : 180, crit:pr.crit, ...projFx(pr), mark: pr.markHit ? 1 : 0, markT: 5});
       else petStrike(pr.pet, m, 1, {k:90, slow: (pr.kind==='web' || pr.kind==='splash') ? 2.5 : 0, poison: pr.kind==='acid'});
       pr.hit.add(m);
       if(pr.explode){ explodeAt(pr.x, pr.y, pr.dmg, m); pr.life = 0; break; }
       if(pr.pierce > 0){ pr.pierce--; continue; }     // Agilidad 20: atraviesa a un enemigo más
+      if(pr.bounce > 0){   // afijo de rebote: sigue hacia otro enemigo cercano
+        let tg = null, bd = 240;
+        for(const o of G.mons){ if(o.dying || pr.hit.has(o)) continue; const dd = Math.hypot(o.x-pr.x, o.y-8-pr.y); if(dd < bd && los(G.sc, pr.x, pr.y, o.x, o.y-4)){ bd = dd; tg = o; } }
+        if(tg){ pr.bounce--; const sp = Math.hypot(pr.vx, pr.vy) || 560, an = Math.atan2(tg.y-8-pr.y, tg.x-pr.x); pr.vx = Math.cos(an)*sp; pr.vy = Math.sin(an)*sp; pr.ang = an; pr.life = .6; pr.dmg *= .8; ring(pr.x, pr.y, 10, '#ffe08a', .2); break; }
+      }
       pr.life = 0; break;
     }
   }
@@ -1657,6 +1668,11 @@ function updateLoot(dt){
   for(const l of G.loot){
     l.t += dt;
     if(l.item && l.z === 0 && !P.dead && hasPetAffix('recolectora') && AMMO_IDS.includes(l.item.id) && Math.hypot(P.x-l.x, P.y-l.y) < 56 && !l.taken) pickLoot(l);
+    if(l.item && l.z === 0 && !l.taken && !P.dead && l.t > .4 && !(l.pinkTry > G.t) && hasPetAffix('avariciosa') && ITEMS[l.item.id] && ITEMS[l.item.id].rar === 'pink'){
+      const d = Math.hypot(P.x-l.x, P.y-l.y);
+      if(d < magnet){ l.x += (P.x-l.x)*Math.min(1, dt*8); l.y += (P.y-l.y)*Math.min(1, dt*8); }
+      if(d < 12){ pickLoot(l); if(!l.taken) l.pinkTry = G.t + 3; }
+    }
     if(l.vz !== 0 || l.z > 0){
       l.z += l.vz*dt; l.vz -= 400*dt;
       if(l.z <= 0){ l.z = 0; l.vz = Math.abs(l.vz) > 40 ? -l.vz*.35 : 0; l.vx *= .5; l.vy *= .5; }
@@ -2194,3 +2210,11 @@ function drawAlly(al){
 
 // «No fumador» (Cardio 20): todas las acciones gastan un 10 % menos de estamina
 function stamMul(){ return MS('car',20) ? .9 : 1; }
+
+// ---- afijos de armas (expedición 5+): daño plano elemental y efectos con probabilidad
+const eleFlat = s => (s.fireDmg||0) + (s.litDmg||0) + (s.iceDmg||0);
+function affixRoll(s){
+  const r = c => c > 0 && Math.random()*100 < c;
+  return {burn: r(s.fireCh) ? 4 : 0, weaken: r(s.litCh) ? 5 : 0, freeze: r(s.iceCh) ? 2.5 : 0, bleed: r(s.bleedCh) ? (s.bleedDur || 4) : 0, poison: r(s.poisonCh) ? (s.poisonDur || 4) : 0};
+}
+function projFx(pr){ const a = pr.fxS ? affixRoll(pr.fxS) : {}; a.burn = Math.max(pr.fire ? 3 : 0, a.burn || 0); return a; }
