@@ -56,7 +56,7 @@ function drawWearAlert(){
 const heroFxOf = a => HERO_AFFIX_FX[a] || (PET_AFFIX[a] && PET_AFFIX[a].fx && (PET_AFFIX[a].fx.heal || PET_AFFIX[a].fx.leech) ? {ic:'heart', col:'#9affb0'} : null);   // afijos nuevos que curan al héroe
 function drawPetBuffs(HS){
   drawWearAlert();
-  const list = [];
+  const list = [...timedBuffs()];
   const lt = G.inv.equip.lantern;
   if(lt && lt.gem && GEMS[lt.gem]) list.push({img:ICONS['gem_' + lt.gem], name:GEMS[lt.gem].name, col:GEMS[lt.gem].col, desc:GEMS[lt.gem].desc, from:'Gema del farolillo'});
   for(const t of (G.inv.equip.tal || [])) if(t){ const d = ITEMS[t.id]; list.push({img:ICONS[d.icon], name:d.name, col:'#b8f0a0', desc:d.fx || d.desc, from:'Talismán equipado'}); }
@@ -70,6 +70,7 @@ function drawPetBuffs(HS){
     const col = Math.floor(i/6), row = i%6, x = x0 + col*(sz + gap), y = y0 + row*(sz + gap);
     hudFrame(x, y, sz, sz); ctx.fillStyle = 'rgba(255,255,255,.05)'; ctx.fillRect(x, y, sz, sz);
     if(e.img){ ctx.imageSmoothingEnabled = false; ctx.drawImage(e.img, x + sz*.15, y + sz*.15, sz*.7, sz*.7); } else fxIcon(ctx, e.ic, x + sz/2, y + sz/2, sz*.6, e.col);
+    if(e.t > 0){ ctx.fillStyle = 'rgba(8,6,12,.5)'; ctx.fillRect(x, y, sz, sz); ctx.font = `${7.5*S}px ${FONT}`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; textO(String(Math.ceil(e.t)), x + sz/2, y + sz/2 + 1, '#ffffff'); ctx.textAlign = 'left'; }
     if(e.n > 1){ ctx.font = `${5*S}px ${FONT}`; ctx.textAlign = 'right'; textO('×' + e.n, x + sz - 3, y + sz - 8); ctx.textAlign = 'left'; }
     if(mouse.x >= x && mouse.x <= x + sz && mouse.y >= y && mouse.y <= y + sz) hover = {e, x, y, sz};
   });

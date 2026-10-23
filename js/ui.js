@@ -758,17 +758,20 @@ function mmSeen(wx, wy){
   return cx>=0 && cy>=0 && cx<n && cy<n && MM.explored[cy*n+cx] === 1;
 }
 // dibuja el mapa: view = {cx, cy, half} en coordenadas del mundo
-function drawMapView(x, y, size, view, big){
+function drawMapView(x, y, size, view, big, layer){
   if(!MM.base || MM.sc !== G.sc) return;
   const sc = G.sc, k = MM.k, z = size/(view.half*2);
   const toS = (wx, wy) => [x + (wx - view.cx + view.half)*z, y + (wy - view.cy + view.half)*z];
   ctx.save();
   ctx.beginPath(); ctx.rect(x, y, size, size); ctx.clip();
-  ctx.fillStyle = '#050407'; ctx.fillRect(x, y, size, size);
-  const sx = (view.cx - view.half - sc.x0)*k, sy = (view.cy - view.half - sc.y0)*k, sw = view.half*2*k;
-  ctx.imageSmoothingEnabled = false;
-  ctx.drawImage(MM.base, sx, sy, sw, sw, x, y, size, size);
-  ctx.drawImage(MM.fog, sx, sy, sw, sw, x, y, size, size);
+  if(layer !== 'icons'){
+    ctx.fillStyle = '#050407'; ctx.fillRect(x, y, size, size);
+    const sx = (view.cx - view.half - sc.x0)*k, sy = (view.cy - view.half - sc.y0)*k, sw = view.half*2*k;
+    ctx.imageSmoothingEnabled = false;
+    ctx.drawImage(MM.base, sx, sy, sw, sw, x, y, size, size);
+    ctx.drawImage(MM.fog, sx, sy, sw, sw, x, y, size, size);
+    if(layer === 'terrain'){ ctx.restore(); return; }
+  }
   const ms = big ? 1.6 : 1;
   const dot = (wx, wy, col, r, shape) => {
     const [px, py] = toS(wx, wy); if(px < x-10 || py < y-10 || px > x+size+10 || py > y+size+10) return;
@@ -786,7 +789,8 @@ function drawMapView(x, y, size, view, big){
   if(sc.horse){ dot(sc.horse.x, sc.horse.y, '#e0a060', 3.5*ms); }
   for(const p of G.pets) dot(p.x, p.y, RARITY[p.def.rarity].col, 1.5*ms);
   // héroe: flecha en la dirección en la que mira
-  const [hx, hy] = toS(P.x, P.y), a = P.face, L = 7*ms;
+  const [hx, hy] = toS(P.x, P.y), a = P.face, L = (big ? 8 : 7)*ms;
+  if(big){ ctx.beginPath(); ctx.arc(hx, hy, L*1.5 + Math.sin(G.t*5)*1.5, 0, Math.PI*2); ctx.strokeStyle = '#0c0a0e'; ctx.lineWidth = 5; ctx.stroke(); ctx.strokeStyle = '#ffe070'; ctx.lineWidth = 2.5; ctx.stroke(); }   // anillo para distinguir bien al jugador
   ctx.beginPath(); ctx.moveTo(hx + Math.cos(a)*L, hy + Math.sin(a)*L);
   ctx.lineTo(hx + Math.cos(a+2.5)*L*.7, hy + Math.sin(a+2.5)*L*.7); ctx.lineTo(hx + Math.cos(a-2.5)*L*.7, hy + Math.sin(a-2.5)*L*.7); ctx.closePath();
   ctx.fillStyle = '#ffffff'; ctx.fill(); ctx.strokeStyle = '#0c0a0e'; ctx.lineWidth = 2; ctx.stroke();
@@ -815,9 +819,10 @@ function drawBigMap(){
   if(a < 1){ under = drawBigMap.under ??= document.createElement('canvas'); under.width = rw; under.height = rw; under.getContext('2d').drawImage(cv, rx, ry, rw, rw, 0, 0, rw, rw); }
   ctx.save(); ctx.globalAlpha = 1;
   mapFrame(x, y, size);
-  const sc = G.sc, half = Math.max(sc.x1-sc.x0, sc.y1-sc.y0)/2;
-  drawMapView(x, y, size, {cx:(sc.x0+sc.x1)/2, cy:(sc.y0+sc.y1)/2, half}, true);
-  if(under){ ctx.globalAlpha = 1 - a; ctx.drawImage(under, rx, ry); }
+  const sc = G.sc, half = Math.max(sc.x1-sc.x0, sc.y1-sc.y0)/2, view = {cx:(sc.x0+sc.x1)/2, cy:(sc.y0+sc.y1)/2, half};
+  drawMapView(x, y, size, view, true, 'terrain');
+  if(under){ ctx.globalAlpha = 1 - a; ctx.drawImage(under, rx, ry); ctx.globalAlpha = 1; }
+  drawMapView(x, y, size, view, true, 'icons');   // los iconos (jugador, cofres, portales…) nunca se vuelven transparentes
   ctx.restore();
   ctx.textAlign = 'center'; ctx.font = `${9*S}px ${FONT}`; textO(sc.name, W/2, y - 22, '#ffd8a0');
   ctx.font = `${6*S}px ${FONT}`;
@@ -1047,7 +1052,7 @@ UI.renderMapInfo = function(id){
      <div class="mpets">${rows}</div>
      ${legendInfoHTML(e)}
      ${e.boss ? bossInfoHTML(e) : ''}
-     ${lk ? `<button disabled>Supera la Expedición ${e.lvl-1} para desbloquearla</button>` : e.needKey && !G.inv.bag.some(o => o && o.id==='minekey') ? '<button disabled>Necesitas una llave de la mina en la mochila</button>' : sel ? '<button id="mapGo">Viajar' + (e.needKey ? ' (gasta 1 llave de la mina)' : '') + '</button>' : '<p class="sub">Haz clic para seleccionarla</p>'}`;
+     ${lk ? `<button disabled>${blockBoss(e) && (G.save.maxExp||0) >= e.lvl - 1 ? 'Derrota a ' + MONSTERS[blockBoss(e).boss].name + ' para desbloquearla' : 'Supera la Expedición ' + (e.lvl-1) + ' para desbloquearla'}</button>` : e.needKey && !G.inv.bag.some(o => o && o.id==='minekey') ? '<button disabled>Necesitas una llave de la mina en la mochila</button>' : sel ? '<button id="mapGo">Viajar' + (e.needKey ? ' (gasta 1 llave de la mina)' : '') + '</button>' : '<p class="sub">Haz clic para seleccionarla</p>'}`;
   const go = $('mapGo'); if(go) go.onclick = () => {
     if(e.needKey){ const ix = G.inv.bag.findIndex(o => o && o.id==='minekey'); if(ix < 0){ toast('Necesitas una llave de la mina'); return; } if(--G.inv.bag[ix].n <= 0) G.inv.bag[ix] = null; }
     this.closeRaidMap(); startRaid(e.id);
@@ -1153,7 +1158,10 @@ UI.drawTree = function(){
 };
 
 // una expedición se desbloquea al volver con vida de la anterior
-const expLocked = e => e.locked || (G.save.maxExp||0) < e.lvl - 1;
+// los jefes bloquean el avance: no se puede pasar al nivel siguiente sin derrotar al jefe del anterior (las partidas que ya llegaron más lejos lo dan por hecho)
+const bossDown = e => !e.boss || !!(G.save.bossDone && G.save.bossDone[e.id]) || !!(G.save.bossGift && G.save.bossGift[e.id]) || (G.save.maxExp||0) > e.lvl;
+const blockBoss = e => EXPEDITIONS.find(x => x.boss && x.lvl === e.lvl - 1 && !bossDown(x));
+const expLocked = e => e.locked || (G.save.maxExp||0) < e.lvl - 1 || !!blockBoss(e);
 
 // ---------- cartel de enhorabuena al rescatar una mascota ----------
 UI.showPetCard = function(id, shiny=false){

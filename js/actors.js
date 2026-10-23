@@ -142,11 +142,11 @@ function updatePlayer(dt){
 
   // Espacio: saltar · Shift (mantener): correr
   P.running = !uiBusy && actionHeld('run') && P.moving && P.st > 0 && !P.blocking && !P.jump;
-  if(P.running){ P.st -= STAM.run*dt*(MS('car',5) ? .85 : 1)*(hasPetAffix('ligera') ? .85 : 1); P.stDelay = .5; if(P.st<=0){ P.st=0; P.noStamT=.6; } }
+  if(P.running){ P.st -= STAM.run*dt*stamMul()*(MS('car',5) ? .85 : 1)*(hasPetAffix('ligera') ? .85 : 1); P.stDelay = .5; if(P.st<=0){ P.st=0; P.noStamT=.6; } }
 
   // cubrirse con el escudo
   P.blocking = !uiBusy && actionHeld('block') && !!G.inv.equip.shield && P.st > 0 && !P.jump;
-  if(P.blocking){ P.st -= STAM.block*dt*(MS('car',15) ? .75 : 1); P.stDelay = .5; if(P.st<=0){ P.st=0; P.blocking=false; P.noStamT=.6; } }
+  if(P.blocking){ P.st -= STAM.block*dt*stamMul()*(MS('car',15) ? .75 : 1); P.stDelay = .5; if(P.st<=0){ P.st=0; P.blocking=false; P.noStamT=.6; } }
 
   let spd = (P.running ? SPEED.run : SPEED.walk) * (1 + S2.move/100 + SK('agi')/100);
   if(P.speedT > 0) spd *= 1.3;
@@ -191,7 +191,7 @@ function updatePlayer(dt){
   if(S2.hpreg && P.hp < P.maxHp) P.hp = Math.min(P.maxHp, P.hp + S2.hpreg*dt);
   if(P.breadT > 0 && P.hp < P.maxHp) P.hp = Math.min(P.maxHp, P.hp + 3*dt);   // pan élfico
   // estamina
-  P.stDelay -= dt; if(MS('car',20)) P.stDelay = Math.min(P.stDelay, 0);
+  P.stDelay -= dt;
   if(P.stDelay <= 0 && !P.running && !P.blocking){
     const mult = 1 + G.pets.reduce((s,p)=>s+(p.def.affixes.includes('inspiradora')?.15:0), 0) + S2.sreg/100 + SK('car')*.02 + (G.pt.pjSreg||0)/100;
     P.st = Math.min(P.stMax, P.st + 30*mult*dt);
@@ -231,7 +231,7 @@ function tryJump(){
   if(P.jump || P.dead) return;
   if(P.rootT > 0){ toast('¡Estás inmovilizado!', .8); return; }
   if(P.st < STAM.jump){ P.noStamT = .6; toast('Sin estamina para saltar', 1); return; }
-  P.st -= STAM.jump*(hasPetAffix('ligera') ? .85 : 1); P.stDelay = 1;
+  P.st -= STAM.jump*stamMul()*(hasPetAffix('ligera') ? .85 : 1); P.stDelay = 1;
   let dx = P.dx, dy = P.dy; if(!P.moving){ dx = Math.cos(P.face); dy = Math.sin(P.face); }
   const dur = .32, dist = 135;   // salto rápido y largo
   P.jump = {t:0, dur, dx, dy, speed:dist/dur}; P.punchT = 0; P.blocking = false;
@@ -249,9 +249,9 @@ function attack(){
   const kind = !w ? 'fist' : ITEMS[w.id].kind;
   if(isRanged(kind) && !hasArrows()){ toast('No tienes flechas en la mochila', 1.2); mouse.l = false; return; }
   if(kind==='flamethrower' && G.sc.kind==='raid'){ if(P.oil < 1.8){ toast('Sin aceite para el lanzallamas', 1.2); mouse.l = false; return; } P.oil -= 1.8; }
-  let cost = (STAM[kind] ?? STAM.fist) * (MS('car',10) ? .85 : 1);
+  let cost = (STAM[kind] ?? STAM.fist) * stamMul() * (MS('car',10) ? .85 : 1);
   const combo = kind==='fist' ? (P.comboT>0 ? (P.combo%3)+1 : 1) : 1;
-  if(kind==='fist' && combo===3) cost = STAM.fist3 * (MS('car',10) ? .85 : 1);
+  if(kind==='fist' && combo===3) cost = STAM.fist3 * stamMul() * (MS('car',10) ? .85 : 1);
   if(P.st < cost){ P.noStamT = .6; return; }
   P.st -= cost; P.stDelay = .5;
   P.atkKind = kind; P.combo = combo;
@@ -411,7 +411,7 @@ function damagePlayer(dmg, m){
   const dx = P.x-m.x, dy = P.y-m.y, d = Math.hypot(dx,dy) || 1;
   if(P.blocking && Math.abs(angDiff(Math.atan2(-dy,-dx), P.face)) < 1.75){
     const sh = G.inv.equip.shield, blockPct = (sh && ITEMS[sh.id].block) || .7;
-    if(!(P.elfT > 0)) P.st -= dmg*.6;
+    if(!(P.elfT > 0)) P.st -= dmg*.6*stamMul();
     P.stDelay = .6;
     const rawDmg = dmg; dmg *= 1 - blockPct;
     addText(P.x, P.y-50, 'Bloqueo', '#c8d0e0', 7); sfx('block');
@@ -788,6 +788,7 @@ function killMonster(m){
       toast('Se ha abierto un portal de retorno cerca. Quédate encima 5 s para volver a casa', 4.5);
     }
     const eid = G.sc.exp && G.sc.exp.id;
+    if(eid){ (G.save.bossDone ??= {})[eid] = true; saveGame(); }   // el jefe derrotado desbloquea la siguiente expedición
     if(eid && !G.save.bossGift[eid] && petsOfExp(G.sc.petExp ?? (G.sc.lvl || 1)).length){
       G.save.bossGift[eid] = true; saveGame();
       const sp = freeSpotNear(m.x, m.y + 30, 14), cage = {x:Math.round(sp.x), y:Math.round(sp.y), pet:null, shiny:true, gift:true, open:false};
@@ -938,7 +939,7 @@ function updateUrr(m, dt){
     let k;
     if(d < 64) k = 'smash';
     else if(Math.random() < (m.phase2 ? .3 : .2)) k = 'shock';
-    else { const r = Math.random(); k = r < .3 ? 'charge' : r < .58 ? 'axes' : r < .78 ? (mine < 4 ? 'roar' : 'axes') : (m.phase2 ? 'quake' : 'charge'); }
+    else { const r = Math.random(); k = r < .3 ? 'charge' : r < .58 ? 'axes' : r < .78 ? (mine < 3 ? 'roar' : 'axes') : (m.phase2 ? 'quake' : 'charge'); }
     m.cast = k; m.prepT = {smash:.65, charge:.85, axes:.6, roar:1, quake:.9, shock:1.15}[k]; m.atkCd = 99;
     if(k==='charge'){ m.cdx = dx/d; m.cdy = dy/d; }
     const names = {smash:'', charge:'¡Embestida!', axes:'Lluvia de hachas', roar:'¡Guerreros, a mí!', quake:'Temblor', shock:'¡CATACLISMO! ¡SALTA!'};
@@ -962,7 +963,7 @@ function urrCast(m){
       G.projs.push({x:m.x + m.face*10, y:m.y-30, vx:Math.cos(a)*230, vy:Math.sin(a)*230, life:1.8, kind:'axe', from:'mon', mon:m, dmg:dmg*.7, r:5}); }
     sfx('throw');
   } else if(m.cast==='roar'){
-    const kinds = m.phase2 ? ['orc','orc','orcarcher','orcbrute'] : ['orc','orc','orcarcher'];
+    const kinds = m.phase2 ? ['orc','orcbrute'] : ['orc','orcarcher'];
     for(const t of kinds){
       const p = freeSpotNear(m.x + rand(-60,60), m.y + rand(20,70), 10);
       const g = mkMonster(t, 'normal', p.x, p.y, {affixes:[]}); g.summoner = m; g.aggro = true; G.mons.push(g);
@@ -2179,3 +2180,6 @@ function drawAlly(al){
   drawSP(fr, al.x, al.y, al.face < 0);
   b.globalAlpha = Math.min(1, al.life/1.5) * .5; pixRing(al.x, al.y, 8, 3, '#7af07a', 14); b.globalAlpha = 1;
 }
+
+// «No fumador» (Cardio 20): todas las acciones gastan un 10 % menos de estamina
+function stamMul(){ return MS('car',20) ? .9 : 1; }

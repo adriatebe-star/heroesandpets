@@ -3,6 +3,6 @@ const OVERRIDES = {
  "set": {
   "ITEMS.urrwall.armor": 10,
   "ITEMS.urrwall.fixed.2.v": 75,
-  "PETS.colmillo.hp": 500
+  "PETS.colmillo.hp": 400
  }
 };

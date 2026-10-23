@@ -106,6 +106,7 @@ function startRaid(expId='village'){
   const sc = expId==='temple' ? buildTemple(seed) : expId==='forest' ? buildForest(seed) : expId==='mine' ? buildMine(seed) : expId==='river' ? buildRiver(seed) : expId==='castle' ? buildCastle(seed) : expId==='orccamp' ? buildOrcCamp(seed) : expId==='plains' ? buildPlains(seed) : expId==='crypt' ? buildCrypt(seed) : expId==='cemetery' ? buildCemetery(seed) : buildVillage(seed);
   sc.lvl = exp.lvl; sc.exp = exp; sc.petExp = exp.petExp ?? exp.lvl;
   randomReturnPortals(sc);
+  G.save.sold = [];   // Trapis olvida lo recomprable al salir a una expedición
   resetWorld(sc);
   for(const sp of G.sc.monsterSpawns) for(const e of sp.pack){
     for(let i=0;i<10;i++){

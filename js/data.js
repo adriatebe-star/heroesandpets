@@ -594,9 +594,14 @@ Object.assign(PETS, {
 });
 PET_AFFIX.eclipse = {name:'Eclipse', desc:'Cada 25 s confunde a los enemigos cercanos y da +30 % de daño al héroe durante 4 s'};
 PET_AFFIX.luna ={name:'Luz de luna', desc:'Aura que revela a los Sombríos y cura 1 de vida por segundo al héroe'};
+// escalado por nivel de expedición (petición del usuario): cada nivel de la expedición da +12 % de vida y +10 % de daño a sus mascotas
+const PET_TIER_HP = .12, PET_TIER_DMG = .10;
+const petTier = p => Math.max(1, parseInt(p.exp) || 1);
+const petBaseHp = p => Math.round(PET_HP[p.rarity] * (p.affixes.includes('robusta') ? 1.4 : 1) * (1 + PET_TIER_HP*(petTier(p) - 1)));
 for(const id in PETS){
-  const p = PETS[id]; p.id = id;
-  p.hp = Math.round(PET_HP[p.rarity] * (p.affixes.includes('robusta') ? 1.4 : 1));
+  const p = PETS[id]; p.id = id; p.exp ??= 1;
+  p.hp = petBaseHp(p);
+  const dm = 1 + PET_TIER_DMG*(petTier(p) - 1); p.dmg = p.dmg.map(v => Math.max(1, Math.round(v*dm)));
 }
 for(const id in PETS) PETS[id].exp ??= 1;
 const PET_IDS = Object.keys(PETS);
@@ -619,7 +624,7 @@ const SKILLS = {
         miles:{5:'La esquiva (espacio) recarga un 20 % más rápido', 10:'+5 % de esquivar golpes', 15:'La esquiva recarga un 20 % más rápido', 20:'Tus flechas y piedras atraviesan a un enemigo más'}},
   car: {name:'Cardio', col:'#c8f070', desc:'Estamina',
         per:'+3 de estamina máxima · +2 % regeneración de estamina',
-        miles:{5:'Correr gasta un 15 % menos', 10:'Atacar gasta un 15 % menos', 15:'Cubrirse gasta un 25 % menos', 20:'La estamina empieza a recuperarse al instante'}},
+        miles:{5:'Correr gasta un 15 % menos', 10:'Atacar gasta un 15 % menos', 15:'Cubrirse gasta un 25 % menos', 20:'Todas las acciones gastan un 10 % menos de estamina'}},
   agu: {name:'Aguante', col:'#ff9aa8', desc:'Vida, regeneración, armadura y mochila',
         per:'+4 de vida máxima · +0,1 de vida por segundo · +0,5 de armadura',
         miles:{4:'+1 hueco de mochila', 8:'+1 hueco de mochila', 12:'+1 hueco de mochila', 16:'+1 hueco de mochila', 20:'+1 hueco de mochila'}},
@@ -680,7 +685,7 @@ const UNIQUE_CHANCE = .3;   // probabilidad de que la Condesa suelte uno de sus 
 const NOTABLE_NAMES = {
   agr:{5:'Instinto asesino', 10:'Barrido', 15:'Ojo del verdugo', 20:'Onda sísmica'},
   agi:{5:'Paso rápido', 10:'Reflejos felinos', 15:'Viento', 20:'Disparo perforante'},
-  car:{5:'Zancada larga', 10:'Ritmo de combate', 15:'Guardia firme', 20:'Segundo aliento'},
+  car:{5:'Zancada larga', 10:'Ritmo de combate', 15:'Guardia firme', 20:'No fumador'},
   agu:{4:'Mochila reforzada I', 8:'Mochila reforzada II', 12:'Mochila reforzada III', 16:'Mochila reforzada IV', 20:'Mochila reforzada V'},
   exp:{5:'Ojo de buscador', 10:'Olfato para el oro', 15:'Codicia', 20:'Cerrajero maestro'},
 };

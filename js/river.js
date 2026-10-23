@@ -42,19 +42,18 @@ function elfDrop(m){
 // poción élfica: 1 minuto sin gastar estamina
 function drinkElfPotion(){ P.elfT = 60; P.st = P.stMax; toast('¡Poción élfica! Durante 1 minuto no gastas estamina', 2.4); sfx('potion'); burst(P.x, P.y-20, 14, ['#3ad88a','#b8ffd0','#ffffff'], [30,90], [.4,.9], -60); }
 // barras de tiempo de los efectos temporales (poción élfica y seta comestible), apiladas sobre el centro de la pantalla
-function drawElfBuff(){
-  const buffs = [];
-  if(P.elfT > 0) buffs.push({t:P.elfT, name:'Poción élfica', col:'#3ad88a', bg:'#1e3a2e', fr:'#0c1a14', tx:'#e8fff0'});
-  if(P.breadT > 0) buffs.push({t:P.breadT, name:'Pan élfico', col:'#e8c070', bg:'#3a2c14', fr:'#1a1408', tx:'#fff4d8'});
-  if(P.weakT > 0) buffs.push({t:P.weakT, name:'Debilitado', col:'#d83a3a', bg:'#3a1414', fr:'#1a0808', tx:'#ffe0e0'});
-  if(P.hallT > 0) buffs.push({t:P.hallT, name:'Seta alucinógena', col:'#b070ff', bg:'#2a1a4a', fr:'#12081e', tx:'#f0e0ff'});
-  if(P.speedT > 0) buffs.push({t:P.speedT, name:'Seta comestible', col:'#ff8a3a', bg:'#3a1e0e', fr:'#1a0e06', tx:'#fff0e0'});
-  buffs.forEach((bf, i) => {
-    const w = 150, x = W/2 - w/2, y = H - 150 - i*24;
-    ctx.globalAlpha = .9; ctx.fillStyle = bf.fr; ctx.fillRect(x-3, y-3, w+6, 20); ctx.fillStyle = bf.bg; ctx.fillRect(x, y, w, 14); ctx.fillStyle = bf.col; ctx.fillRect(x, y, w*Math.min(1, bf.t/60), 14); ctx.globalAlpha = 1;
-    ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.font = `${5.5*S}px ${FONT}`; textO(`${bf.name} · ${Math.ceil(bf.t)} s`, W/2, y + 7, bf.tx);
-  });
+// efectos temporales activos: se muestran como iconos en la columna de la izquierda con los segundos dentro (hudfx.js)
+function timedBuffs(){
+  const b = [], add = (t, name, desc, o) => { if(t > 0) b.push(Object.assign({t, name, desc, from:'Efecto activo'}, o)); };
+  add(P.elfT, 'Poción élfica', 'No gastas estamina.', {img:ICONS.elfpotion});
+  add(P.breadT, 'Pan élfico', '+25 % de velocidad de movimiento, regeneras 3 de vida por segundo y atacas un 25 % más rápido.', {img:ICONS.elfbread});
+  add(P.weakT, 'Debilitado', 'Haces un 40 % menos de daño.', {ic:'bolt', col:'#d83a3a'});
+  add(P.hallT, 'Seta alucinógena', 'El mundo casi a oscuras, hadas que te guían a las jaulas y +20 % de velocidad de movimiento.', {img:ICONS.hallshroom});
+  add(P.speedT, 'Seta comestible', '+30 % de velocidad de movimiento.', {img:ICONS.mushroom});
+  add(P.regenT, 'Vendas', 'Regeneras 6 de vida por segundo.', {img:ICONS.bandage});
+  return b;
 }
+function drawElfBuff(){}
 
 // ---------- monstruos ----------
 Object.assign(MONSTERS, {

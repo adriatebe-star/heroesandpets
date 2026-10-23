@@ -21,7 +21,7 @@ const ORIG = {};   // copia de los datos originales (el editor la usa para «res
   }
   for(const k in ITEM_AFFIX){ const a = ITEM_AFFIX[k]; if(typeof a.descTpl === 'string' && !(a.desc && a.custom)) a.desc = tplFn(a.descTpl); }
   // la vida de las mascotas sale de su rareza salvo que se haya fijado a mano
-  for(const id in PETS){ const p = PETS[id]; if(!(O.set && O.set['PETS.' + id + '.hp'] !== undefined)) p.hp = Math.round(PET_HP[p.rarity] * (p.affixes.includes('robusta') ? 1.4 : 1)); }
+  for(const id in PETS){ const p = PETS[id]; if(!(O.set && O.set['PETS.' + id + '.hp'] !== undefined)) p.hp = petBaseHp(p); }
   // traducciones al inglés escritas en el editor
   if(O.lang && typeof LANG_EN !== 'undefined'){ Object.assign(LANG_EN, O.lang); LANG.load(LANG_EN); }
 })();
