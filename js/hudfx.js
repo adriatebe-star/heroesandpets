@@ -53,6 +53,7 @@ function drawWearAlert(){
   ctx.restore();
   ctx.font = `${6.5*S}px ${FONT}`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; textO(`¡${a.name} está a punto de romperse!`, cx, cy + s*1.5, '#ffd23a'); ctx.textAlign = 'left';
 }
+const heroFxOf = a => HERO_AFFIX_FX[a] || (PET_AFFIX[a] && PET_AFFIX[a].fx && (PET_AFFIX[a].fx.heal || PET_AFFIX[a].fx.leech) ? {ic:'heart', col:'#9affb0'} : null);   // afijos nuevos que curan al héroe
 function drawPetBuffs(HS){
   drawWearAlert();
   const list = [];
@@ -60,8 +61,8 @@ function drawPetBuffs(HS){
   if(lt && lt.gem && GEMS[lt.gem]) list.push({img:ICONS['gem_' + lt.gem], name:GEMS[lt.gem].name, col:GEMS[lt.gem].col, desc:GEMS[lt.gem].desc, from:'Gema del farolillo'});
   for(const t of (G.inv.equip.tal || [])) if(t){ const d = ITEMS[t.id]; list.push({img:ICONS[d.icon], name:d.name, col:'#b8f0a0', desc:d.fx || d.desc, from:'Talismán equipado'}); }
   const fx = {};
-  for(const p of G.pets){ if(!p.def || p.hp <= 0) continue; for(const a of p.def.affixes) if(HERO_AFFIX_FX[a] && PET_AFFIX[a]){ (fx[a] ??= {names:[]}).names.push(p.def.name); } }
-  for(const k in fx) list.push({ic:HERO_AFFIX_FX[k].ic, name:PET_AFFIX[k].name, col:HERO_AFFIX_FX[k].col, desc:PET_AFFIX[k].desc, from:'De: ' + fx[k].names.join(', '), n:fx[k].names.length});
+  for(const p of G.pets){ if(!p.def || p.hp <= 0) continue; for(const a of p.def.affixes) if(heroFxOf(a) && PET_AFFIX[a]){ (fx[a] ??= {names:[]}).names.push(p.def.name); } }
+  for(const k in fx) list.push({ic:heroFxOf(k).ic, name:PET_AFFIX[k].name, col:heroFxOf(k).col, desc:PET_AFFIX[k].desc, from:'De: ' + fx[k].names.join(', '), n:fx[k].names.length});
   if(!list.length) return;
   const sz = Math.round(46*HS), gap = Math.round(8*HS), x0 = 18, y0 = Math.round(112*HS) + (AUDIO.muted ? 24 : 0);
   let hover = null;

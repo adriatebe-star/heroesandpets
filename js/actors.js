@@ -35,6 +35,7 @@ const rollR = r => rand(r[0], r[1]);
 
 // ---------- estadísticas que da el equipo ----------
 const GEAR_SLOTS = ['w1','w2','shield','head','chest','hands','feet'];
+const affixStat = k => (ITEM_AFFIX[k] && ITEM_AFFIX[k].stat) || k;   // un afijo nuevo del editor suma a una estadística existente
 function gearStats(){
   const E = G.inv.equip, s = {armor:0, hp:0, stam:0, sreg:0, move:0, crit:0, aspd:0, leech:0, gold:0, oil:0, petdmg:0, thorns:0, dmg:0, fist:0};
   for(const k of GEAR_SLOTS){
@@ -46,9 +47,9 @@ function gearStats(){
     if(d.move) s.move += d.move;
     if(d.dmgFist) s.fist += d.dmgFist;
     if(d.crit) s.crit += d.crit;
-    for(const a of it.affixes || []) s[a.k] = (s[a.k]||0) + a.v;
+    for(const a of it.affixes || []){ const st = affixStat(a.k); s[st] = (s[st]||0) + a.v; }
   }
-  for(const it of E.tal || []) if(it) for(const a of it.affixes || []) s[a.k] = (s[a.k]||0) + a.v;   // talismanes con bonos fijos (legendarios)
+  for(const it of E.tal || []) if(it) for(const a of it.affixes || []){ const st = affixStat(a.k); s[st] = (s[st]||0) + a.v; }   // talismanes con bonos fijos (legendarios)
   s.move += (typeof lanternGem === 'function' ? lanternGem().move : 0) || 0;
   s.gold += (MS('exp',10) ? 10 : 0) + (MS('exp',15) ? 10 : 0);
   return s;
@@ -432,6 +433,10 @@ function damagePlayer(dmg, m){
   if(S2.thorns && !m.dying) hitMonster(m, S2.thorns, {src:'player', nx:-dx/d, ny:-dy/d, k:60});
   // efectos de afijos y del propio monstruo al golpear
   const A = m.affixes;
+  if(monFx(m, 'poison')) P.poisonT = Math.max(P.poisonT, 3);
+  if(monFx(m, 'bleed')) P.bleedT = Math.max(P.bleedT||0, 4);
+  if(monFx(m, 'burn')) P.burnT = Math.max(P.burnT||0, 3);
+  if(monFx(m, 'slow')) P.slowT = Math.max(P.slowT||0, 2);
   if(MONSTERS[m.type].poisonHit) P.poisonT = Math.max(P.poisonT, 3);
   if(MONSTERS[m.type].bleedHit) P.bleedT = Math.max(P.bleedT||0, 4);
   if(A.includes('gelido') || MONSTERS[m.type].slowHit){ P.slowT = 2; burst(P.x, P.y-20, 6, ['#a0d8ff','#ffffff'], [20,60], [.3,.5], 0); }
@@ -458,7 +463,7 @@ function killPlayer(){
 //  Monstruos
 // =====================================================================
 const AFFIX_KEYS = Object.keys(MON_AFFIX);
-function rollAffixes(n){ return shuffle(AFFIX_KEYS.slice()).slice(0, n); }
+function rollAffixes(n){ return shuffle(Object.keys(MON_AFFIX)).slice(0, n); }   // dinámico: incluye los afijos nuevos del editor
 const RARE_PREFIX = {
   small:['Gelatina','Babaza','Masa','Charca','Ponzoña','Pringue'], big:['Gelatina','Babaza','Masa','Charca','Ponzoña','Pringue'],
   skeleton:['Osamenta','Calavera','Carcasa','Mandíbula'], skelarcher:['Osamenta','Calavera','Carcasa','Mandíbula'],
@@ -492,6 +497,7 @@ function mkMonster(type, rarity, x, y, o={}){
     lastHit:99, aggro:false, target:null, tauntT:0, tauntBy:null, stunT:0, slowT:0, freezeT:0, weakT:0, poisonT:0, burnT:0, dot:0, fearT:0,
     summonT:8, jumpT:rand(3,5), jump:null, poisonDrop:1.2, stolen:0, fleeT:0, revealT:0, wander:null, wanderT:0,
     name: o.name ?? monName(type, rarity, affixes)};
+  for(const a of affixes){ const f = MON_AFFIX[a] && MON_AFFIX[a].fx; if(!f) continue; if(f.hp){ m.hp *= 1 + f.hp/100; m.maxHp = m.hp; } if(f.dmg) m.dmg *= 1 + f.dmg/100; if(f.spd) m.baseSpd *= 1 + f.spd/100; }   // afijos nuevos del editor
   m.shieldMax = m.shield;
   return m;
 }
@@ -519,6 +525,7 @@ function updateMonster(m, dt){
   }
   const A = m.affixes;
   if(A.includes('regenerador') && m.lastHit > 3 && m.hp < m.maxHp) m.hp = Math.min(m.maxHp, m.hp + m.maxHp*.03*dt);
+  { const rg = monFx(m, 'regen'); if(rg && m.lastHit > 3 && m.hp < m.maxHp) m.hp = Math.min(m.maxHp, m.hp + m.maxHp*rg/100*dt); }
   const furious = A.includes('furioso') && m.hp < m.maxHp*.5;
   let spd = m.baseSpd * (furious ? 1.3 : 1) * (m.slowT>0 ? .5 : 1) * (m.freezeT>0 ? .4 : 1);
   m.curDmg = m.dmg * (furious ? 1.5 : 1) * (m.weakT>0 ? .6 : 1);
@@ -737,6 +744,7 @@ function hitMonster(m, dmg, o){
   if(o.bleed) m.bleedT = Math.max(m.bleedT||0, o.bleed);
   // Espinoso: devuelve parte del daño cuerpo a cuerpo
   if(m.affixes.includes('espinoso') && o.melee && o.src==='player') hurtPlayer(Math.max(1, Math.round(shown*.2)), '#e0a0ff');
+  { const th = monFx(m, 'thorns'); if(th && o.melee && o.src==='player') hurtPlayer(Math.max(1, Math.round(shown*th/100)), '#e0a0ff'); }
   sfx(o.src==='pet' ? 'petHit' : ({skeleton:'stoneHit', ghost:'click'}[m.art] || 'slime'), .03);
   const col = o.src==='pet' ? '#f2c46d' : o.crit ? '#ffd166' : '#ffffff';
   addText(m.x+rand(-5,5), m.y-m.r*2-8, o.crit ? shown+'!' : ''+shown, col, o.crit ? 11 : 8);
@@ -1052,23 +1060,27 @@ function syncPets(){
   for(const p of G.pets) p.slot = G.inv.equip.pet.indexOf(p.item);
 }
 const petHas = (p,a) => p.def.affixes.includes(a);
-const petCd = p => p.def.cd * (petHas(p,'veloz') ? .8 : 1) * (centinelaOn(p) ? .5 : 1) * (p.item.shiny ? .91 : 1) / (p.item.serums && p.item.serums.super ? 1.2 : 1) / (legendOn('alphahorn') ? 1.25 : 1) * Math.max(.4, 1 - (G.pt.petAspd||0)/100) * rand(.9,1.1);
+// suma de un efecto genérico (afijos creados en el editor) de los afijos de la mascota
+const petFx = (p, k) => { let s = 0; for(const a of p.def.affixes){ const f = PET_AFFIX[a] && PET_AFFIX[a].fx; if(f && f[k]) s += f[k]; } return s; };
+const monFx = (m, k) => { let s = 0; for(const a of m.affixes){ const f = MON_AFFIX[a] && MON_AFFIX[a].fx; if(f && f[k]) s += f[k]; } return s; };
+const petCd = p => p.def.cd * (petHas(p,'veloz') ? .8 : 1) * (centinelaOn(p) ? .5 : 1) * (p.item.shiny ? .91 : 1) / (p.item.serums && p.item.serums.super ? 1.2 : 1) / (legendOn('alphahorn') ? 1.25 : 1) / (1 + petFx(p, 'aspd')/100) * Math.max(.4, 1 - (G.pt.petAspd||0)/100) * rand(.9,1.1);
 const centinelaOn = p => petHas(p,'centinela') && !P.dead && P.hp < P.maxHp*.3;
-function petDamage(p){ return rollR(p.def.dmg) * (petHas(p,'feroz') ? 1.25 : 1) * (centinelaOn(p) ? 1.5 : 1) * (1 + (G.stats ? G.stats.petdmg : 0)/100) * petDmgMult(p.item) * (legendOn('alphahorn') ? 1.25 : 1) * (p.packArmed ? (p.packArmed = false, 2) : 1) * (1 + ((G.pt.petDmg||0) + (G.pt.petAll||0))/100); }
+function petDamage(p){ return rollR(p.def.dmg) * (petHas(p,'feroz') ? 1.25 : 1) * (centinelaOn(p) ? 1.5 : 1) * (1 + (G.stats ? G.stats.petdmg : 0)/100) * petDmgMult(p.item) * (legendOn('alphahorn') ? 1.25 : 1) * (1 + petFx(p, 'dmg')/100) * (p.packArmed ? (p.packArmed = false, 2) : 1) * (1 + ((G.pt.petDmg||0) + (G.pt.petAll||0))/100); }
 function petStrike(p, m, mult=1, extra={}){
   // las mascotas de tierra no golpean a través de los muros
   if(!PET_ART[p.def.id].fly && !los(G.sc, p.x, p.y-4, m.x, m.y-4)) return;
   const d = Math.hypot(m.x-p.x, m.y-p.y) || 1;
   if(petHas(p,'ejecutora') && m.hp < m.maxHp*.3) mult *= 1.5;
-  const crit = Math.random() < (p.def.critPounce ? .2 : .1) + (G.pt.petCrit||0); if(crit) mult *= 2;
-  const bleed = extra.bleed || (petHas(p,'sangrienta') || (p.def.bleed && Math.random() < p.def.bleed) ? 4 : 0);
-  const stun = extra.stun || (petHas(p,'atronadora') && Math.random() < .15 ? .8 : 0);
+  const crit = Math.random() < (p.def.critPounce ? .2 : .1) + (G.pt.petCrit||0) + petFx(p, 'crit')/100; if(crit) mult *= 2;
+  const bleed = extra.bleed || (petHas(p,'sangrienta') || petFx(p, 'bleed') || (p.def.bleed && Math.random() < p.def.bleed) ? 4 : 0);
+  const stun = extra.stun || (petHas(p,'atronadora') && Math.random() < .15 ? .8 : 0) || (petFx(p, 'stun') && Math.random() < petFx(p, 'stun')/100 ? .8 : 0);
   hitMonster(m, petDamage(p)*mult, {src:'pet', pet:p, nx:(m.x-p.x)/d, ny:(m.y-p.y)/d, k:extra.k ?? 170,
-    crit, poison: (petHas(p,'venenosa') || extra.poison) ? 3 : 0, slow: petHas(p,'helada') ? 2 : (extra.slow||0), burn: (p.def.burn || petHas(p,'ignea') || petHas(p,'crin')) ? 3 : 0, stun, bleed, mark: extra.mark || p.def.mark});
+    crit, poison: (petHas(p,'venenosa') || extra.poison || petFx(p, 'poison')) ? 3 : 0, slow: (petHas(p,'helada') || petFx(p, 'slow')) ? 2 : (extra.slow||0), burn: (p.def.burn || petHas(p,'ignea') || petHas(p,'crin') || petFx(p, 'burn')) ? 3 : 0, stun, bleed, mark: extra.mark || p.def.mark});
   if(m.dying && p.def.raise) raiseAlly(p, m);
   if(petHas(p,'temible') && Math.random() < .1 && !m.dying){ m.fearT = 2; m.prepT = 0; }
   if(m.dying && petHas(p,'voraz')){ p.hp = Math.min(p.maxHp, p.hp + p.maxHp*.15); addText(p.x, p.y-24, '+'+Math.round(p.maxHp*.15), '#7ad86a', 6); }
   if(petHas(p,'vampirica') && !P.dead) P.hp = Math.min(P.maxHp, P.hp+1);
+  { const lf = petFx(p, 'leech'); if(lf && !P.dead) P.hp = Math.min(P.maxHp, P.hp + lf); }
   if(p.def.steal && Math.random() < .6 && G.sc.kind==='raid'){ const gold = randi(2,5); G.raidGold += gold; addText(m.x, m.y-m.r*2-14, '+' + gold, '#ffe08a', 6); sfx('coin'); }
   G.hitstop = Math.max(G.hitstop, .02);
 }
@@ -1078,11 +1090,14 @@ function damagePet(p, dmg, m, silent, ranged){
   if(fly && !ranged) dmg *= .5;   // las voladoras reciben la mitad del daño cuerpo a cuerpo; los proyectiles les hacen el daño completo
   if(petHas(p,'agil') && Math.random() < .2 && !silent){ addText(p.x, p.y-24, 'Esquiva', '#c8e8ff', 6); return; }
   if(petHas(p,'dura')) dmg *= .85;
+  { const dg = petFx(p, 'dodge'); if(dg && Math.random() < dg/100 && !silent){ addText(p.x, p.y-24, 'Esquiva', '#c8e8ff', 6); return; } }
+  dmg *= Math.max(.2, 1 - petFx(p, 'dr')/100);
   dmg *= Math.max(.4, 1 - (G.pt.petArmor||0)/100);
   p.hp -= dmg; p.flash = .12; p.regenT = 4;
   if(p.def.stone && p.hp > 0 && dmg >= p.maxHp*.08){ p.stoneT = 2; addText(p.x, p.y-30, '¡Piedra!', '#c8ccd4', 7); burst(p.x, p.y-10, 10, ['#8a8a92','#c8ccd4','#5a5a62'], [30,100], [.3,.6], 200); sfx('breakItem'); }
   if(!silent) addText(p.x, p.y-24, '-'+Math.round(dmg), '#ff9a9a', 7);
   if(m && m.hp !== undefined && petHas(p,'espinosa')) hitMonster(m, dmg*.2, {src:'pet', pet:p, nx:0, ny:0, k:0});
+  { const th = petFx(p, 'thorns'); if(th && m && m.hp !== undefined) hitMonster(m, dmg*th/100, {src:'pet', pet:p, nx:0, ny:0, k:0}); }
   if(p.hp <= 0){
     if(petHas(p,'indomable') && !p.rose){ p.rose = true; p.hp = Math.round(p.maxHp*.3); toast(p.def.name + ' se levanta de nuevo', 2); burst(p.x, p.y-8, 16, ['#ffe08a','#ffffff'], [40,120], [.4,.8], -40); sfx('levelup'); }
     else petDie(p);
@@ -1263,6 +1278,7 @@ function updatePet(p, dt){
     }
   }
   // Curandera: cura 1 de vida al héroe cada 4 s
+  { const hf = petFx(p, 'heal'); if(hf && canFight && P.hp < P.maxHp){ p.fhealT = (p.fhealT ?? 4) - dt; if(p.fhealT <= 0){ p.fhealT = 4; P.hp = Math.min(P.maxHp, P.hp + hf); addText(P.x, P.y-46, '+' + hf, '#7ad86a', 7); } } }
   if(petHas(p,'curandera') && canFight && P.hp < P.maxHp){ p.healT = (p.healT ?? 4) - dt; if(p.healT <= 0){ p.healT = 4; P.hp = Math.min(P.maxHp, P.hp+5); addText(P.x, P.y-46, '+5', '#7ad86a', 7); } }
   // Chiflo: cada 12 s silba y revela los cofres cercanos
   if(p.def.chestPing && canFight){
