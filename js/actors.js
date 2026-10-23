@@ -138,7 +138,9 @@ function lootUnderMouse(){
 function updatePlayer(dt){
   const sc = G.sc, inRaid = sc.kind==='raid';
   if(P.dead) return;
-  const uiBusy = UI.blocking(), S2 = G.stats || gearStats();
+  const uiBusy = UI.blocking() || P.stunT > 0, S2 = G.stats || gearStats();
+  if(P.stunT > 0 && Math.random() < dt*18) G.parts.push({x:P.x + rand(-8,8), y:P.y - 36 + rand(-3,3), vx:rand(-20,20), vy:-8, life:.4, max:.4, size:2, col:pick(['#ffe08a','#ffffff'])});   // estrellitas
+  if(P.stunT > 0) P.stunT -= dt;
   const mw = screenToWorld(mouse.x, mouse.y);
   if(P.punchT<=0) P.face = Math.atan2(mw.y-(P.y-18), mw.x-P.x);
 
@@ -170,6 +172,10 @@ function updatePlayer(dt){
   if(P.rootT > 0){ P.rootT -= dt; spd = 0; if(Math.random() < dt*14) G.parts.push({x:P.x+rand(-8,8), y:P.y-rand(0,5), vx:0, vy:-10, life:.4, max:.4, size:2, col:pick(['#a060d0','#6a4a9a','#e0c0ff'])}); }
   if(P.punchT > 0) spd *= isRanged(P.atkKind) ? .3 : .45;
   let mx = ix*spd, my = iy*spd;
+  if(sc.slippery && !P.jump){   // suelo helado: el héroe resbala (acelera y frena despacio)
+    const k = Math.min(1, dt*(P.moving ? 3.6 : 1.3)); P.sx = (P.sx||0) + (mx - (P.sx||0))*k; P.sy = (P.sy||0) + (my - (P.sy||0))*k; mx = P.sx; my = P.sy;
+    if(Math.hypot(mx, my) > 40 && Math.random() < dt*10) G.parts.push({x:P.x, y:P.y, vx:rand(-8,8), vy:rand(-6,2), life:.35, max:.35, size:1.5, col:'#e8f4ff'});
+  } else { P.sx = mx; P.sy = my; }
   if(P.jump){
     // salto: avanza en el aire, esquiva a los monstruos y pasa por encima de los objetos pequeños
     const j = P.jump; j.t += dt; const t = Math.min(1, j.t/j.dur);
@@ -313,7 +319,7 @@ function resolveAttack(){
     const crit = Math.random() < .12 + S2.crit/100; if(crit) dmg *= 2;
     const sx = P.x + Math.cos(P.face)*10, sy = P.y - 18 + Math.sin(P.face)*6;
     const la = legendArrow(w);
-    G.projs.push({x:sx, y:sy, vx:Math.cos(P.face)*(kind==='crossbow' ? 640 : 560), vy:Math.sin(P.face)*(kind==='crossbow' ? 640 : 560), life:.75, kind:'arrow', from:'player', dmg, crit, r:3, ang:P.face, pierce:(MS('agi',20) ? 1 : 0) + la.pierce + (Math.random()*100 < (S2.pierceCh||0) ? 3 : 0), homing:la.homing, markHit:la.mark, fire: arrow==='fire', explode: arrow==='explosive', fxS:{fireCh:S2.fireCh, litCh:S2.litCh, iceCh:S2.iceCh, bleedCh:S2.bleedCh, bleedDur:S2.bleedDur, poisonCh:S2.poisonCh, poisonDur:S2.poisonDur}, bounce: Math.random()*100 < (S2.bounceCh||0) ? 1 : 0});
+    G.projs.push({x:sx, y:sy, vx:Math.cos(P.face)*(kind==='crossbow' ? 640 : 560), vy:Math.sin(P.face)*(kind==='crossbow' ? 640 : 560), life:.75, kind:'arrow', from:'player', dmg, crit, r:3, ang:P.face, pierce:(MS('agi',20) ? 1 : 0) + la.pierce + (Math.random()*100 < (S2.pierceCh||0) ? 3 : 0), homing:la.homing, markHit:la.mark, fire: arrow==='fire', explode: arrow==='explosive', wfx: w ? {fearChance:ITEMS[w.id].fearChance, freezeChance:ITEMS[w.id].freezeChance, bleedChance:ITEMS[w.id].bleedChance} : null, fxS:{fireCh:S2.fireCh, litCh:S2.litCh, iceCh:S2.iceCh, bleedCh:S2.bleedCh, bleedDur:S2.bleedDur, poisonCh:S2.poisonCh, poisonDur:S2.poisonDur}, bounce: Math.random()*100 < (S2.bounceCh||0) ? 1 : 0});
     if(Math.random()*100 < (S2.multiCh||0)){   // proyectil adicional (sin gastar otra flecha)
       const p0 = G.projs[G.projs.length-1], an = P.face + (Math.random() < .5 ? -.13 : .13), sp = Math.hypot(p0.vx, p0.vy);
       G.projs.push({...p0, vx:Math.cos(an)*sp, vy:Math.sin(an)*sp, ang:an, bounce:0});
@@ -341,7 +347,7 @@ function resolveAttack(){
     let crit = Math.random() < critC; if(crit) dmg *= 2;
     const WD = w && ITEMS[w.id] || {};
     const fx2 = {stun: WD.stunChance && Math.random() < WD.stunChance ? 1 : 0, bleed: WD.bleedChance && Math.random() < WD.bleedChance ? 4 : 0, poison: WD.poisonChance && Math.random() < WD.poisonChance ? 4 : 0,
-      burn: WD.burnChance && Math.random() < WD.burnChance ? 4 : 0, freeze: WD.freezeChance && Math.random() < WD.freezeChance ? 2.5 : 0, weaken: WD.weakChance && Math.random() < WD.weakChance ? 5 : 0};
+      burn: WD.burnChance && Math.random() < WD.burnChance ? 4 : 0, freeze: WD.freezeChance && Math.random() < WD.freezeChance ? 2.5 : 0, weaken: WD.weakChance && Math.random() < WD.weakChance ? 5 : 0, fear: WD.fearChance && Math.random() < WD.fearChance ? 3 : 0};
     { const ar = affixRoll(S2); for(const k in ar) if(ar[k] > (fx2[k]||0)) fx2[k] = ar[k]; }   // afijos de fuego, rayo, hielo, sangrado y veneno
     const lg = legendMelee(w, m, crit, fx2); if(lg.addCrit){ dmg *= 2; crit = true; }
     hitMonster(m, dmg, {src:'player', nx:dx/(d||1), ny:dy/(d||1), k: (big ? 520 : W2.k)*(lg.kMul || 1), crit, melee:true, ...fx2});
@@ -444,6 +450,7 @@ function damagePlayer(dmg, m, elem){
   if(elem) dmg *= 1 - Math.min(.8, (S2.eleRes||0)/100);   // resistencia elemental: frío, fuego y rayo
   if(P.gelShield > 0){ const ab = Math.min(P.gelShield, dmg); P.gelShield -= ab; dmg -= ab; addText(P.x, P.y-62, 'Gelatina', '#9affb0', 6); }
   if(legendOn('ashcrown') && !m.dying){ m.weakT = Math.max(m.weakT || 0, 3); }
+  if(legendOn('blizzardcloak')) iceCloak(m);
   if(P.infernoT > 0) dmg *= .8;                               // llamarada infernal de Cerbero                          // armadura
   const push = m.affixes.includes('pesado') ? 520 : 260;
   P.vx += dx/d*push; P.vy += dy/d*push;
@@ -459,6 +466,7 @@ function damagePlayer(dmg, m, elem){
   if(monFx(m, 'slow')) P.slowT = Math.max(P.slowT||0, 2);
   if(MONSTERS[m.type].poisonHit) P.poisonT = Math.max(P.poisonT, 3);
   if(MONSTERS[m.type].bleedHit) P.bleedT = Math.max(P.bleedT||0, 4);
+  if(MONSTERS[m.type].stunHit && !legendOn('yetiheart')){ P.stunT = Math.max(P.stunT||0, 1.1); addText(P.x, P.y-62, '¡Aturdido!', '#ffe08a', 8); burst(P.x, P.y-34, 8, ['#ffe08a','#ffffff'], [20,60], [.3,.6], -40); }   // yeti: golpe pesado
   if(A.includes('gelido') || MONSTERS[m.type].slowHit){ P.slowT = 2; burst(P.x, P.y-20, 6, ['#a0d8ff','#ffffff'], [20,60], [.3,.5], 0); }
   if(A.includes('apagaluces') && G.sc.kind==='raid'){ P.oil = Math.max(0, P.oil-5); addText(P.x, P.y-56, '-5 aceite', '#ffb347', 7); }
   if(A.includes('agotador') && !(P.elfT > 0)){ P.st = Math.max(0, P.st-20); P.stDelay = .8; }
@@ -523,7 +531,7 @@ function mkMonster(type, rarity, x, y, o={}){
 }
 function monTargets(){
   const t = [];
-  if(!P.dead) t.push(P);
+  if(!P.dead && !(P.invisT > 0)) t.push(P);   // la coraza fantasmal te hace invisible
   // Sombra (sigilo): los enemigos la ignoran mientras no ataca
   for(const p of G.pets) if(p.exhaustedT<=0 && (p.z < 6 || PET_ART[p.def.id].fly) && !(p.def.stealth && p.state!=='engage')) t.push(p);   // las voladoras también son objetivo
   return t;
@@ -654,6 +662,8 @@ function updateMonster(m, dt){
           else if(MD.zap) G.projs.push({x:m.x + m.face*8, y:m.y-20, vx:ax/al*340, vy:ay/al*340, life:1.3, kind:'bolt', from:'mon', mon:m, dmg:m.curDmg, r:4, root: Math.random() < .25 ? .6 : 0, weak: Math.random() < .2 ? 3 : 0, col:['#a08800', '#ffe84a', '#ffffff']});
           else if(MD.flame) G.projs.push({x:m.x + m.face*8, y:m.y-12, vx:ax/al*250, vy:ay/al*250, life:1.1, kind:'flame', from:'mon', mon:m, dmg:m.curDmg, r:5, burn:true});
           else if(MD.dart) G.projs.push({x:m.x + m.face*8, y:m.y-14, vx:ax/al*330, vy:ay/al*330, life:1.2, kind:'dart', from:'mon', mon:m, dmg:m.curDmg, r:3, ang:Math.atan2(ay,ax), root: Math.random() < .3 ? 1.1 : 0, steal:true});
+          else if(MD.icearrow) G.projs.push({x:m.x + m.face*8, y:m.y-16, vx:ax/al*300, vy:ay/al*300, life:1.3, kind:'arrow', from:'mon', mon:m, dmg:m.curDmg, r:3, ang:Math.atan2(ay,ax), ice:true, slow:2.5, freeze: Math.random() < .4 ? 1.1 : 0});
+          else if(MD.snowball) G.projs.push({x:m.x + m.face*12, y:m.y-30, vx:ax/al*205, vy:ay/al*205, life:2.1, kind:'snowball', from:'mon', mon:m, dmg:m.curDmg, r:8, slow:2.5});
           else if(MD.rock) G.projs.push({x:m.x + m.face*10, y:m.y-24, vx:ax/al*215, vy:ay/al*215, life:1.9, kind:'rock', from:'mon', mon:m, dmg:m.curDmg, r:6});
           else if(MD.spit) G.projs.push({x:m.x + m.face*8, y:m.y-10, vx:ax/al*260, vy:ay/al*260, life:1.4, kind:'bolt', from:'mon', mon:m, dmg:m.curDmg, r:4, poison:true, col:['#1a6a1a','#4ae04a','#d8ffd8']});
           else G.projs.push({x:m.x + m.face*8, y:m.y-16, vx:ax/al*300, vy:ay/al*300, life:1.3, kind:'arrow', from:'mon', mon:m, dmg:m.curDmg, r:3, ang:Math.atan2(ay,ax)});
@@ -762,6 +772,7 @@ function hitMonster(m, dmg, o){
   if(o.mark && !(m.markT > 0)) addText(m.x, m.y-m.r*2-18, 'Marcado', '#ffd166', 6, -20);
   if(o.mark) m.markT = o.markT || 4;
   if(o.bleed) m.bleedT = Math.max(m.bleedT||0, o.bleed);
+  if(o.fear && !MONSTERS[m.type].boss){ if(!(m.fearT > 0)) addText(m.x, m.y-m.r*2-18, '¡Miedo!', '#c8a0ff', 6, -20); m.fearT = Math.max(m.fearT||0, o.fear); }
   // Espinoso: devuelve parte del daño cuerpo a cuerpo
   if(m.affixes.includes('espinoso') && o.melee && o.src==='player') hurtPlayer(Math.max(1, Math.round(shown*.2)), '#e0a0ff');
   { const th = monFx(m, 'thorns'); if(th && o.melee && o.src==='player') hurtPlayer(Math.max(1, Math.round(shown*th/100)), '#e0a0ff'); }
@@ -786,6 +797,7 @@ function killMonster(m){
   if(!m.small && !m.summoner && Math.random() < L.item*(1 + SK('exp')*.02)*(1 + ((G.stats && G.stats.loot) || 0)/100)*(hasPetAffix('cazarrecompensas') ? 1.1 : 1)){ const e = wpick(lootFor(LOOT.monsterTable, lvl)); dropItem(m.x, m.y, mkItem(e.id, e.n ? randi(e.n[0], e.n[1]) : 1, lvl, {normal:0, magic:.3, rare:.8}[m.rarity])); }
   if(L.treasure && !m.summoner && Math.random() < L.treasure + (hasPetAffix('buscatesoros')?.05:0)) dropItem(m.x, m.y, mkItem('treasure'));
   if(MONSTERS[m.type].elf && !m.summoner && !m.small) elfDrop(m);
+  if(MONSTERS[m.type].ghost && !m.summoner && !m.small) ghostDrop(m);
   if(lvl >= 8 && !m.summoner && !m.small) luckDrop(m);
   if(!m.summoner && !m.small){ legendDrop(m, lvl); legendExclDrop(m); if(MONSTERS[m.type].temple){ templeDrop(m); elfDrop(m); } }
   legendKill(m);
@@ -1217,6 +1229,15 @@ function updatePet(p, dt){
       burst(p.x, p.y-14, 30, ['#ffd070', '#ff8a30', '#ffffff'], [60, 200], [.5, 1], -60); addText(p.x, p.y-42, '¡Renacer!', '#ffd070', 9); sfx('alba'); G.flash = {x:p.x, y:p.y-10, t:.35};
     }
   }
+  if(p.def.blizzard && canFight){   // Boreal: Ventisca cada 24 s (congela a los enemigos cercanos y les hace daño)
+    p.blizCd = (p.blizCd ?? 8) - dt;
+    if(p.blizCd <= 0 && nearestMonster(p.x, p.y, 220)){
+      p.blizCd = 24;
+      for(const m of G.mons) if(!m.dying && Math.hypot(m.x-p.x, m.y-p.y) < 200) hitMonster(m, petDamage(p)*1.2, {src:'pet', pet:p, nx:(m.x-p.x)/200, ny:(m.y-p.y)/200, k:120, slow:3, freeze: MONSTERS[m.type].boss ? 0 : 2.2});
+      for(const r2 of [40, 80, 120, 170, 200]) ring(p.x, p.y-8, r2, '#aee8ff', .5);
+      burst(p.x, p.y-14, 36, ['#aee8ff', '#ffffff', '#7ac8f0'], [60, 220], [.5, 1.1], -20); addText(p.x, p.y-42, '¡Ventisca!', '#aee8ff', 9); sfx('alba'); G.flash = {x:p.x, y:p.y-10, t:.3};
+    }
+  }
   if(p.def.bloom && canFight){
     p.bloomCd = (p.bloomCd ?? 8) - dt;
     if(p.bloomCd <= 0 && (P.hp < P.maxHp*.9 || G.pets.some(q => q.hp > 0 && q.hp < q.maxHp*.9) || nearestMonster(p.x, p.y, 200))){
@@ -1571,8 +1592,9 @@ function updateProjs(dt){
       if(!P.dead && Math.hypot(P.x-pr.x, P.y-14-pr.y) < P.r+5){ if(damagePlayer(pr.dmg, pr.mon, (pr.burn || pr.fire) ? 'fire' : (pr.weak || pr.kind==='zap') ? 'light' : pr.elem)){ if(pr.slow) P.slowT = pr.slow; if(pr.weak) P.weakT = Math.max(P.weakT || 0, pr.weak); if(pr.poison) P.poisonT = Math.max(P.poisonT, 4);
         if(pr.burn) P.burnT = Math.max(P.burnT||0, 3);
         if(pr.root){ P.rootT = Math.max(P.rootT||0, pr.root); addText(P.x, P.y-56, '¡Inmovilizado!', '#c8a0ff', 7); ring(P.x, P.y-4, 18, '#8a60d0', .35); }
+        if(pr.freeze && !legendOn('yetiheart')){ P.rootT = Math.max(P.rootT||0, pr.freeze); addText(P.x, P.y-56, '¡Congelado!', '#c8f0ff', 7); ring(P.x, P.y-4, 20, '#c8f0ff', .4); burst(P.x, P.y-16, 12, ['#c8f0ff','#7ac8f0','#ffffff'], [30,100], [.3,.6], 0); }
         if(pr.steal && G.raidGold > 0){ const n = Math.min(G.raidGold, randi(4,12) + (G.sc.lvl||1)); G.raidGold -= n; if(pr.mon) pr.mon.stolen = (pr.mon.stolen||0) + n; addText(P.x, P.y-68, '-' + n + ' oro', '#ffd166', 7); }
-        if(pr.kind==='rock'){ const l2 = Math.hypot(pr.vx, pr.vy) || 1; P.vx += pr.vx/l2*160; P.vy += pr.vy/l2*160; } } pr.life = 0; continue; }
+        if(pr.kind==='rock' || pr.kind==='snowball'){ const l2 = Math.hypot(pr.vx, pr.vy) || 1; P.vx += pr.vx/l2*160; P.vy += pr.vy/l2*160; } } pr.life = 0; continue; }
       for(const p of G.pets) if((p.z < 6 || PET_ART[p.def.id].fly) && Math.hypot(p.x-pr.x, p.y-8-(PET_ART[p.def.id].fly ? p.z : 0)-pr.y) < 8){ damagePet(p, pr.dmg, pr.mon, false, true); pr.life = 0; break; }
       continue;
     }
@@ -1643,6 +1665,13 @@ function updateHazards(dt){
       if(h.rad > 400) h.life = 0;
     }
     if(h.type==='boom' && h.life > 0 && Math.floor(h.life*8) !== Math.floor((h.life+dt)*8)) sfx('fuse');
+    if(h.type==='rockfall' && h.life <= 0){
+      G.shake = Math.max(G.shake, 4); sfx('stoneHit');
+      burst(h.x, h.y-4, 18, ['#8a8e98','#c8ccd4','#5a5e66','#ffffff'], [50,170], [.3,.7], 160); ring(h.x, h.y-4, h.r, '#c8ccd4', .3);
+      ROCK_SRC.x = h.x; ROCK_SRC.y = h.y - 30;
+      if(!P.dead && Math.hypot(P.x-h.x, (P.y-h.y)*1.2) < h.r && !(P.jump || (P.jumpZ||0) > 6)) damagePlayer(h.dmg, ROCK_SRC);
+      for(const p of G.pets) if(p.z < 8 && Math.hypot(p.x-h.x, (p.y-h.y)*1.2) < h.r) damagePet(p, h.dmg*.7, null);
+    }
     if(h.type==='frost' && h.life <= 0){
       burst(h.x, h.y-6, 26, ['#a0d8ff','#e8f4ff','#ffffff'], [60,200], [.3,.7], 0); ring(h.x, h.y-4, h.r, '#c8ecff', .3);
       if(!P.dead && Math.hypot(P.x-h.x, P.y-h.y) < h.r){ damagePlayer(h.dmg, h.mon, 'frost'); P.slowT = 2.5; }
@@ -1803,7 +1832,7 @@ function drawHero(){
   const dir = fx<0 ? -1 : 1;
   const step = P.moving ? Math.sin(P.walk) : 0;
   const bob = P.moving ? -Math.round(Math.abs(Math.sin(P.walk))*1.5) : (Math.sin(G.t*2.5)>.6 ? -1 : 0);
-  const alpha = (P.inv>0 && !P.dashT && Math.floor(P.inv*20)%2) ? .45 : 1;
+  const alpha = ((P.inv>0 && !P.dashT && Math.floor(P.inv*20)%2) ? .45 : 1) * (P.invisT > 0 ? .35 : 1);
   b.globalAlpha = alpha;
   const jz = Math.round(P.jumpZ || 0);
   pshadow(x, y, 12 - (jz>>2), 4 - (jz>>4));
@@ -1902,7 +1931,7 @@ function drawUndead(m, vis){
   b.globalAlpha = vis*shade;
   pshadow(m.x, m.y, Math.max(4,Math.round(sw*.32)), 3, m.ai==='float' ? .16 : .3);
   if(RAR_RING[m.rarity] && !m.dying){ const pulse = (Math.sin(G.t*4)+1)/2; pixRing(m.x, m.y, sw*.45+pulse, sw*.16+pulse*.5, RAR_RING[m.rarity], 20); }
-  b.globalAlpha = vis*shade*(m.ai==='float' ? .78 : m.ai==='boss' ? .9*(m.fade ?? 1) : 1);
+  b.globalAlpha = vis*shade*(MD.ghostly ? .72 : m.ai==='float' ? .78 : m.ai==='boss' ? .9*(m.fade ?? 1) : 1);
   const w = Math.round(fr.c.width*sc), h = Math.round(fr.c.height*sc), ax = Math.round(fr.ax*sc), ay = Math.round(fr.ay*sc);
   b.save(); b.translate(Math.round(m.x), Math.round(m.y - float)); if(m.face < 0) b.scale(-1,1);
   b.drawImage(fr.c, -ax, -ay, w, h); statusFx(m, fr.c, -ax, -ay, w, h, vis*shade); b.restore();
@@ -2055,8 +2084,9 @@ function drawProj(pr){
     if(pr.explode && Math.random() < .5) G.parts.push({x:pr.x, y:pr.y, vx:-pr.vx*.05, vy:-15, life:.25, max:.25, size:1.5, col:pick(['#ff3a2a','#ffd040'])});
     if(pr.fire && Math.random() < .6) G.parts.push({x:pr.x, y:pr.y, vx:-pr.vx*.05, vy:-20, life:.3, max:.3, size:1.5, col:pick(['#ff8a2a','#ffd040'])});
     const c = Math.cos(pr.ang), s = Math.sin(pr.ang);
-    pixLine(pr.x - c*9, pr.y - s*9, pr.x, pr.y, 3, OUT); pixLine(pr.x - c*9, pr.y - s*9, pr.x, pr.y, 1, '#c8a878');
-    b.fillStyle = pr.explode ? '#ff3a2a' : '#d8dce4'; b.fillRect(Math.round(pr.x), Math.round(pr.y), 2, 2);
+    pixLine(pr.x - c*9, pr.y - s*9, pr.x, pr.y, 3, OUT); pixLine(pr.x - c*9, pr.y - s*9, pr.x, pr.y, 1, pr.ice ? '#a8e0ff' : '#c8a878');
+    if(pr.ice && Math.random() < .6) G.parts.push({x:pr.x, y:pr.y, vx:-pr.vx*.05, vy:rand(-10,10), life:.3, max:.3, size:1.5, col:pick(['#c8f0ff','#ffffff'])});
+    b.fillStyle = pr.explode ? '#ff3a2a' : pr.ice ? '#e8faff' : '#d8dce4'; b.fillRect(Math.round(pr.x), Math.round(pr.y), 2, 2);
     if(pr.explode){ b.fillStyle = '#ffd040'; b.fillRect(Math.round(pr.x - c*3), Math.round(pr.y - s*3), 2, 2); }
     b.fillStyle = '#e8e0c8'; b.fillRect(Math.round(pr.x - c*9 - s*1.5), Math.round(pr.y - s*9 + c*1.5), 1, 1); b.fillRect(Math.round(pr.x - c*9 + s*1.5), Math.round(pr.y - s*9 - c*1.5), 1, 1);
   }
@@ -2069,6 +2099,11 @@ function drawProj(pr){
     const x = Math.round(pr.x), y = Math.round(pr.y);
     b.fillStyle = OUT; b.fillRect(x-3, y-3, 6, 6); b.fillStyle = '#5ac8ff'; b.fillRect(x-2, y-2, 4, 4); b.fillStyle = '#e8faff'; b.fillRect(x-2, y-2, 2, 2);
     if(Math.random() < .6) G.parts.push({x:pr.x, y:pr.y, vx:rand(-14,14), vy:rand(-6,18), life:.3, max:.3, size:1.5, col:pick(['#5ac8ff','#aee8ff'])});
+  }
+  else if(pr.kind==='snowball'){
+    const x = Math.round(pr.x), y = Math.round(pr.y);
+    b.fillStyle = OUT; b.fillRect(x-6, y-6, 12, 12); b.fillRect(x-7, y-5, 14, 10); b.fillStyle = '#dce8f4'; b.fillRect(x-5, y-5, 10, 10); b.fillStyle = '#ffffff'; b.fillRect(x-5, y-5, 6, 4); b.fillStyle = '#a8bcd4'; b.fillRect(x+1, y+1, 4, 4);
+    if(Math.random() < .7) G.parts.push({x:pr.x, y:pr.y, vx:rand(-12,12), vy:rand(-8,10), life:.35, max:.35, size:1.5, col:pick(['#ffffff','#c8dcf0'])});
   }
   else if(pr.kind==='rock'){
     const x = Math.round(pr.x), y = Math.round(pr.y), sp = Math.floor(G.t*12)%2;
@@ -2107,6 +2142,12 @@ function drawHazard(h){
     b.globalAlpha = 1;
   } else if(h.type==='fire'){
     const a = Math.min(1, h.life); b.globalAlpha = a; drawFlames(h.x + Math.sin(h.x*3)*3, h.y, .4); b.globalAlpha = 1;
+  } else if(h.type==='rockfall'){
+    const t = 1 - h.life/h.max, fall = Math.pow(Math.max(0, 1 - t), 2)*150;   // la roca cae desde arriba; la sombra crece
+    b.globalAlpha = .25 + t*.4; pixRing(h.x, h.y, h.r*(.4 + t*.6), h.r*(.4 + t*.6)*.45, '#0a0c12', 24); b.globalAlpha = 1;
+    if(Math.floor(G.t*10)%2) pixRing(h.x, h.y, h.r, h.r*.45, '#ff8a3a', 26);
+    const ry = Math.round(h.y - fall - 6), rx = Math.round(h.x);
+    b.fillStyle = OUT; b.fillRect(rx-9, ry-9, 18, 17); b.fillStyle = '#6a6e78'; b.fillRect(rx-8, ry-8, 16, 15); b.fillStyle = '#9aa0aa'; b.fillRect(rx-8, ry-8, 9, 6); b.fillStyle = '#3e4148'; b.fillRect(rx+2, ry+1, 6, 6);
   } else if(h.type==='frost'){
     const t = 1 - h.life/h.max;
     pixRing(h.x, h.y, h.r, h.r*.45, Math.floor(G.t*12)%2 ? '#a0d8ff' : '#e8f4ff', 30);
@@ -2222,4 +2263,14 @@ function affixRoll(s){
   const r = c => c > 0 && Math.random()*100 < c;
   return {burn: r(s.fireCh) ? 4 : 0, weaken: r(s.litCh) ? 5 : 0, freeze: r(s.iceCh) ? 2.5 : 0, bleed: r(s.bleedCh) ? (s.bleedDur || 4) : 0, poison: r(s.poisonCh) ? (s.poisonDur || 4) : 0};
 }
-function projFx(pr){ const a = pr.fxS ? affixRoll(pr.fxS) : {}; a.burn = Math.max(pr.fire ? 3 : 0, a.burn || 0); return a; }
+function projFx(pr){
+  const a = pr.fxS ? affixRoll(pr.fxS) : {}; a.burn = Math.max(pr.fire ? 3 : 0, a.burn || 0);
+  const wf = pr.wfx; if(wf){   // efectos propios del arma (arco fantasmal)
+    if(wf.fearChance && Math.random() < wf.fearChance) a.fear = 3;
+    if(wf.freezeChance && Math.random() < wf.freezeChance) a.freeze = Math.max(a.freeze || 0, 2.5);
+    if(wf.bleedChance && Math.random() < wf.bleedChance) a.bleed = Math.max(a.bleed || 0, 4);
+  }
+  return a;
+}
+
+const ROCK_SRC = {affixes:[], type:'slime', x:0, y:0, dmg:0, dying:1, r:6};   // origen de las rocas que caen en el ascenso gélido

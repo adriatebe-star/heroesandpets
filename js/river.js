@@ -47,6 +47,7 @@ function timedBuffs(){
   const b = [], add = (t, name, desc, o) => { if(t > 0) b.push(Object.assign({t, name, desc, from:'Efecto activo'}, o)); };
   add(P.elfT, 'Poción élfica', 'No gastas estamina.', {img:ICONS.elfpotion});
   add(P.boneT, 'Hueso para mascota', '+5 de armadura y 5 de vida por segundo para tus mascotas.', {img:ICONS.petbone});
+  add(P.invisT, 'Invisible', 'Los monstruos te han perdido de vista.', {img:ICONS.ghostmail});
   add(P.breadT, 'Pan élfico', '+25 % de velocidad de movimiento, regeneras 3 de vida por segundo y atacas un 25 % más rápido.', {img:ICONS.elfbread});
   add(P.weakT, 'Debilitado', 'Haces un 40 % menos de daño.', {ic:'bolt', col:'#d83a3a'});
   add(P.hallT, 'Seta alucinógena', 'El mundo casi a oscuras, hadas que te guían a las jaulas y +20 % de velocidad de movimiento.', {img:ICONS.hallshroom});

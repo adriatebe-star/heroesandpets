@@ -241,6 +241,13 @@ function buildDen(){
     addCollider(sc, {t:'c', x:215, y:-37, r:9});
     sc.lights.push({x:215, y:-52, r:150, a:.9, warm:true, flick:.05});
   }
+  // Alexandra, la nórdica jugona (cuando la invitas a la guarida): su mesa de ruleta
+  if(G.save.alexandraHome){
+    sc.npcs.push({id:'alexandra', name:'Alexandra', x:0, y:135, dir:1});
+    addCollider(sc, {t:'c', x:0, y:133, r:9});
+    propSprite(sc, ART.rltable, 38, 140, {t:'r', x:20, y:130, w:36, h:10}, [22,4]);
+    sc.lights.push({x:20, y:112, r:130, a:.7, warm:true, flick:.08});
+  }
   // alijo (cofre de la guarida)
   sc.stash = {x:-200, y:35};
   if(G.save.petCage){   // jaula grande (comprada a Chemma): junto al alijo, se abre con F

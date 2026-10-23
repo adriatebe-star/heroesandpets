@@ -25,7 +25,7 @@ function slotInfo(n){
 const STASH_SIZE = 100;
 function defaultSave(){
   return {petRecover:true, introDone:false, tut:0, quest:'tutorial', name:null, level:1, xp:0, wallet:0, stash:Array(STASH_SIZE).fill(null), talked:false, inRaid:false, inv:null, runs:0,
-          uakalaMet:false, uakalaHome:false, aishMet:false, aishHome:false, trapis:false, trapisMet:false, druid:false, druidMet:false, fallen:[],
+          uakalaMet:false, uakalaHome:false, aishMet:false, aishHome:false, alexandraMet:false, alexandraHome:false, trapis:false, trapisMet:false, druid:false, druidMet:false, fallen:[],
           gonzalo:false, gonzaloMet:false, skillPts:0, skills:{agr:0, agi:0, car:0, agu:0, exp:0},
           bars:Object.assign({}, DEFAULT_BARS), collection:{}, shinies:{}, bossGift:{}, petsFreed:0, petTree:['start'], maxExp:0, shopSpecials:[], tree:['start'], bossKills:0};
 }
@@ -103,7 +103,7 @@ function randomReturnPortals(sc){
 }
 function startRaid(expId='village'){
   const seed = Math.floor(Math.random()*1e9), exp = EXPEDITIONS.find(e => e.id===expId) || EXPEDITIONS[0];
-  const sc = expId==='temple' ? buildTemple(seed) : expId==='forest' ? buildForest(seed) : expId==='mine' ? buildMine(seed) : expId==='river' ? buildRiver(seed) : expId==='castle' ? buildCastle(seed) : expId==='orccamp' ? buildOrcCamp(seed) : expId==='plains' ? buildPlains(seed) : expId==='crypt' ? buildCrypt(seed) : expId==='cemetery' ? buildCemetery(seed) : buildVillage(seed);
+  const sc = expId==='icepeak' ? buildIcePeak(seed) : expId==='temple' ? buildTemple(seed) : expId==='forest' ? buildForest(seed) : expId==='mine' ? buildMine(seed) : expId==='river' ? buildRiver(seed) : expId==='castle' ? buildCastle(seed) : expId==='orccamp' ? buildOrcCamp(seed) : expId==='plains' ? buildPlains(seed) : expId==='crypt' ? buildCrypt(seed) : expId==='cemetery' ? buildCemetery(seed) : buildVillage(seed);
   sc.lvl = exp.lvl; sc.exp = exp; sc.petExp = exp.petExp ?? exp.lvl;
   randomReturnPortals(sc);
   if(Math.random() < LEGEND_CHEST_CHANCE) addLegendChest(sc);   // a veces hay un cofre legendario
@@ -298,8 +298,8 @@ function talkHorse(){
 function interactables(){
   const sc = G.sc, list = [];
   const add = (x, y, r, text, fn, py) => { const d = Math.hypot(P.x-x, P.y-y); if(d < r) list.push({d, x, y:py ?? y-40, text, fn}); };
-  const talk = {juan:talkJuan, trapis:talkTrapis, druid:talkDruid, gonzalo:talkGonzalo, uakala:talkUakala, aish:talkAish};
-  for(const n of sc.npcs) add(n.x, n.y, 34, n.id==='aish' ? (sc.kind==='raid' ? '[F] Hablar con Aish' : '[F] Aish, elfo de luz') : n.id==='uakala' ? (sc.kind==='raid' ? '[F] Hablar con Uakala' : '[F] Herrero Uakala') : n.id==='trapis' ? '[F] Comerciar con Trapis' : n.id==='druid' ? '[F] Hablar con Chemma' : n.id==='gonzalo' ? '[F] Hablar con Gonzalo' : '[F] Hablar con Juan, el sabio', talk[n.id], n.y-52);
+  const talk = {juan:talkJuan, trapis:talkTrapis, druid:talkDruid, gonzalo:talkGonzalo, uakala:talkUakala, aish:talkAish, alexandra:talkAlexandra};
+  for(const n of sc.npcs) add(n.x, n.y, 34, n.id==='alexandra' ? (sc.kind==='raid' ? '[F] Hablar con Alexandra' : '[F] Alexandra, la nórdica jugona') : n.id==='aish' ? (sc.kind==='raid' ? '[F] Hablar con Aish' : '[F] Aish, elfo de luz') : n.id==='uakala' ? (sc.kind==='raid' ? '[F] Hablar con Uakala' : '[F] Herrero Uakala') : n.id==='trapis' ? '[F] Comerciar con Trapis' : n.id==='druid' ? '[F] Hablar con Chemma' : n.id==='gonzalo' ? '[F] Hablar con Gonzalo' : '[F] Hablar con Juan, el sabio', talk[n.id], n.y-52);
   if(sc.horse){
     if(sc.kind==='den') add(sc.horse.x, sc.horse.y, 46, '[F] Caballo', () => { sfx('horse'); talkHorse(); }, sc.horse.y-42);
     else add(sc.horse.x, sc.horse.y, 46, '[F] Volver a casa', () => { sfx('horse'); startChannel(3, 'Volviendo a casa...', () => extract('Has vuelto a lomos del caballo de Juan.'), '#c8a070'); }, sc.horse.y-42);
@@ -389,6 +389,7 @@ function update(dt){
   updateTutorial(dt);
   if(!UI.dlg && !UI.screen && !G.paused && pressed.KeyI) UI.toggleInv(UI.invOpen ? UI.mode : false);
   if(!UI.dlg && !UI.screen && !G.paused && pressed.Tab){ G.bigMap = !G.bigMap; sfx('ui'); }
+  if(pressed.Escape && UI.rouletteOpen){ if(!UI.rouletteSpinning) UI.closeRoulette(); pressed.Escape = false; }
   if(pressed.Escape){
     if(G.paused) closePause();
     else if(UI.invOpen || UI.mapOpen || UI.skillOpen || UI.trainerOpen || UI.smithOpen || UI.aishOpen || G.bigMap){ if(UI.smithOpen) UI.closeSmith(); if(UI.aishOpen) UI.closeAish(); if(UI.trainerOpen) UI.closeTrainer(); if(UI.invOpen) UI.closeInv(); if(UI.mapOpen) UI.closeRaidMap(); if(UI.skillOpen) UI.closeSkills(); G.bigMap = false; }
@@ -418,7 +419,7 @@ function update(dt){
   for(const t of G.texts){ t.life -= dt; t.y += t.vy*dt; t.vy *= .94; }
   G.texts = G.texts.filter(t => t.life > 0);
   if(G.flash){ G.flash.t -= dt; if(G.flash.t <= 0) G.flash = null; }
-  updateFairies(dt); updateLegends(dt); updateLegends2(dt); updateLegends3(dt);
+  updateFairies(dt); updateLegends(dt); updateLegends2(dt); updateLegends3(dt); updateIcePeak(dt);
   for(const c of G.sc.chests) if(c.pinged > 0) c.pinged -= dt;
   for(const p of G.sc.portals) if(!p.seen && Math.hypot(p.x-P.x, p.y-P.y) < 260) p.seen = true;   // los portales se marcan en el mapa al descubrirlos
   // fuegos fatuos: deambulan despacio alrededor de su sitio

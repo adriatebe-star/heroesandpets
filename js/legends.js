@@ -98,7 +98,7 @@ function updateLegends(dt){
 // golpe cuerpo a cuerpo del héroe: devuelve qué cambia (crítico seguro) y modifica los efectos del golpe
 function legendMelee(w, m, crit, fx2){
   const id = w && w.id, out = {};
-  legendMelee2(w, m, fx2, out);
+  legendMelee2(w, m, fx2, out); iceLegendMelee(w, m, fx2);
   if(id === 'moondagger'){ P.moonN = (P.moonN || 0) + 1; if(P.moonN % 3 === 0){ if(!crit) out.addCrit = true; fx2.bleed = 6; } }
   if(id === 'frostfang'){
     P.fangN = (P.fangN || 0) + 1;

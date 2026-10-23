@@ -305,7 +305,9 @@ const EXPEDITIONS = [
   {id:'temple', from:'forest', lvl:9, name:'El templo sagrado', mapX:0.12, mapY:0.02, boss:'elfmage', petExp:9,
    desc:'Un santuario antiguo al norte del bosque élfico, ahora en manos de los elfos corrompidos. Una avenida de columnas lleva hasta la plaza sagrada, donde el brujo élfico lanza rayos que debilitan y descargas que hay que esquivar muy deprisa.',
    monsters:'Arqueros élficos de flechas de fuego, magos élficos eléctricos y guerreros élficos pesados de espadón a dos manos... y el brujo élfico'},
-  {id:'locked10', from:'temple', lvl:10, name:'???', mapX:0.3, mapY:0.02, locked:true, desc:'Todavía no sabes qué hay más allá.'},
+  {id:'icepeak', from:'temple', lvl:10, name:'El ascenso gélido', mapX:0.3, mapY:0.02,
+   desc:'Una subida interminable por una montaña nevada. El suelo helado hace resbalar y desde los costados caen rocas. Los fantasmas guardan la llave del tiempo y una nórdica jugona busca con quién jugar.',
+   monsters:'Yetis que aturden, soldados fantasmales, arqueros fantasmales de flechas que congelan y trols de las nieves gigantes que lanzan bolas de nieve'},
 ];
 // afijos de monstruo (los efectos se aplican en actors.js)
 const MON_AFFIX = {
