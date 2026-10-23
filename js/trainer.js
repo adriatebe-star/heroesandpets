@@ -86,7 +86,7 @@ UI.renderTrainer = function(){
 };
 
 // --- resucitar (se usa desde la colección) ---
-const reviveCost = e => REVIVE_COST[PETS[e.pet].rarity] * (e.shiny ? 2 : 1);
+const reviveCost = e => reviveBase(e.pet) * (e.shiny ? 2 : 1);
 UI.reviveAt = function(i){
   const e = G.save.fallen[i], cost = reviveCost(e);
   if(G.save.wallet < cost){ toast('No tienes suficiente oro', 1.6); return; }
@@ -211,7 +211,7 @@ UI.showColPop = function(el, id){
       <div class="cp-st">${stats(n, 1)}</div>${sh[id] ? `<div class="cp-st" style="color:#ff9ad8">★ Brillante: ${stats(b, 1.1)}</div>` : ''}
       <div class="cp-aff">${p.affixes.map(a => `<div><b>${PET_AFFIX[a].name}</b> · ${PET_AFFIX[a].desc}</div>`).join('')}</div>
       <div class="cp-att">${p.attack || ''}</div>`;
-    const fallen = G.save.fallen.map((e, i) => ({e, i})).filter(x => x.e.pet === id), base = REVIVE_COST[p.rarity];
+    const fallen = G.save.fallen.map((e, i) => ({e, i})).filter(x => x.e.pet === id), base = reviveBase(id);
     html += `<div class="cp-price">Resucitar: <b>${base}</b> oro${sh[id] ? ` · brillante ★ <b>${base*2}</b> oro` : ''}</div>`;
     if(fallen.length) html += fallen.map(x => `<button data-i="${x.i}" ${G.save.wallet >= reviveCost(x.e) ? '' : 'disabled'}>Resucitar ${x.e.shiny ? 'versión brillante ★' : sh[id] ? 'versión normal' : ''} · ${reviveCost(x.e)} oro</button>`).join('');
     else html += '<div class="sub">Esta mascota no ha caído: no necesita resucitar.</div>';

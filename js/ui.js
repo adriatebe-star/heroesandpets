@@ -175,13 +175,14 @@ const UI = {
     if(z < 1) for(const p of ps) p.style.zoom = z.toFixed(3);
     for(const p of [st, sh]) p.style.maxHeight = Math.floor((innerHeight - 24)/z) + 'px';   // alijo y tienda ocupan la altura de la pantalla y se desplazan por dentro si hace falta
   },
-  closeInv(){ this.invOpen = false; this.mode = false; $('inv').classList.add('hidden'); $('tip').classList.add('hidden'); this.endDrag(); sfx('ui'); },
+  closeInv(){ if(document.activeElement && document.activeElement.blur) document.activeElement.blur(); this.invOpen = false; this.mode = false; $('inv').classList.add('hidden'); $('tip').classList.add('hidden'); this.endDrag(); sfx('ui'); },
   // ---------- tienda de Trapis ----------
   // vende más género según la expedición más alta superada, y compra cualquier objeto (salvo mascotas)
   renderShop(){
-    const tier = Math.max(1, G.save.maxExp||1), box = $('shopSlots'); box.innerHTML = '';
+    const tier = Math.max(1, G.save.maxExp||1), box = $('shopSlots'), q = ($('shopSearch').value || '').trim().toLowerCase(); box.innerHTML = '';
     document.querySelectorAll('#shopTabs button').forEach(b => b.classList.toggle('on', b.dataset.st === (this.shopTab || 'buy')));
     const offer = (it, price, onBuy, tag) => {
+      if(!nameMatch(it, q)) return;
       const d = ITEMS[it.id], el = document.createElement('div'); el.className = 'offer' + (tag ? ' special' : '');
       const can = G.save.wallet >= price;
       el.innerHTML = `<div class="slot" style="border-color:${itemColor(it)}"><img src="${itemIconURL(it)}" draggable="false">${it.n>1?`<span class="cnt">${it.n}</span>`:''}</div>
@@ -199,12 +200,12 @@ const UI = {
       return;
     }
     $('sellAll').style.display = '';
-    if(typeof renderBagUpgrades === 'function') renderBagUpgrades(box);
+    if(!q && typeof renderBagUpgrades === 'function') renderBagUpgrades(box);
     for(const o of SHOP.filter(o => o.tier <= tier)) offer(shopItem(o), o.price, () => this.buy(o));
     if(!(G.save.shopSpecials||[]).length) rollShopSpecials();
     const sp = G.save.shopSpecials || [];
     if(sp.length){
-      const h = document.createElement('div'); h.className = 'shophead'; h.textContent = 'Ofertas especiales (cambian tras cada expedición)'; box.append(h);
+      if(!q){ const h = document.createElement('div'); h.className = 'shophead'; h.textContent = 'Ofertas especiales (cambian tras cada expedición)'; box.append(h); }
       sp.forEach((s2, i) => offer(s2.item, s2.price, () => this.buySpecial(i), true));
     }
     const next = SHOP.find(o => o.tier > tier);
@@ -257,26 +258,43 @@ const UI = {
   renderStash(){
     const st = $('stashSlots'); st.innerHTML = '';
     $('stashPanel').querySelector('h3').firstChild.textContent = this.mode==='cage' ? 'Jaula grande (mascotas) ' : 'Alijo (a salvo) ';
+    const q = (this.stashQ || '').trim().toLowerCase(), div = (cls, txt) => { const d = document.createElement('div'); d.className = cls; if(txt !== undefined) d.textContent = txt; return d; };
+    // mascotas agrupadas por nivel de expedición (de menor a mayor); `free` = huecos libres de la jaula
+    const petGroups = (arr, area, idxs, free) => {
+      const by = {};
+      for(const i of idxs) (by[petTier(PETS[arr[i].pet])] ??= []).push(i);
+      for(const lv of Object.keys(by).map(Number).sort((a, c) => a - c)){
+        const idx = by[lv].sort((a, c) => PETS[arr[a].pet].name.localeCompare(PETS[arr[c].pet].name));
+        const h = div('cathead lvl'); const b = document.createElement('span'); b.className = 'lvbadge'; b.textContent = 'Nv ' + lv; h.append(b, `(${idx.length})`); st.append(h);
+        const g = div('slots grid10'); for(const i of idx) g.append(this.slotEl({area, key:i}, '', {hint:'mascota', cls:'petslot'})); st.append(g);
+      }
+      if(free && free.length){ st.append(div('cathead lvl', `Huecos libres (${free.length})`)); const g = div('slots grid10'); for(const i of free) g.append(this.slotEl({area, key:i}, '', {hint:'mascota', cls:'petslot'})); st.append(g); }
+    };
+    const cageIdx = () => { const cg = G.save.petCage || [], idx = [], free = []; cg.forEach((it, i) => { if(it){ if(nameMatch(it, q)) idx.push(i); } else free.push(i); }); return {cg, idx, free}; };
     if(this.mode==='cage'){   // la jaula grande se abre sola desde su sitio en la guarida
-      const cg = document.createElement('div'); cg.className = 'slots grid10'; (G.save.petCage || []).forEach((it, i) => cg.append(this.slotEl({area:'cage', key:i}, '', {hint:'mascota', cls:'petslot'}))); st.append(cg);
-      $('stashCount').textContent = `${(G.save.petCage || []).filter(Boolean).length} / ${(G.save.petCage || []).length}`; return;
+      const {cg, idx, free} = cageIdx(); petGroups(cg, 'cage', idx, q ? [] : free);
+      if(q && !idx.length) st.append(div('empty', 'Ninguna mascota coincide con la búsqueda.'));
+      $('stashCount').textContent = `${cg.filter(Boolean).length} / ${cg.length}`; return;
     }
     const groups = {};
-    G.save.stash.forEach((it, i) => { if(it){ const c = itemCat(it); (groups[c] ??= []).push(i); } });
+    G.save.stash.forEach((it, i) => { if(it && nameMatch(it, q)){ const c = itemCat(it); (groups[c] ??= []).push(i); } });
+    let shown = 0;
     for(const cat of ITEM_CATS){
-      const idx = groups[cat]; if(!idx) continue;
+      const idx = groups[cat]; if(!idx) continue; shown += idx.length;
+      st.append(div('cathead', `${cat} (${idx.length})`));
+      if(cat === 'Mascotas'){ petGroups(G.save.stash, 'stash', idx, null); continue; }
       idx.sort((a,c) => itemName(G.save.stash[a]).localeCompare(itemName(G.save.stash[c])));
-      const h = document.createElement('div'); h.className = 'cathead'; h.textContent = `${cat} (${idx.length})`; st.append(h);
-      const grid = document.createElement('div'); grid.className = 'slots grid10';
+      const grid = div('slots grid10');
       for(const i of idx) grid.append(this.slotEl({area:'stash', key:i}));
       st.append(grid);
     }
     if(G.save.petCage){   // jaula grande: alijo de hasta 100 mascotas
-      const ch = document.createElement('div'); ch.className = 'cathead'; ch.textContent = `Jaula grande (${G.save.petCage.filter(Boolean).length} / ${G.save.petCage.length} mascotas)`; st.append(ch);
-      const cg = document.createElement('div'); cg.className = 'slots grid10'; G.save.petCage.forEach((it, i) => cg.append(this.slotEl({area:'cage', key:i}, '', {hint:'mascota', cls:'petslot'}))); st.append(cg);
+      const {cg, idx, free} = cageIdx();
+      if(!q || idx.length){ shown += idx.length; st.append(div('cathead', `Jaula grande (${cg.filter(Boolean).length} / ${cg.length} mascotas)`)); petGroups(cg, 'cage', idx, q ? [] : free); }
     }
     const used = G.save.stash.filter(Boolean).length;
-    if(!used){ const e = document.createElement('div'); e.className = 'empty'; e.textContent = 'El alijo está vacío. Arrastra aquí lo que quieras guardar.'; st.append(e); }
+    if(!used && !q){ st.append(div('empty', 'El alijo está vacío. Arrastra aquí lo que quieras guardar.')); }
+    else if(q && !shown) st.append(div('empty', 'Nada coincide con la búsqueda.'));
     $('stashCount').textContent = `${used} / ${G.save.stash.length}`;
   },
   // ---------- el druida ----------
@@ -285,7 +303,7 @@ const UI = {
     const fallen = G.save.fallen;
     if(!fallen.length){ box.innerHTML = '<div class="empty">Ninguna mascota ha caído... de momento.<br>Solo puedo devolver la vida a las mascotas que ya conocían la guarida.</div>'; return; }
     fallen.forEach((id, i) => {
-      const p = PETS[id], cost = REVIVE_COST[p.rarity], can = G.save.wallet >= cost;
+      const p = PETS[id], cost = reviveBase(id), can = G.save.wallet >= cost;
       const row = document.createElement('div'); row.className = 'fallen';
       row.innerHTML = `<div class="slot ghost"><img class="pet" src="${itemIconURL({id:'pet', pet:id})}" draggable="false"></div>
         <div class="fname"><b style="color:${RARITY[p.rarity].col}">${p.name}</b><span>${RARITY[p.rarity].name} · ${p.look}</span></div>
@@ -296,7 +314,7 @@ const UI = {
     });
   },
   revive(i){
-    const id = G.save.fallen[i], cost = REVIVE_COST[PETS[id].rarity];
+    const id = G.save.fallen[i], cost = reviveBase(id);
     if(G.save.wallet < cost){ toast('No tienes suficiente oro', 1.6); return; }
     const it = mkPetItem(id, true);
     if(!addToBagOrStash(it)){ toast('No tienes sitio ni en la mochila ni en el alijo', 2); return; }
@@ -319,7 +337,7 @@ const UI = {
       if(it.n > 1){ const n = document.createElement('span'); n.className = 'cnt'; n.textContent = it.n; el.append(n); }
       if(it.dur !== undefined){ const bar = document.createElement('i'); bar.className = 'dur'; bar.style.width = (it.dur/maxDur(it)*100)+'%'; el.append(bar); }
       if(this.mode==='shop' && (ref.area==='bag' || ref.area==='stash')){ const v = sellValue(it); if(v){ const pr = document.createElement('span'); pr.className = 'sellp'; pr.textContent = v; el.append(pr); } }
-      if(it.id==='pet'){ const bar = document.createElement('i'); bar.className = 'dur hp'; bar.style.width = (it.hp/PETS[it.pet].hp*100)+'%'; el.append(bar); }
+      if(it.id==='pet'){ const bar = document.createElement('i'); bar.className = 'dur hp'; bar.style.width = (it.hp/PETS[it.pet].hp*100)+'%'; el.append(bar); const lv = document.createElement('span'); lv.className = 'plv'; lv.textContent = 'Nv ' + petTier(PETS[it.pet]); el.append(lv); }
       el.onmouseenter = e => { if(!this.drag) this.showTip(it, e); };
       el.onmousemove = e => { if(!this.drag) this.moveTip(e); };
       el.onmouseleave = () => $('tip').classList.add('hidden');
@@ -480,7 +498,7 @@ const UI = {
     const t = $('tip'); let h = `<b style="color:${itemColor(it)}">${itemName(it)}</b>`;
     if(it.id==='pet'){
       const p = PETS[it.pet];
-      h += `<div class="sub">Mascota ${RARITY[p.rarity].name.toLowerCase()} · ${p.look}</div>`;
+      h += `<div class="sub">Mascota ${RARITY[p.rarity].name.toLowerCase()} · ${p.look}</div><div class="sub">Nivel de la mascota: ${petTier(p)}</div>`;
       const kd = petDmgMult(it);
       if(it.shiny) h += `<div style="color:#ff9ad8">★ Brillante: +10 % de estadísticas</div>`;
       if(it.serums && it.serums.rage) h += `<div style="color:#ff8a7a">💉 Rabia: +33 % de daño</div>`;
@@ -810,9 +828,25 @@ function drawMinimap(x, y, size){
   drawMapView(x, y, size, view);
   ctx.font = `${5*S}px ${FONT}`; ctx.textAlign = 'right'; textO('[Tab] mapa', x+size-4, y+size-10, '#a89a80'); ctx.textAlign = 'left';
 }
+// posición y tamaño del mapa grande (se puede mover con Ctrl + arrastrar y ampliar con la rueda; se recuerda)
+function bigMapRect(){
+  const v = SETTINGS.mapView, size = Math.max(160, Math.round(Math.min(W*.7, H - 330)*v.z));
+  let x = Math.round(W/2 - size/2 + v.dx), y = Math.round(Math.max(70, (H - 250 - size)/2 + 40) + v.dy);
+  return {x:clamp(x, 60 - size, W - 60), y:clamp(y, 30, H - 60), size};
+}
+let BMdrag = null, BMcursor = false;
+function updateBigMapDrag(){
+  const ctrl = keys.ControlLeft || keys.ControlRight, v = SETTINGS.mapView;
+  if(!G.bigMap){ BMdrag = null; if(BMcursor){ cv.style.cursor = ''; BMcursor = false; } return; }
+  if(ctrl && mouse.lp && !BMdrag) BMdrag = {mx:mouse.x, my:mouse.y, dx:v.dx, dy:v.dy};
+  if(BMdrag){ v.dx = BMdrag.dx + mouse.x - BMdrag.mx; v.dy = BMdrag.dy + mouse.y - BMdrag.my; mouse.l = false; mouse.lp = false; }
+  if(ctrl || BMdrag){ cv.style.cursor = BMdrag ? 'grabbing' : 'grab'; BMcursor = true; } else if(BMcursor){ cv.style.cursor = ''; BMcursor = false; }
+}
+addEventListener('mouseup', e => { if(e.button === 0 && BMdrag){ BMdrag = null; saveSettings(); } });
+cv.addEventListener('wheel', e => { if(!G.bigMap) return; e.preventDefault(); const v = SETTINGS.mapView; v.z = clamp(v.z*(e.deltaY < 0 ? 1.1 : 1/1.1), .5, 1.7); saveSettings(); }, {passive:false});
 function drawBigMap(){
   // por encima de las bombonas y por debajo de los avisos
-  const size = Math.max(200, Math.round(Math.min(W*.7, H - 330))), x = Math.round(W/2 - size/2), y = Math.round(Math.max(70, (H - 250 - size)/2 + 40));
+  const {x, y, size} = bigMapRect();
   // el mapa se dibuja siempre opaco (lo no explorado sigue oculto) y la opacidad solo deja ver la partida que hay debajo
   const a = SETTINGS.mapAlpha, rx = x-8, ry = y-8, rw = size+16;
   let under = null;
@@ -824,7 +858,8 @@ function drawBigMap(){
   if(under){ ctx.globalAlpha = 1 - a; ctx.drawImage(under, rx, ry); ctx.globalAlpha = 1; }
   drawMapView(x, y, size, view, true, 'icons');   // los iconos (jugador, cofres, portales…) nunca se vuelven transparentes
   ctx.restore();
-  ctx.textAlign = 'center'; ctx.font = `${9*S}px ${FONT}`; textO(sc.name, W/2, y - 22, '#ffd8a0');
+  ctx.font = `${5*S}px ${FONT}`; ctx.textAlign = 'left'; textO('Ctrl + arrastrar: mover el mapa', x + 8, y + size - 22, '#e8d8b0'); textO('Rueda del ratón: acercar / alejar', x + 8, y + size - 10, '#e8d8b0');
+  ctx.textAlign = 'center'; ctx.font = `${9*S}px ${FONT}`; textO(sc.name, x + size/2, y - 22, '#ffd8a0');
   ctx.font = `${6*S}px ${FONT}`;
   const legend = sc.kind==='raid'
     ? [['#ffffff','Tú'], ['#e0a060','Caballo (salida)'], ['#9a7aff','Portal (salida)'], ['#7ae09a','Jaula'], ['#e8c070','Cofre'], ['#c8a0ff','Cofre raro']]
@@ -876,7 +911,7 @@ function drawWorldOverlay(){
   const labs = [];
   for(const l of G.loot){
     l.labelRect = null;
-    if(!l.item || l.z > 0 || Math.hypot(l.x-P.x, l.y-P.y) > 160) continue;
+    if(!l.item || l.z > 0 || !lootVisible(l) || Math.hypot(l.x-P.x, l.y-P.y) > 160) continue;
     const [sx, sy] = toScreen(l.x, l.y-16);
     const t = itemName(l.item) + (l.item.n > 1 ? ' x' + l.item.n : '');
     labs.push({l, t, sx, sy, w: ctx.measureText(t).width + 12, h:18});
@@ -1243,4 +1278,10 @@ function drawMonsterTip(){
     ty += LH;
   }
   ctx.restore();
+}
+
+// buscador por nombre del alijo, la jaula grande y la tienda de Trapis
+const nameMatch = (it, q) => !q || itemName(it).toLowerCase().includes(q) || (typeof tr === 'function' && tr(itemName(it)).toLowerCase().includes(q));
+for(const [id, fn] of [['stashSearch', v => { UI.stashQ = v; UI.renderStash(); }], ['shopSearch', () => UI.renderShop()]]){
+  const inp = $(id); inp.addEventListener('input', e => fn(e.target.value)); inp.addEventListener('keydown', e => { if(e.key === 'Escape') e.target.blur(); });
 }

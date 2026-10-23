@@ -307,7 +307,7 @@ function interactables(){
   if(sc.stash) add(sc.stash.x, sc.stash.y, 30, '[F] Alijo', () => UI.toggleInv('stash'), sc.stash.y-26);
   for(const c of sc.chests) if(!c.open) add(c.x, c.y, 26, c.rare ? '[F] Abrir cofre raro' : '[F] Abrir cofre', () => startChannel((c.rare ? 1.2 : .7)*(1 - SK('exp')*.03), 'Abriendo...', () => openChest(c)), c.y-24);
   for(const c of sc.cages) if(!c.open) add(c.x, c.y, 28, c.gift ? '[F] Abrir la jaula brillante' : '[F] Abrir jaula', () => startChannel(1.5*(1 - SK('exp')*.03)*Math.max(.3, 1 - (G.pt.cageSpd||0)/100), 'Forzando la jaula...', () => openCage(c), '#7ae09a'), c.y-36);
-  for(const l of G.loot) if(l.item && l.z===0) add(l.x, l.y, 20, '[F] Coger ' + itemName(l.item), () => pickLoot(l), l.y-18);
+  for(const l of G.loot) if(l.item && l.z===0 && lootVisible(l)) add(l.x, l.y, 20, '[F] Coger ' + itemName(l.item), () => pickLoot(l), l.y-18);
   list.sort((a,c) => a.d-c.d);
   return list[0] || null;
 }
@@ -393,6 +393,7 @@ function update(dt){
     else if(!UI.dlg && !UI.screen && !P.dead) openPause();
   }
   if(G.paused) return;
+  updateBigMapDrag();
   if(pressed.KeyH) G.showHelp = !G.showHelp;
   if(pressed.KeyM) toggleMute();
   // intensidad de la música de combate

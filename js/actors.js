@@ -113,12 +113,22 @@ function ring(x, y, size, col='#fff1d0', life=.18){ G.parts.push({ring:true, x, 
 // =====================================================================
 //  Héroe
 // =====================================================================
+// filtro de objetos del suelo (menú de pausa): clase del objeto y si se muestra
+function lootClass(l){
+  if(l.gold) return 'gold';
+  const it = l.item; if(!it || it.id === 'pet') return 'pet';
+  const d = ITEMS[it.id]; if(d.gem) return 'gems';
+  if(it.rarity === 'legendary' || it.rarity === 'unique') return 'legend';
+  if(!d.gear) return 'cons';
+  return it.rarity === 'rare' ? 'rare' : it.rarity === 'magic' ? 'magic' : 'normal';
+}
+function lootVisible(l){ const c = lootClass(l); return c === 'pet' || SETTINGS.lootFilter[c] !== false; }
 // objeto del suelo bajo el cursor (por su icono o por su etiqueta)
 function lootUnderMouse(){
   const mw = screenToWorld(mouse.x, mouse.y);
   let best = null, bd = 14;
   for(const l of G.loot){
-    if(!l.item || l.z > 0) continue;
+    if(!l.item || l.z > 0 || !lootVisible(l)) continue;
     if(l.labelRect){ const [x,y,w,h] = l.labelRect; if(mouse.x >= x && mouse.x <= x+w && mouse.y >= y && mouse.y <= y+h) return l; }
     const d = Math.hypot(mw.x-l.x, mw.y-(l.y-6)); if(d < bd){ bd = d; best = l; }
   }
@@ -1998,6 +2008,7 @@ function drawPet(p){
   if(art.glow && !ex && Math.random() < .08) G.parts.push({x:x+rand(-8,8), y:y-z-rand(4,14), vx:rand(-8,8), vy:-20, life:.5, max:.5, size:1, col:art.glow});
 }
 function drawLoot(l){
+  if(!lootVisible(l)) return;
   const y = Math.round(l.y - l.z - (l.z===0 ? Math.round(Math.sin(l.t*3+l.x)*1) : 0));
   pshadow(l.x, l.y, 4, 1, .35);
   if(l.gold){ b.drawImage(ICONS.coin, Math.round(l.x)-6, y-10); return; }

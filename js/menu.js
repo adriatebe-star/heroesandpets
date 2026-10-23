@@ -24,14 +24,17 @@ function bindSound(root){
 
 // ---------- menú principal ----------
 // ---------- configuración ----------
-const SETTINGS = {hpHero:false, hpPets:false, mapAlpha:.97};
-try { const v = JSON.parse(localStorage.getItem('heroes-pets-settings')); if(v){ if(typeof v.hpHero==='boolean') SETTINGS.hpHero = v.hpHero; if(typeof v.hpPets==='boolean') SETTINGS.hpPets = v.hpPets; if(typeof v.mapAlpha==='number') SETTINGS.mapAlpha = Math.max(.15, Math.min(1, v.mapAlpha)); } } catch(e){}
+const SETTINGS = {hpHero:false, hpPets:false, mapAlpha:.97, lootFilter:{normal:true, magic:true, rare:true, cons:true, legend:true, gold:true, gems:true}, mapView:{dx:0, dy:0, z:1}};
+try { const v = JSON.parse(localStorage.getItem('heroes-pets-settings')); if(v){ if(typeof v.hpHero==='boolean') SETTINGS.hpHero = v.hpHero; if(typeof v.hpPets==='boolean') SETTINGS.hpPets = v.hpPets; if(typeof v.mapAlpha==='number') SETTINGS.mapAlpha = Math.max(.15, Math.min(1, v.mapAlpha)); if(v.lootFilter) for(const k in SETTINGS.lootFilter) if(typeof v.lootFilter[k]==='boolean') SETTINGS.lootFilter[k] = v.lootFilter[k]; if(v.mapView) for(const k of ['dx','dy','z']) if(typeof v.mapView[k]==='number') SETTINGS.mapView[k] = v.mapView[k]; } } catch(e){}
 const saveSettings = () => { try { localStorage.setItem('heroes-pets-settings', JSON.stringify(SETTINGS)); } catch(e){} };
 const configHTML = () => `<div class="vols">
   <label class="vrow"><span style="width:auto;flex:1">Mostrar la vida sobre el héroe</span><input type="checkbox" id="cfgHero" ${SETTINGS.hpHero ? 'checked' : ''}></label>
   <label class="vrow"><span style="width:auto;flex:1">Mostrar la vida sobre las mascotas</span><input type="checkbox" id="cfgPets" ${SETTINGS.hpPets ? 'checked' : ''}></label>
   <label class="vrow"><span style="width:150px">Opacidad del mapa [Tab]</span><input type="range" min="15" max="100" value="${Math.round(SETTINGS.mapAlpha*100)}" id="cfgMap"><b>${Math.round(SETTINGS.mapAlpha*100)}%</b></label></div>`;
+const LOOT_FILTER_ROWS = [['normal','Objetos de rareza normal'], ['magic','Objetos mágicos'], ['rare','Objetos raros'], ['cons','Consumibles y otros (munición, tesoros, llaves)'], ['legend','Objetos legendarios y únicos'], ['gold','Oro'], ['gems','Piedras preciosas']];
+const lootFilterHTML = () => '<div class="vols">' + LOOT_FILTER_ROWS.map(([k, t]) => `<label class="vrow"><span style="width:auto;flex:1">${t}</span><input type="checkbox" data-lf="${k}" ${SETTINGS.lootFilter[k] !== false ? 'checked' : ''}></label>`).join('') + '</div><p class="lfnote">Lo que desmarques no se verá en el suelo ni se podrá coger. El oro desmarcado se sigue recogiendo solo al pasar cerca. Las mascotas siempre se ven.</p>';
 function bindConfig(root){
+  root.querySelectorAll('[data-lf]').forEach(c => c.onchange = () => { SETTINGS.lootFilter[c.dataset.lf] = c.checked; saveSettings(); sfx('ui'); });
   const ch = root.querySelector('#cfgHero'), cp = root.querySelector('#cfgPets'), cm = root.querySelector('#cfgMap');
   if(ch) ch.onchange = () => { SETTINGS.hpHero = ch.checked; saveSettings(); sfx('ui'); };
   if(cp) cp.onchange = () => { SETTINGS.hpPets = cp.checked; saveSettings(); sfx('ui'); };
@@ -132,13 +135,15 @@ function renderPause(){
   if(v === 'main'){
     h = `<h2>Pausa</h2><div class="mbtns">
       <button class="mbtn" data-act="resume">Continuar</button><button class="mbtn" data-act="config">Configuración</button><button class="mbtn" data-act="controls">Controles</button>
-      <button class="mbtn" data-act="sound">Volumen</button><button class="mbtn" data-act="lang">Idioma</button><button class="mbtn" data-act="exit">Guardar y salir</button></div>
+      <button class="mbtn" data-act="lootfilter">Filtro de objetos</button><button class="mbtn" data-act="sound">Volumen</button><button class="mbtn" data-act="lang">Idioma</button><button class="mbtn" data-act="exit">Guardar y salir</button></div>
       ${raid ? '<p class="red small">Estás en una expedición: si sales perderás el equipo, la mochila y las mascotas como si murieras.</p>' : ''}`;
   } else if(v === 'confirm'){
     h = `<h2 class="red">¿Salir de la expedición?</h2><p>Si sales ahora perderás <b>todo lo que llevas</b> (equipo, mochila, oro de la expedición y mascotas) como si hubieras muerto. Lo que hay en el alijo está a salvo.</p>
       <div class="mbtns"><button class="mbtn danger" data-act="exityes">Salir y perderlo todo</button><button class="mbtn" data-act="back">Cancelar</button></div>`;
   } else if(v === 'lang'){
     h = `<h2>Idioma</h2>${langHTML()}<button data-act="back">Volver</button>`;
+  } else if(v === 'lootfilter'){
+    h = `<h2>Filtro de objetos</h2>${lootFilterHTML()}<button data-act="back">Volver</button>`;
   } else if(v === 'config'){
     h = `<h2>Configuración</h2>${configHTML()}<button data-act="back">Volver</button>`;
   } else if(v === 'controls'){
@@ -155,6 +160,7 @@ $('pauseBox').addEventListener('click', e => {
   if(act === 'controls') PAUSE.view = 'controls';
   else if(act === 'sound') PAUSE.view = 'sound';
   else if(act === 'config') PAUSE.view = 'config';
+  else if(act === 'lootfilter') PAUSE.view = 'lootfilter';
   else if(act === 'lang') PAUSE.view = 'lang';
   else if(act === 'setlang') LANG.set(t.dataset.l);
   else if(act === 'back') PAUSE.view = 'main';

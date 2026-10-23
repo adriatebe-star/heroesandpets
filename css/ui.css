@@ -437,3 +437,10 @@ kbd{background:var(--ink);border:2px solid var(--frame);padding:1px 7px;color:va
 .smmode{min-height:36px;align-items:stretch}.smmode button{line-height:1.2;overflow:visible}
 
 #bindPrompt{position:fixed;left:50%;bottom:150px;transform:translateX(-50%);z-index:60;background:#14100e;border:3px solid var(--gold);padding:12px 20px;color:var(--gold);font-size:16px;text-align:center;box-shadow:0 0 0 3px var(--ink),0 0 24px rgba(0,0,0,.7);pointer-events:none}
+
+.psearch{width:calc(100% - 4px);margin:4px 0 8px;background:#0f0d14;color:#e8dcc0;border:1px solid #4a3a24;border-radius:4px;padding:5px 8px;font:inherit;font-size:13px}
+.psearch:focus{outline:none;border-color:#c8a868}
+.cathead.lvl{color:#d8c8a0;display:flex;align-items:center;gap:8px;border-bottom-color:#2a2418}
+.lvbadge{background:#4a3a24;color:#ffe8b0;border-radius:3px;padding:1px 6px;font-size:11px}
+.slot .plv{position:absolute;top:1px;left:2px;font-size:9px;line-height:11px;background:rgba(0,0,0,.72);color:#ffe8b0;padding:0 3px;border-radius:2px;pointer-events:none}
+.lfnote{font-size:12px;color:#9a8e78;margin:8px 0}

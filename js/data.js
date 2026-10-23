@@ -595,8 +595,9 @@ Object.assign(PETS, {
 PET_AFFIX.eclipse = {name:'Eclipse', desc:'Cada 25 s confunde a los enemigos cercanos y da +30 % de daño al héroe durante 4 s'};
 PET_AFFIX.luna ={name:'Luz de luna', desc:'Aura que revela a los Sombríos y cura 1 de vida por segundo al héroe'};
 // escalado por nivel de expedición (petición del usuario): cada nivel de la expedición da +12 % de vida y +10 % de daño a sus mascotas
-const PET_TIER_HP = .12, PET_TIER_DMG = .10;
+const PET_TIER_HP = .12, PET_TIER_DMG = .10, PET_TIER_REVIVE = .10;
 const petTier = p => Math.max(1, parseInt(p.exp) || 1);
+const reviveBase = id => Math.round(REVIVE_COST[PETS[id].rarity] * (1 + PET_TIER_REVIVE*(petTier(PETS[id]) - 1)));   // el precio de resucitar sube un 10 % por nivel
 const petBaseHp = p => Math.round(PET_HP[p.rarity] * (p.affixes.includes('robusta') ? 1.4 : 1) * (1 + PET_TIER_HP*(petTier(p) - 1)));
 for(const id in PETS){
   const p = PETS[id]; p.id = id; p.exp ??= 1;
