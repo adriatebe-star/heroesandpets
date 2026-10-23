@@ -98,7 +98,7 @@ function updateLegends(dt){
 // golpe cuerpo a cuerpo del héroe: devuelve qué cambia (crítico seguro) y modifica los efectos del golpe
 function legendMelee(w, m, crit, fx2){
   const id = w && w.id, out = {};
-  legendMelee2(w, m, fx2, out); iceLegendMelee(w, m, fx2);
+  legendMelee2(w, m, fx2, out); iceLegendMelee(w, m, fx2); seaLegendMelee(w, m, fx2);
   if(id === 'moondagger'){ P.moonN = (P.moonN || 0) + 1; if(P.moonN % 3 === 0){ if(!crit) out.addCrit = true; fx2.bleed = 6; } }
   if(id === 'frostfang'){
     P.fangN = (P.fangN || 0) + 1;
@@ -107,7 +107,7 @@ function legendMelee(w, m, crit, fx2){
   return out;
 }
 function legendAfterHit(m, dmg, crit, out){
-  legendAfterHit2(m, dmg, out);
+  legendAfterHit2(m, dmg, out); seaLegendAfter(m, dmg, crit);
   if(out.boom){
     ring(m.x, m.y-6, 56, '#ffb070', .4); burst(m.x, m.y-10, 22, ['#ff8a2a', '#c8f0ff', '#ffffff'], [60, 220], [.3, .7], 0); sfx('boom'); G.shake = Math.max(G.shake, 5);
     addText(m.x, m.y-m.r*2-30, '¡Choque térmico!', '#ffd0a0', 8, -20);

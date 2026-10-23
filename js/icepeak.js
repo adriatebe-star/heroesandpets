@@ -68,17 +68,17 @@ function ghostDrop(m){
   }
   if(Math.random() < [.03, .07, .14][rk]){ dropItem(m.x + rand(-8, 8), m.y + rand(-4, 4), mkItem('timekey', 1)); addText(m.x, m.y-m.r*2-34, '¡Llave del tiempo!', '#bfe8f4', 7, -20); }
 }
-// coraza fantasmal (invisible 3 s cada 10 s) y capa de la ventisca; rocas que caen en el ascenso gélido
+// coraza fantasmal (invisible 3 s cada 10 s) y capa de la ventisca
 function updateIcePeak(dt){
   if(P.dead) return;
   if(P.invisT > 0) P.invisT -= dt;
   if(P.cloakCd > 0) P.cloakCd -= dt;
+  { const lt = G.inv.equip.lantern; if(lt && ITEMS[lt.id].oilRegen && P.lantern && G.sc.kind === 'raid') P.oil = Math.min(oilMax(), P.oil + ITEMS[lt.id].oilRegen*dt); }   // farolillo atlante: regenera aceite
   const ch = G.inv.equip.chest;
   if(ch && ch.id === 'ghostmail'){
     P.ghostT = (P.ghostT ?? 10) - dt;
     if(P.ghostT <= 0){ P.ghostT = 10; P.invisT = 3; addText(P.x, P.y-56, '¡Invisible!', '#bfe8f4', 8); ring(P.x, P.y-10, 40, '#bfe8f4', .4); burst(P.x, P.y-16, 16, ['#bfe8f4', '#ffffff', '#7ac8e8'], [30, 100], [.4, .8], -30); sfx('alba'); }
   } else P.ghostT = undefined;
-  if(G.sc && G.sc.id === 'icepeak') updateIceRocks(dt);
 }
 function iceCloak(m){   // capa de la ventisca: congela a quien te golpea
   if((P.cloakCd || 0) > 0 || m.dying || MONSTERS[m.type] && MONSTERS[m.type].boss || Math.random() > .3 || m.freezeImmT > 0) return;
@@ -89,16 +89,6 @@ function iceLegendMelee(w, m, fx2){   // hacha del ventisquero: ralentiza y cada
   if(!w || w.id !== 'glacieraxe') return;
   fx2.slow = 2.5; P.iceN = (P.iceN || 0) + 1; if(P.iceN % 5 === 0) fx2.freeze = 2;
 }
-function updateIceRocks(dt){
-  const sc = G.sc; G.rockT = (G.rockT ?? 3) - dt;
-  if(G.rockT > 0) return;
-  G.rockT = rand(1.3, 2.6);
-  if(P.y > sc.y1 - 280) return;   // la entrada es segura
-  const side = Math.random() < .5 ? -1 : 1, onHero = Math.random() < .22;
-  const y = onHero ? P.y + rand(-14, 14) : P.y + rand(-190, 100), x = onHero ? P.x + rand(-14, 14) : sc.pathX(y) + side*(sc.pathW(y) - rand(8, 90));
-  G.hazards.push({type:'rockfall', x:Math.round(x), y:Math.round(y), r:30, life:1.2, max:1.2, dmg:30});
-}
-
 // ---------- el mapa: ascenso lineal por una montaña nevada (el suelo resbala) ----------
 const IP_SNOW = ['#7d8fa6', '#8c9fb6', '#9db0c6', '#b0c2d6'].map(hex), IP_ICE = ['#4f86ac', '#5f98be', '#75aed0', '#8cc2e0'].map(hex), IP_CLIFF = ['#262a34', '#30353f', '#3b414c', '#484f5c'].map(hex), IP_CAP = hex('#d8e4f0');
 ART.snowpine = SP(paintSprite(26, 40, [
@@ -110,12 +100,20 @@ ART.icecrystal = SP(paintSprite(18, 24, [
   {poly:[[9, 0], [14, 8], [12, 23], [6, 23], [4, 8]], c:['#3a78a8', '#6ab0e0', '#a8e0ff', '#e8faff']}, {poly:[[3, 12], [8, 8], [8, 23], [1, 23]], c:['#2e6a98', '#5aa0d0', '#8ad0f0']},
   {poly:[[13, 14], [17, 11], [17, 23], [12, 23]], c:['#2e6a98', '#5aa0d0', '#8ad0f0']}, {p:[[9, 4, '#ffffff'], [8, 9, '#ffffff']]},
 ]), 9, 23);
+ART.northgate = SP(paintSprite(104, 80, [
+  {r:[0, 22, 18, 58], c:['#2e5a84', '#4a88b8', '#8ad0f0', '#e8faff'], tex:161}, {r:[86, 22, 18, 58], c:['#2e5a84', '#4a88b8', '#8ad0f0', '#e8faff'], tex:162},
+  {poly:[[0, 26], [52, 0], [104, 26], [104, 40], [52, 15], [0, 40]], c:['#2e5a84', '#4a88b8', '#8ad0f0']},
+  {poly:[[18, 80], [18, 36], [52, 17], [86, 36], [86, 80]], c:['#050a16', '#0a1428', '#12284a']},
+  {p:[[10, 40, '#aee8ff'], [10, 50, '#aee8ff'], [10, 60, '#aee8ff'], [93, 40, '#aee8ff'], [93, 50, '#aee8ff'], [93, 60, '#aee8ff'], [52, 6, '#ffffff'], [51, 7, '#ffffff'], [53, 7, '#ffffff']]},
+]), 52, 79);
 function buildIcePeak(seed){
   const R = rng(seed), rr = (a, c) => a + R()*(c - a);
-  const X0 = -470, X1 = 470, Y0 = -2900, Y1 = 700;
+  const X0 = -560, X1 = 560, Y0 = -2900, Y1 = 700;
   const sc = baseScene('icepeak', 'El ascenso gélido', X0, Y0, X1, Y1);
   sc.kind = 'raid'; sc.darkness = .9; sc.seed = seed; sc.lvl = 10; sc.slippery = true;
-  const px = y => 85*Math.sin(y/520) + 40*Math.sin(y/190 + 1.3), pw = y => 185 + 45*Math.sin(y/310 + .7);
+  const AX = 0, AY = Y0 + 400, AR = 250, YT = AY + AR + 160;   // plaza del jefe al final del ascenso
+  const ak = y => clamp((YT - y)/200, 0, 1);   // 0 en la subida, 1 en la plaza
+  const px = y => (85*Math.sin(y/520) + 40*Math.sin(y/190 + 1.3))*(1 - ak(y)), pw = y => 185 + 45*Math.sin(y/310 + .7) + 150*ak(y);
   sc.pathX = px; sc.pathW = pw;
   sc.spawn = {x:Math.round(px(Y1-110)), y:Y1-110};
   sc.horse = {x:sc.spawn.x - 44, y:Y1-92, dir:1};
@@ -126,8 +124,10 @@ function buildIcePeak(seed){
   }
   // paredes de roca a los dos lados del camino
   for(let y = Y0; y < Y1; y += 14){ const c = px(y), w = pw(y); addCollider(sc, {t:'r', x:X0, y, w:c - w - X0, h:16}); addCollider(sc, {t:'r', x:c + w, y, w:X1 - (c + w), h:16}); }
+  sc.bossRoom = {x:AX - AR - 40, y:AY - AR, w:AR*2 + 80, h:AR*2 + 60}; sc.bossSpawn = {x:AX, y:AY + 10};
   sc.ground = (x, y) => {
     if(x < X0 || x > X1 || y < Y0 || y > Y1) return IP_CLIFF[0];
+    { const da = Math.hypot(x - AX, (y - AY)*1.0); if(da < AR + 20){ if(da > AR + 12 || (da > 120 && da < 126)) return IP_CAP; return IP_ICE[tq(vnoise(x/7, y/7, 812)*.5 + hash(x, y, 813)*.3 + (da < 70 ? .35 : 0), x, y, 4)]; } }
     const c = px(y), w = pw(y), dx = Math.abs(x - c) + (vnoise(x/12, y/12, 801) - .5)*14;
     if(dx > w){
       if(dx < w + 5) return IP_CAP;
@@ -138,18 +138,18 @@ function buildIcePeak(seed){
     return IP_SNOW[tq((vnoise(x/17, y/17, 809)*.55 + vnoise(x/5, y/5, 810)*.3 + hash(x, y, 811)*.15 - .15)/.6, x, y, 4)];
   };
   const free = (x, y, r) => {
-    if(y < Y0 + 60 || y > Y1 - 50 || Math.abs(x - px(y)) > pw(y) - 28 - r) return false;
+    if(y < YT || y > Y1 - 50 || Math.abs(x - px(y)) > pw(y) - 28 - r) return false;
     if(Math.hypot(x - sc.spawn.x, y - sc.spawn.y) < 130) return false;
     return !blocked(sc, x, y, r + 6);
   };
-  const point = (r, minSpawn = 0, y0 = Y0 + 80, y1 = Y1 - 140) => {
+  const point = (r, minSpawn = 0, y0 = YT + 20, y1 = Y1 - 140) => {
     for(let i = 0; i < 200; i++){ const y = Math.round(rr(y0, y1)), x = Math.round(px(y) + rr(-1, 1)*(pw(y) - 36)); if(Math.hypot(x - sc.spawn.x, y - sc.spawn.y) < minSpawn) continue; if(free(x, y, r)) return {x, y}; }
     return null;
   };
   // campamentos congelados abandonados a lo largo de la subida
   const camps = [];
   for(let i = 0; i < 4; i++){
-    const c = point(40, 400, Y0 + 260 + i*(Y1 - Y0 - 800)/4, Y0 + 260 + (i + 1)*(Y1 - Y0 - 800)/4); if(!c) continue;
+    const c = point(40, 400, YT + 40 + i*(Y1 - 520 - YT)/4, YT + 40 + (i + 1)*(Y1 - 520 - YT)/4); if(!c) continue;
     camps.push(c);
     const cf = propSprite(sc, ART.campfire, c.x, c.y, {t:'c', x:c.x, y:c.y-3, r:9, low:true});
     cf.draw = function(){ drawSP(ART.campfire, c.x, c.y); drawFlames(c.x, c.y-6, .8); };
@@ -163,6 +163,8 @@ function buildIcePeak(seed){
   for(let i = 0; i < 38; i++){ const p = point(12, 130); if(p) propRock(sc, p.x, p.y, ++sd); }
   for(let i = 0; i < 18; i++){ const p = point(4, 200); if(p) propSprite(sc, i % 3 ? ART.bones : ART.skullpile, p.x, p.y, {t:'c', x:p.x, y:p.y-2, r:5, low:true}); }
   sc.houses = []; sc.wisps = [];
+  propSprite(sc, ART.northgate, AX, AY - AR + 24, null, [48, 5]);   // la puerta del norte, al fondo de la plaza
+  sc.lights.push({x:AX, y:AY - 20, r:330, a:.75, warm:false, flick:.05}, {x:AX, y:AY - AR + 10, r:150, a:.9, warm:false, flick:.1});
   // jaulas (mascotas de la expedición 10)
   const pets = shuffle(petsOfExp(10).filter(id => R() < CAGE_CHANCE[PETS[id].rarity]), R), cagePts = [];
   for(const id of pets){
@@ -298,3 +300,130 @@ ITEMS.blizzardcloak = {name:'Capa de la Ventisca', icon:'blizzardcloak', slot:'c
 LEGEND_IDS.push('blizzardcloak');
 EXCL_LEGENDS.icepeak = ['glacieraxe', 'yetiheart']; EXCL_IDS.push('glacieraxe', 'yetiheart');
 legendOv('legcloak', 'chest', {L:'#a8d0e8', l:'#e8f8ff', d:'#4a6a88'});
+
+// =====================================================================
+//  El guardián de la puerta del norte: un trol gigante con dos espadas (una de hielo y otra de fuego)
+// =====================================================================
+ORC_CFG.guardian = {skin:['#d8ecf8', '#a8c4dc', '#6a88a8'], hair:['#ffffff'], hood:['#7a98b8', '#b8d0e8', '#3a5068'], tunic:['#5a7898', '#98b8d8', '#2a4058'], leg:['#2a4058', '#4a6a88'], armor:'plate', hat:'helm', pauldron:true, noPaint:true, armW:6};
+function guardianCanvas(f){
+  const k = 1.9, base = oScaled(orcCanvas(f, ORC_CFG.guardian), k), g = base.getContext('2d'), swing = f === 2;
+  g.imageSmoothingEnabled = false;
+  const RX = (swing ? 40 : 35)*k, RY = (swing ? 45 : 41)*k, LX = 14*k, LY = 41*k;
+  const blade = (x0, y0, x1, y1, w, c1, c2) => { oCl(g, x0, y0, x1, y1, w + 2, '#121015'); oCl(g, x0, y0, x1, y1, w, c1); oCl(g, x0, y0, x1, y1, Math.max(1, w - 3), c2); };
+  const guard = (x, y, s) => { oCl(g, x - 8, y + s*2, x + 8, y - s*2, 3, '#121015'); oCl(g, x - 7, y + s*2, x + 7, y - s*2, 2, '#c8962e'); };
+  if(swing){   // tajo: las dos hojas hacia delante
+    blade(LX, LY, LX + 44, LY + 28, 5, '#ff7a20', '#ffe08a'); guard(LX + 3, LY + 1, 1);
+    blade(RX, RY, RX + 40, RY + 30, 5, '#7ac8f0', '#ffffff'); guard(RX + 3, RY + 1, 1);
+  } else {   // en guardia: hielo a la derecha y fuego a la izquierda
+    blade(LX, LY, LX - 7, LY - 58, 5, '#ff7a20', '#ffe08a'); guard(LX - 1, LY - 4, 0);
+    blade(RX, RY, RX + 5, RY - 62, 5, '#7ac8f0', '#ffffff'); guard(RX + 1, RY - 4, 0);
+  }
+  return base;
+}
+MON_SHAPES.northguard = {w:Math.round(64*1.9), h:Math.round(56*1.9), ax:Math.round(24*1.9), ay:Math.round(54*1.9), canvas:guardianCanvas};
+MON_ART.northguard = {fr:[0, 1, 2].map(f => SP(guardianCanvas(f), MON_SHAPES.northguard.ax, MON_SHAPES.northguard.ay))};
+MON_ART.northguard.flash = MON_ART.northguard.fr.map(s => {
+  const cv = document.createElement('canvas'); cv.width = s.c.width; cv.height = s.c.height;
+  const g = cv.getContext('2d'); g.drawImage(s.c, 0, 0); g.globalCompositeOperation = 'source-in'; g.fillStyle = '#fff'; g.fillRect(0, 0, cv.width, cv.height);
+  return {c:cv, ax:s.ax, ay:s.ay};
+});
+MONSTERS.northguard = {name:'El guardián de la puerta del norte', art:'northguard', ai:'guardian', hp:9000, dmg:88, spd:56, r:30, xp:1400, reach:0, prep:.6, boss:true, uniques:['guardianice', 'guardianfire', 'guardianplate', 'guardianboots']};
+RARE_PREFIX.northguard = ['Guardián'];
+MON_COLORS.northguard = ['#7ac8f0', '#ff9a30', '#ffffff'];
+// únicos del guardián: aspecto en el héroe e icono
+Object.assign(ICON_ROWS, {
+  guardianice:   {pal:{w:'#e8faff', s:'#7ac8f0', r:'#aee8ff', g:'#c8962e', b:'#2a4a6a'}, rows:ICON_ROWS.sword.rows},
+  guardianfire:  {pal:{w:'#fff0c0', s:'#ff9a30', r:'#ffd070', g:'#c8962e', b:'#6a2a10'}, rows:ICON_ROWS.sword.rows},
+  guardianplate: {pal:{L:'#8aa8c8', l:'#d8ecf8', d:'#3a5068', s:'#ffe08a'}, rows:ICON_ROWS.chestarmor.rows},
+  guardianboots: {pal:{L:'#8aa8c8', l:'#d8ecf8', d:'#2a4058', s:'#ffe08a'}, rows:ICON_ROWS.boots.rows},
+});
+for(const k of ['guardianice', 'guardianfire', 'guardianplate', 'guardianboots']){ const d = ICON_ROWS[k]; ICONS[k] = bakeRows(d.rows, Object.assign({k:OUT}, d.pal)); }
+Object.assign(ITEMS, {
+  guardianice:  {name:'Hoja gélida del guardián', icon:'guardianice', slot:'weapon', kind:'sword', gear:true, unique:true, dur:150, dmg:[54, 72], freezeChance:.4, value:240,
+                 fixed:[{k:'crit', v:8}], desc:'Objeto único del guardián de la puerta del norte. 40 % de probabilidad de congelar al enemigo 2,5 s.'},
+  guardianfire: {name:'Hoja ígnea del guardián', icon:'guardianfire', slot:'weapon', kind:'sword', gear:true, unique:true, dur:150, dmg:[54, 72], burnChance:.6, value:240,
+                 fixed:[{k:'dmg', v:6}], desc:'Objeto único del guardián de la puerta del norte. 60 % de probabilidad de quemar al enemigo 4 s.'},
+  guardianplate:{name:'Peto de la puerta del norte', icon:'guardianplate', slot:'chest', gear:true, unique:true, armor:14, ov:'uguardplate', value:240,
+                 fixed:[{k:'hp', v:40}, {k:'eleres', v:20}], desc:'Objeto único del guardián de la puerta del norte.'},
+  guardianboots:{name:'Botas del guardián', icon:'guardianboots', slot:'feet', gear:true, unique:true, armor:3, move:8, ov:'uguardboot', value:240,
+                 fixed:[{k:'hp', v:30}, {k:'stam', v:20}], desc:'Objeto único del guardián de la puerta del norte.'},
+});
+uniqueOv('uguardplate', 'chest', {L:'#8aa8c8', l:'#d8ecf8', d:'#3a5068'});
+uniqueOv('uguardboot', 'boot', {L:'#8aa8c8', l:'#d8ecf8', d:'#2a4058'});
+// IA del guardián: tajos de hielo y de fuego, tajo cruzado, embestida y lluvia de hielo y fuego (fase 2 desde el 50 %)
+function updateGuardian(m, dt){
+  const sc = G.sc, MD = MONSTERS[m.type];
+  m.walk += dt*3;
+  if(!m.awake){
+    if((inBossRoom(P.x, P.y) && !P.dead) || m.hp < m.maxHp){
+      m.awake = true; m.atkCd = 1.6; G.bossFight = m;
+      toast('¡El guardián de la puerta del norte ha despertado!', 3); sfx('howl'); G.shake = Math.max(G.shake, 7); ring(m.x, m.y-30, 70, '#aee8ff', .5);
+    }
+    return;
+  }
+  if(P.dead) return;
+  if(!m.phase2 && m.hp < m.maxHp*.5){
+    m.phase2 = true; toast('¡El guardián se enfurece: hielo y fuego!', 3); G.flash = {x:m.x, y:m.y-30, t:.4}; G.shake = Math.max(G.shake, 8);
+    burst(m.x, m.y-30, 40, ['#aee8ff', '#ff9a30', '#ffffff'], [80, 240], [.5, 1], 0); sfx('howl');
+  }
+  const dx = P.x-m.x, dy = P.y-m.y, d = Math.hypot(dx, dy) || 1;
+  m.face = dx > 0 ? 1 : -1;
+  if(m.charge){   // embestida en línea recta
+    const ch = m.charge; ch.t -= dt;
+    const bx = m.x, by = m.y; moveCircle(sc, m, ch.dx*430*dt, ch.dy*430*dt);
+    if(Math.hypot(m.x-bx, m.y-by) < 430*dt*.4){ ch.t = 0; G.shake = Math.max(G.shake, 6); sfx('stoneHit'); }
+    if(!ch.hit && d < m.r + P.r + 12){ ch.hit = true; damagePlayer((m.curDmg||m.dmg)*1.3, m); }
+    if(Math.random() < .7) G.parts.push({x:m.x+rand(-10,10), y:m.y, vx:rand(-20,20), vy:-20, life:.4, max:.4, size:rand(2,3), col:pick(['#aee8ff', '#ff9a30', '#ffffff'])});
+    if(ch.t <= 0){ m.charge = null; m.dizzy = 1.1; }
+    return;
+  }
+  if(m.dizzy > 0){ m.dizzy -= dt; return; }
+  const spd = MD.spd * (m.phase2 ? 1.25 : 1);
+  let cx = 0, cy = 0;
+  if(d > 70){ cx = dx/d*spd; cy = dy/d*spd; }
+  if(m.prepT > 0){
+    cx *= .1; cy *= .1;
+    if(Math.random() < .9){ const ice = m.cast === 'slashI' || (m.cast !== 'slashF' && Math.random() < .5); G.parts.push({x:m.x + m.face*rand(10, 50), y:m.y - rand(10, 60), vx:0, vy:-20, life:.3, max:.3, size:2, col:ice ? pick(['#aee8ff', '#ffffff']) : pick(['#ff9a30', '#ffe08a'])}); }
+  }
+  moveCircle(sc, m, (cx + m.vx)*dt, (cy + m.vy)*dt); m.vx *= .9; m.vy *= .9;
+  if(m.prepT > 0){ m.prepT -= dt; if(m.prepT <= 0) guardianCast(m); return; }
+  if(m.atkCd <= 0){
+    const r = Math.random(); let k;
+    if(d < 120) k = r < .34 ? 'slashI' : r < .68 ? 'slashF' : r < (m.phase2 ? .9 : .8) ? 'cross' : 'elements';
+    else k = r < .3 ? 'charge' : r < .5 ? 'slashI' : r < .7 ? 'slashF' : 'elements';
+    m.cast = k; m.prepT = {slashI:.7, slashF:.7, cross:1, charge:.85, elements:.9}[k]; m.atkCd = 99; m.aim = Math.atan2(dy, dx);
+    if(k === 'charge'){ m.cdx = dx/d; m.cdy = dy/d; }
+    addText(m.x, m.y-90, {slashI:'Tajo helado', slashF:'Tajo ardiente', cross:'¡Tajo cruzado!', charge:'¡Embestida!', elements:'Hielo y fuego'}[k], k === 'slashI' ? '#aee8ff' : k === 'slashF' ? '#ffb070' : '#ffffff', 8, -20);
+  }
+}
+function guardianCast(m){
+  const dmg = m.curDmg || m.dmg;
+  m.atkCd = m.phase2 ? rand(1.8, 2.6) : rand(2.6, 3.4);
+  const arc = (reach, col) => {   // tajo en abanico hacia donde apuntaba: golpea al héroe y a las mascotas
+    const inArc = t => { const ax = t.x-m.x, ay = t.y-m.y, dd = Math.hypot(ax, ay); return dd < reach + (t.r||6) && Math.abs(angDiff(Math.atan2(ay, ax), m.aim)) < 1.0; };
+    for(let i = -4; i <= 4; i++){ const a = m.aim + i*.24; for(let rr2 = 30; rr2 <= reach; rr2 += 22) G.parts.push({x:m.x + Math.cos(a)*rr2, y:m.y - 12 + Math.sin(a)*rr2*.8, vx:Math.cos(a)*40, vy:Math.sin(a)*30 - 10, life:.35, max:.35, size:2.4, col:pick(col)}); }
+    G.shake = Math.max(G.shake, 5); sfx('boom');
+    for(const p of G.pets) if(p.z < 8 && inArc(p)) damagePet(p, dmg*.8, m);
+    return !P.dead && inArc(P) && !(P.jump || (P.jumpZ||0) > 6);
+  };
+  if(m.cast === 'slashI'){
+    if(arc(125, ['#aee8ff', '#ffffff', '#7ac8f0']) && damagePlayer(dmg*1.2, m, 'frost') && !legendOn('yetiheart')){ P.rootT = Math.max(P.rootT||0, .9); P.slowT = 2.5; addText(P.x, P.y-56, '¡Congelado!', '#c8f0ff', 7); ring(P.x, P.y-4, 20, '#c8f0ff', .4); }
+  } else if(m.cast === 'slashF'){
+    if(arc(125, ['#ff9a30', '#ffe08a', '#ff5a1a']) && damagePlayer(dmg*1.2, m, 'fire')){ P.burnT = Math.max(P.burnT||0, 3); addText(P.x, P.y-56, '¡Quemado!', '#ffb070', 7); }
+  } else if(m.cast === 'cross'){
+    G.hazards.push({type:'slam', x:m.x, y:m.y, r:118, life:.35, max:.35});
+    G.shake = Math.max(G.shake, 8); sfx('boom'); burst(m.x, m.y-8, 30, ['#aee8ff', '#ff9a30', '#ffffff'], [80, 220], [.3, .7], 100);
+    for(const p of G.pets) if(Math.hypot(p.x-m.x, p.y-m.y) < 118) damagePet(p, dmg*.9, m);
+    if(!P.dead && Math.hypot(P.x-m.x, (P.y-m.y)*1.2) < 118 && !(P.jump || (P.jumpZ||0) > 6)){ damagePlayer(dmg*1.7, m); P.burnT = Math.max(P.burnT||0, 2); P.slowT = Math.max(P.slowT||0, 2); }
+  } else if(m.cast === 'charge'){
+    m.charge = {dx:m.cdx, dy:m.cdy, t:.6};
+  } else if(m.cast === 'elements'){
+    const n = m.phase2 ? 5 : 3;
+    for(let i = 0; i < n; i++){
+      const x = i === 0 ? P.x : P.x + rand(-110, 110), y = i === 0 ? P.y : P.y + rand(-80, 80);
+      if(i % 2 === 0) G.hazards.push({type:'frost', x, y, r:46, life:.95 + i*.18, max:.95 + i*.18, dmg:dmg*1.05, mon:m});
+      else G.hazards.push({type:'boom', x, y, r:52, life:1 + i*.18, max:1 + i*.18, dmg:dmg*.9});
+    }
+    sfx('summon');
+  }
+}

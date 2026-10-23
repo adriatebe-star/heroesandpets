@@ -4,21 +4,15 @@
 // =====================================================================
 
 // ---------- cofre legendario: naranja y dorado ----------
-function bakeLegendChest(open){
-  const wd = ['#4a1808', '#7a2a0c', '#b24a14'], bd = ['#a06a14', '#e8a830', '#fff2a0'];
+function bakeLegendChest(open){   // 1,45 veces más grande que un cofre normal
+  const wd = ['#4a1808', '#7a2a0c', '#b24a14'], bd = ['#a06a14', '#e8a830', '#fff2a0'], s = v => Math.round(v*1.45);
+  const R = (x, y, w, h, c, o) => Object.assign({r:[s(x), s(y), s(w), s(h)], c}, o);
   const sh = open ? [
-    {r:[0,0,18,5], c:wd, L:-.25},
-    {r:[0,5,18,9], c:wd, tex:8},
-    {r:[1,4,16,3], c:'#0a0806'},
-    {r:[3,0,2,14], c:bd}, {r:[13,0,2,14], c:bd},
+    R(0, 0, 18, 5, wd, {L:-.25}), R(0, 5, 18, 9, wd, {tex:8}), R(1, 4, 16, 3, '#0a0806'), R(3, 0, 2, 14, bd), R(13, 0, 2, 14, bd),
   ] : [
-    {r:[0,5,18,9], c:wd, tex:8},
-    {r:[0,0,18,6], c:wd.slice(1).concat(['#ff9a3a']), tex:9},
-    {r:[0,5,18,1], c:wd[0]},
-    {r:[3,0,2,14], c:bd}, {r:[13,0,2,14], c:bd},
-    {r:[8,4,3,4], c:['#a06a14', '#e8a830', '#fff2a0']},
+    R(0, 5, 18, 9, wd, {tex:8}), R(0, 0, 18, 6, wd.slice(1).concat(['#ff9a3a']), {tex:9}), R(0, 5, 18, 1, wd[0]), R(3, 0, 2, 14, bd), R(13, 0, 2, 14, bd), R(8, 4, 3, 4, ['#a06a14', '#e8a830', '#fff2a0']),
   ];
-  return SP(paintSprite(18, 14, sh), 9, 13);
+  return SP(paintSprite(s(18), s(14), sh), s(9), s(13));
 }
 ART.chest.legend = [bakeLegendChest(false), bakeLegendChest(true)];
 const LEGEND_CHEST_CHANCE = .3;   // probabilidad de que una incursión lleve un cofre legendario (menos que los cofres raros, que son varios)
@@ -34,7 +28,9 @@ function addLegendChest(sc){
     if(Math.hypot(x - sx, y - sy) < dEntry) continue;
     if(sc.portals.some(o => Math.hypot(o.x - x, o.y - y) < 90) || sc.chests.some(o => Math.hypot(o.x - x, o.y - y) < 60) || sc.cages.some(o => Math.hypot(o.x - x, o.y - y) < 60)) continue;
     const ch = {x:Math.round(x), y:Math.round(y), rare:true, legend:true, open:false};
-    ch.col = addCollider(sc, {t:'r', x:ch.x - 9, y:ch.y - 8, w:18, h:8}); sc.chests.push(ch); return ch;
+    ch.col = addCollider(sc, {t:'r', x:ch.x - 13, y:ch.y - 11, w:26, h:11}); sc.chests.push(ch);
+    sc.lights.push({x:ch.x, y:ch.y - 12, r:135, a:.95, warm:true, flick:.12});   // brilla en la oscuridad
+    return ch;
   }
   return null;
 }

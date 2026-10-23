@@ -799,7 +799,7 @@ function drawMapView(x, y, size, view, big, layer){
     if(shape==='diamond'){ ctx.beginPath(); ctx.moveTo(px, py-r-1); ctx.lineTo(px+r+1, py); ctx.lineTo(px, py+r+1); ctx.lineTo(px-r-1, py); ctx.fill(); }
     else ctx.fillRect(px-r, py-r, r*2, r*2);
   };
-  for(const c of sc.chests) if(!c.open && mmSeen(c.x, c.y)) dot(c.x, c.y, c.legend ? '#ff9a3c' : c.rare ? '#c8a0ff' : '#e8c070', 3.5*ms);
+  for(const c of sc.chests) if(!c.open && mmSeen(c.x, c.y)) dot(c.x, c.y, c.legend ? '#ff9a3c' : c.rare ? '#c8a0ff' : '#e8c070', (c.legend ? 5.5 : 3.5)*ms);
   for(const c of sc.cages) if(!c.open && (mmSeen(c.x, c.y) || (hasPetAffix('rastreador') && Math.hypot(c.x-P.x, c.y-P.y) < 640))) dot(c.x, c.y, '#7ae09a', 5*ms, 'diamond');
   for(const n of sc.npcs) dot(n.x, n.y, '#9ad0ff', 3*ms);
   if(sc.stash) dot(sc.stash.x, sc.stash.y, '#c8a0ff', 3*ms);
@@ -1072,6 +1072,11 @@ UI.renderMapInfo = function(id){
   renderMapLegends(e);
   if(e.locked){ $('mapInfo').innerHTML = `<h3>???</h3><p>${e.desc}</p><button disabled>Aún no puedes ir</button>`; return; }
   const lk = expLocked(e);
+  if(e.hall){   // zona especial (sin expedición): la sala del tiempo
+    $('mapInfo').innerHTML = `<h3>Zona especial</h3><h2>${e.name}</h2><p>${e.desc}</p>` + (lk ? `<button disabled>Supera el nivel anterior para llegar</button>` : sel ? '<button id="mapGo">Viajar</button>' : '');
+    const g2 = $('mapGo'); if(g2) g2.onclick = () => { this.closeRaidMap(); enterTimeHall(); };
+    return;
+  }
   const pets = petsOfExp(e.petExp ?? e.lvl).sort((a,c) => ['normal','magic','rare','legendary'].indexOf(PETS[a].rarity) - ['normal','magic','rare','legendary'].indexOf(PETS[c].rarity));
   const got = pets.filter(p => G.save.collection[p]).length;
   const rows = pets.map(p => {

@@ -29,6 +29,10 @@ function blocked(sc, x, y, r){
     if(sc.solidAt(x,y)) return true;
     for(let i=0;i<8;i++){ const a=i*Math.PI/4; if(sc.solidAt(x+Math.cos(a)*r, y+Math.sin(a)*r)) return true; }
   }
+  if(sc.waterAt){   // agua: bloquea el paso pero no la vista (a diferencia de solidAt)
+    if(sc.waterAt(x,y)) return true;
+    for(let i=0;i<8;i++){ const a=i*Math.PI/4; if(sc.waterAt(x+Math.cos(a)*r, y+Math.sin(a)*r)) return true; }
+  }
   const seen = new Set();
   for(let gx=Math.floor((x-r)/GRID); gx<=Math.floor((x+r)/GRID); gx++)
     for(let gy=Math.floor((y-r)/GRID); gy<=Math.floor((y+r)/GRID); gy++){

@@ -95,18 +95,32 @@ function randomReturnPortals(sc){
     }
   }
   for(let n = cells.length - 1; n > 0; n--){ const m = Math.floor(Math.random()*(n+1)); [cells[n], cells[m]] = [cells[m], cells[n]]; }
-  for(const [dEntry, dPortal] of [[400, 600], [250, 350], [150, 150], [80, 80]]) for(const [x, y] of cells){   // en mapas pequeños se relajan las distancias
-    if(sc.portals.length >= 2) break;
-    if(Math.hypot(x - sx, y - sy) < dEntry || sc.portals.some(o => Math.hypot(o.x - x, o.y - y) < dPortal)) continue;
-    sc.portals.push({x:Math.round(x), y:Math.round(y), t:0}); sc.lights.push({x:Math.round(x), y:Math.round(y)-8, r:120, a:.9, warm:false, flick:.1, col:'portal'});
-  }
+  let cand = [];
+  for(const dEntry of [400, 250, 150, 80]){ cand = cells.filter(([x, y]) => Math.hypot(x - sx, y - sy) >= dEntry); if(cand.length >= 2) break; }   // en mapas pequeños se relaja la distancia a la entrada
+  if(!cand.length) return;
+  const add = ([x, y]) => { sc.portals.push({x:Math.round(x), y:Math.round(y), t:0}); sc.lights.push({x:Math.round(x), y:Math.round(y)-8, r:120, a:.9, warm:false, flick:.1, col:'portal'}); };
+  const p1 = cand[0]; add(p1);
+  // el segundo portal: el más alejado del primero entre muchos candidatos al azar (así nunca salen juntos)
+  let best = null, bd = -1;
+  for(const c of cand.slice(1, 220)){ const d = Math.hypot(c[0] - p1[0], c[1] - p1[1]); if(d > bd){ bd = d; best = c; } }
+  if(best) add(best);
+}
+// cofres y jaulas despejados: se quita el decorado que los tapa o les bloquea el paso
+function clearAroundInteractables(sc){
+  const spots = [...sc.chests, ...sc.cages];
+  sc.props = sc.props.filter(p => {
+    if(p.w || p.h) return true;   // los muros no se tocan
+    for(const c of spots){ const dx = Math.abs(p.x - c.x), dy = p.y - c.y; if(dx < 30 && dy > -22 && dy < 50){ if(p.col) removeCollider(sc, p.col); return false; } }
+    return true;
+  });
 }
 function startRaid(expId='village'){
   const seed = Math.floor(Math.random()*1e9), exp = EXPEDITIONS.find(e => e.id===expId) || EXPEDITIONS[0];
-  const sc = expId==='icepeak' ? buildIcePeak(seed) : expId==='temple' ? buildTemple(seed) : expId==='forest' ? buildForest(seed) : expId==='mine' ? buildMine(seed) : expId==='river' ? buildRiver(seed) : expId==='castle' ? buildCastle(seed) : expId==='orccamp' ? buildOrcCamp(seed) : expId==='plains' ? buildPlains(seed) : expId==='crypt' ? buildCrypt(seed) : expId==='cemetery' ? buildCemetery(seed) : buildVillage(seed);
+  const sc = expId==='floatcity' ? buildFloatCity(seed) : expId==='icepeak' ? buildIcePeak(seed) : expId==='temple' ? buildTemple(seed) : expId==='forest' ? buildForest(seed) : expId==='mine' ? buildMine(seed) : expId==='river' ? buildRiver(seed) : expId==='castle' ? buildCastle(seed) : expId==='orccamp' ? buildOrcCamp(seed) : expId==='plains' ? buildPlains(seed) : expId==='crypt' ? buildCrypt(seed) : expId==='cemetery' ? buildCemetery(seed) : buildVillage(seed);
   sc.lvl = exp.lvl; sc.exp = exp; sc.petExp = exp.petExp ?? exp.lvl;
   randomReturnPortals(sc);
   if(Math.random() < LEGEND_CHEST_CHANCE) addLegendChest(sc);   // a veces hay un cofre legendario
+  clearAroundInteractables(sc);
   G.save.sold = [];   // Trapis olvida lo recomprable al salir a una expedición
   resetWorld(sc);
   for(const sp of G.sc.monsterSpawns) for(const e of sp.pack){
@@ -287,6 +301,7 @@ function talkAish(){
   UI.openAish();
 }
 function talkHorse(){
+  if(G.sc.id === 'timehall'){ UI.say('Caballo', [{text:'¿Volver a la guarida?', choice:[{label:'Sí, volver', fn:() => enterDen()}, {label:'Todavía no'}]}]); return; }
   // tras volver con vida al menos una vez, el caballo muestra el mapa de incursiones
   if((G.save.extracts||0) >= 1){ UI.openRaidMap(); return; }
   if(!G.save.talked){ UI.say('Caballo', ['El caballo resopla y te mira con desconfianza. Quizá deberías hablar primero con Juan.']); return; }
@@ -298,14 +313,15 @@ function talkHorse(){
 function interactables(){
   const sc = G.sc, list = [];
   const add = (x, y, r, text, fn, py) => { const d = Math.hypot(P.x-x, P.y-y); if(d < r) list.push({d, x, y:py ?? y-40, text, fn}); };
-  const talk = {juan:talkJuan, trapis:talkTrapis, druid:talkDruid, gonzalo:talkGonzalo, uakala:talkUakala, aish:talkAish, alexandra:talkAlexandra};
-  for(const n of sc.npcs) add(n.x, n.y, 34, n.id==='alexandra' ? (sc.kind==='raid' ? '[F] Hablar con Alexandra' : '[F] Alexandra, la nórdica jugona') : n.id==='aish' ? (sc.kind==='raid' ? '[F] Hablar con Aish' : '[F] Aish, elfo de luz') : n.id==='uakala' ? (sc.kind==='raid' ? '[F] Hablar con Uakala' : '[F] Herrero Uakala') : n.id==='trapis' ? '[F] Comerciar con Trapis' : n.id==='druid' ? '[F] Hablar con Chemma' : n.id==='gonzalo' ? '[F] Hablar con Gonzalo' : '[F] Hablar con Juan, el sabio', talk[n.id], n.y-52);
+  const talk = {juan:talkJuan, trapis:talkTrapis, druid:talkDruid, gonzalo:talkGonzalo, uakala:talkUakala, aish:talkAish, alexandra:talkAlexandra, rolecs:talkRolecs};
+  for(const n of sc.npcs) add(n.x, n.y, 34, n.id==='rolecs' ? '[F] Rolecs, señor del tiempo' : n.id==='alexandra' ? (sc.kind==='raid' ? '[F] Hablar con Alexandra' : '[F] Alexandra, la nórdica jugona') : n.id==='aish' ? (sc.kind==='raid' ? '[F] Hablar con Aish' : '[F] Aish, elfo de luz') : n.id==='uakala' ? (sc.kind==='raid' ? '[F] Hablar con Uakala' : '[F] Herrero Uakala') : n.id==='trapis' ? '[F] Comerciar con Trapis' : n.id==='druid' ? '[F] Hablar con Chemma' : n.id==='gonzalo' ? '[F] Hablar con Gonzalo' : '[F] Hablar con Juan, el sabio', talk[n.id], n.y-52);
   if(sc.horse){
     if(sc.kind==='den') add(sc.horse.x, sc.horse.y, 46, '[F] Caballo', () => { sfx('horse'); talkHorse(); }, sc.horse.y-42);
     else add(sc.horse.x, sc.horse.y, 46, '[F] Volver a casa', () => { sfx('horse'); startChannel(3, 'Volviendo a casa...', () => extract('Has vuelto a lomos del caballo de Juan.'), '#c8a070'); }, sc.horse.y-42);
   }
   if(sc.bigCage) add(sc.bigCage.x, sc.bigCage.y, 32, '[F] Jaula grande (mascotas)', () => UI.toggleInv('cage'), sc.bigCage.y-44);
   if(sc.stash) add(sc.stash.x, sc.stash.y, 30, '[F] Alijo', () => UI.toggleInv('stash'), sc.stash.y-26);
+  if(sc.portalProp) add(0, -150, 60, '[F] Portal del tiempo', () => UI.say('Portal del tiempo', [G.save.rolecsPortal ? 'El portal vibra y susurra... pero todavía no se abre.' : 'Un anillo de piedra cubierto de relojes. No reacciona a nada: le falta una llave del tiempo.']), -190);
   for(const c of sc.chests) if(!c.open) add(c.x, c.y, 26, c.legend ? '[F] Abrir cofre legendario' : c.rare ? '[F] Abrir cofre raro' : '[F] Abrir cofre', () => startChannel((c.legend ? 1.8 : c.rare ? 1.2 : .7)*(1 - SK('exp')*.03), 'Abriendo...', () => openChest(c)), c.y-24);
   for(const c of sc.cages) if(!c.open) add(c.x, c.y, 28, c.gift ? '[F] Abrir la jaula brillante' : '[F] Abrir jaula', () => startChannel(1.5*(1 - SK('exp')*.03)*Math.max(.3, 1 - (G.pt.cageSpd||0)/100), 'Forzando la jaula...', () => openCage(c), '#7ae09a'), c.y-36);
   for(const l of G.loot) if(l.item && l.z===0 && lootVisible(l)) add(l.x, l.y, 20, '[F] Coger ' + itemName(l.item), () => pickLoot(l), l.y-18);
@@ -447,7 +463,7 @@ function collectLights(){
   if(!P.dead){
     if(P.lantern && !(P.hallT > 0) && (P.oil > 0 || G.sc.kind!=='raid')){
       const fl = 1 + Math.sin(t*13)*.03 + Math.sin(t*7.3)*.04 + (Math.random()-.5)*.03;
-      const gm = lanternGem(); L.push({x:P.lx, y:P.ly, r:175*fl*(gm.light||1)*(legendOn('minerhelm') ? 1.3 : 1)*(G.inv.equip.lantern && G.inv.equip.lantern.id === 'dawnlantern' ? 1.4 : 1), a:1, warm:true, tint:gemTint(gm)});
+      const gm = lanternGem(); L.push({x:P.lx, y:P.ly, r:175*fl*(gm.light||1)*(legendOn('minerhelm') ? 1.3 : 1)*((G.inv.equip.head && ITEMS[G.inv.equip.head.id].lightMul) || 1)*(G.inv.equip.lantern && G.inv.equip.lantern.id === 'dawnlantern' ? 1.4 : 1), a:1, warm:true, tint:gemTint(gm)});
     }
     L.push({x:P.x, y:P.y-16, r:44, a:.55, ambient:true});
   }

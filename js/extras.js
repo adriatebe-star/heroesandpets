@@ -66,8 +66,8 @@ function injectSerum(sr, it){
   if(r < .25){
     const name = itemName(it), id = it.pet, shiny = !!it.shiny; removePetItem(it);
     // el laboratorio está en la guarida: la mascota ya la conocía siempre, así que Chemma puede resucitarla
-    G.save.collection[id] = true; if(shiny) G.save.shinies[id] = true; G.save.fallen.push({pet:id, shiny});
-    sfx('petDown'); return {msg:`¡${name} no ha sobrevivido al suero!`, dead:true};
+    G.save.collection[id] = true; if(shiny) G.save.shinies[id] = true; const entry = {pet:id, shiny}; G.save.fallen.push(entry);
+    sfx('petDown'); return {msg:`¡${name} no ha sobrevivido al suero!`, dead:true, entry};
   }
   if(r < .5) return {msg:'El suero no ha hecho efecto... no ha pasado nada.'};
   return sr.apply(it);
@@ -94,6 +94,12 @@ UI.renderPetLab = function(body){
   body.innerHTML = `<div class="lab"><div class="labtop"><div class="smitem ${sel ? 'has' : ''}" id="labSlot">${sel ? '' : 'Haz clic en una mascota de abajo para ponerla aquí'}</div><div class="smmsg" id="labMsg">${this.labMsg || ''}</div></div>
     <div class="labserums" id="labSerums"></div>
     <div class="smodds">Elige una mascota que tengas (equipada, en la mochila, en el alijo o en la jaula grande):</div><div class="smgrid labgrid" id="labGrid"></div></div>`;
+  if(this.labDead && G.save.fallen.includes(this.labDead)){   // la mascota murió con el suero: botón para resucitarla sin salir del menú
+    const e0 = this.labDead, cost = reviveCost(e0), btn = document.createElement('button');
+    btn.className = 'labrev'; btn.textContent = `Resucitar a ${e0.shiny ? '★ ' : ''}${PETS[e0.pet].name} · ${cost} oro`; btn.disabled = G.save.wallet < cost;
+    btn.onclick = () => { const i = G.save.fallen.indexOf(e0); this.labDead = null; this.reviveAt(i); if(G.save.fallen.includes(e0)){ this.labDead = e0; this.renderTrainer(); } };
+    $('labMsg').after(btn);
+  }
   const grid = $('labGrid');
   if(!pets.length) grid.outerHTML = '<div class="smempty">No tienes ninguna mascota.</div>';
   else for(const it of pets){
@@ -113,7 +119,7 @@ UI.renderPetLab = function(body){
       if(G.save.wallet < sr.price){ toast('No tienes suficiente oro', 1.6); return; }
       G.save.wallet -= sr.price; sfx('potion'); sfx('coin');
       const res = injectSerum(sr, sel);
-      if(res.dead) this.labPet = null; else { sel.hp = petMaxHp(sel); G.pets = G.pets.filter(q => q.item !== sel); }
+      if(res.dead){ this.labPet = null; this.labDead = res.entry; } else { sel.hp = petMaxHp(sel); G.pets = G.pets.filter(q => q.item !== sel); }
       syncPets(); for(const q of G.pets) q.maxHp = petMaxHp(q.item);
       toast(res.msg, 3); this.labMsg = res.msg;
       saveGame(); refreshStats(); UI.refresh(); this.renderTrainer();

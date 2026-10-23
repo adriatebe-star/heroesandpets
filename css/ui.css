@@ -471,3 +471,5 @@ kbd{background:var(--ink);border:2px solid var(--frame);padding:1px 7px;color:va
 .rlrow6{grid-column:2;display:grid;grid-template-columns:repeat(6,1fr);gap:3px;margin-top:3px}
 #rlChips{display:flex;gap:6px;margin:10px 0}.rlchip{border-radius:50%;width:54px;height:54px;border:3px dashed #fff;background:#a02828;color:#fff;font-weight:bold}.rlchip.on{outline:3px solid #ffd040}
 .rlbtns{display:flex;gap:8px;flex-wrap:wrap}.rlbtns button{padding:8px 16px}.rlhelp{margin-top:10px;font-size:12px;color:#9a8e78}
+
+.labrev{display:block;margin:6px 0;padding:6px 12px;background:#4a3a24;color:#ffe8b0;border:1px solid #c8a868;border-radius:4px;cursor:pointer}.labrev:disabled{opacity:.5;cursor:default}

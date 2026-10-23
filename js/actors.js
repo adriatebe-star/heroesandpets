@@ -2,7 +2,7 @@
 // =====================================================================
 //  Actores: héroe, monstruos, mascotas, proyectiles, peligros y botín
 // =====================================================================
-const STAM = {fist:6, fist3:10, stick:10, sword:12, mace:15, axe:13, greataxe:20, flamethrower:2, dagger:7, bow:8, crossbow:14, spear:9, throw:5, jump:35, run:15, block:8};
+const STAM = {fist:6, fist3:10, stick:10, sword:12, mace:15, axe:13, greataxe:20, flamethrower:2, dagger:7, bow:8, crossbow:14, trident:16, spear:9, throw:5, jump:35, run:15, block:8};
 const SPEED = {walk:115, run:185, dash:620, block:.5};
 const WEAPON = {   // alcance, arco de golpe, duración, empuje, estela
   fist:  {reach:46, arc:.95, dur:.18, k:220},
@@ -13,6 +13,7 @@ const WEAPON = {   // alcance, arco de golpe, duración, empuje, estela
   flamethrower:{reach:104, arc:.62, dur:.16, k:0},   // llamarada en cono: se mantiene pulsado y gasta aceite
   greataxe:{reach:66, arc:3.3, dur:.62, k:420, trail:'rgba(255,225,190,.42)'},   // ciclón: golpea a todos los que te rodean
   dagger:{reach:38, arc:.9, dur:.2, k:150, trail:'rgba(200,230,200,.32)'},
+  trident:{reach:118, arc:.2, dur:.5, k:260, trail:'rgba(130,230,255,.42)'},   // estocada en línea recta de gran alcance
   bow:   {dur:.42},
   crossbow:{dur:.85},
   spear: {dur:.3},
@@ -47,6 +48,7 @@ function gearStats(){
     if(d.move) s.move += d.move;
     if(d.dmgFist) s.fist += d.dmgFist;
     if(d.crit) s.crit += d.crit;
+    if(d.dodge) s.dodge = (s.dodge||0) + d.dodge;
     for(const a of it.affixes || []){ const st = affixStat(a.k); s[st] = (s[st]||0) + a.v; const A = ITEM_AFFIX[a.k]; if(A && A.stat2 && a.w !== undefined) s[A.stat2] = (s[A.stat2]||0) + a.w; }
   }
   for(const it of E.tal || []) if(it) for(const a of it.affixes || []){ const st = affixStat(a.k); s[st] = (s[st]||0) + a.v; }   // talismanes con bonos fijos (legendarios)
@@ -149,6 +151,11 @@ function updatePlayer(dt){
   if(!uiBusy){
     ix = (keys.KeyD||keys.ArrowRight?1:0) - (keys.KeyA||keys.ArrowLeft?1:0);
     iy = (keys.KeyS||keys.ArrowDown?1:0) - (keys.KeyW||keys.ArrowUp?1:0);
+  }
+  if(P.charmT > 0){   // hechizo de sirena: el héroe camina hacia ella
+    P.charmT -= dt; const sr = P.charmSrc;
+    if(sr && !sr.dying && !(P.rootT > 0)){ const cdx = sr.x - P.x, cdy = sr.y - P.y, cd = Math.hypot(cdx, cdy) || 1; if(cd > 24){ ix = cdx/cd; iy = cdy/cd; } else { ix = iy = 0; } } else P.charmT = 0;
+    if(Math.random() < dt*12) G.parts.push({x:P.x + rand(-6,6), y:P.y - 30, vx:rand(-8,8), vy:-20, life:.5, max:.5, size:2, col:pick(['#ff9ae0','#ffffff','#c8a0ff'])});
   }
   const il = Math.hypot(ix,iy); if(il){ ix/=il; iy/=il; P.dx=ix; P.dy=iy; }
   P.moving = il>0;
@@ -429,7 +436,7 @@ function damagePlayer(dmg, m, elem){
   const mc = m && m.type && MONSTERS[m.type];
   if(mc && mc.crit && Math.random() < mc.crit){ dmg *= 1.8; addText(P.x, P.y-64, '¡Crítico!', '#ffd166', 8); }   // guerreros élficos pesados
   if(legendOn('riverpearl') && Math.random() < .15){ addText(P.x, P.y-50, 'Marea', '#9ad8ff', 7); ring(P.x, P.y-10, 26, '#7ac8f0', .3); return false; }
-  if(Math.random() < SK('agi')*.01 + (MS('agi',10) ? .05 : 0) + (P.surge ? .25 : 0)){ addText(P.x, P.y-50, 'Esquiva', '#c8e8ff', 7); return false; }
+  if(Math.random() < SK('agi')*.01 + (MS('agi',10) ? .05 : 0) + (P.surge ? .25 : 0) + (S2.dodge||0)/100){ addText(P.x, P.y-50, 'Esquiva', '#c8e8ff', 7); return false; }
   dmg *= 1 - ((typeof lanternGem === 'function' ? lanternGem().dr : 0) || 0);   // topacio engarzado
   const guard = G.pets.find(p => p.def.affixes.includes('guardiana'));
   if(guard){ damagePet(guard, dmg*.1, null, true); dmg *= .9; }
@@ -466,6 +473,7 @@ function damagePlayer(dmg, m, elem){
   if(monFx(m, 'slow')) P.slowT = Math.max(P.slowT||0, 2);
   if(MONSTERS[m.type].poisonHit) P.poisonT = Math.max(P.poisonT, 3);
   if(MONSTERS[m.type].bleedHit) P.bleedT = Math.max(P.bleedT||0, 4);
+  if(MONSTERS[m.type].electric){ P.weakT = Math.max(P.weakT||0, 3); if(Math.random() < .3 && !legendOn('yetiheart')){ P.rootT = Math.max(P.rootT||0, .6); addText(P.x, P.y-62, '¡Descarga!', '#ffe84a', 8); } burst(P.x, P.y-22, 8, ['#ffe84a','#ffffff','#9af0ff'], [30,100], [.2,.4], 0); }   // tridentes eléctricos
   if(MONSTERS[m.type].stunHit && !legendOn('yetiheart')){ P.stunT = Math.max(P.stunT||0, 1.1); addText(P.x, P.y-62, '¡Aturdido!', '#ffe08a', 8); burst(P.x, P.y-34, 8, ['#ffe08a','#ffffff'], [20,60], [.3,.6], -40); }   // yeti: golpe pesado
   if(A.includes('gelido') || MONSTERS[m.type].slowHit){ P.slowT = 2; burst(P.x, P.y-20, 6, ['#a0d8ff','#ffffff'], [20,60], [.3,.5], 0); }
   if(A.includes('apagaluces') && G.sc.kind==='raid'){ P.oil = Math.max(0, P.oil-5); addText(P.x, P.y-56, '-5 aceite', '#ffb347', 7); }
@@ -569,6 +577,7 @@ function updateMonster(m, dt){
   if(m.ai==='boss'){ updateBoss(m, dt); return; }
   if(m.ai==='urr'){ updateUrr(m, dt); return; }
   if(m.ai==='elfmage'){ updateElfMage(m, dt); return; }
+  if(m.ai==='guardian'){ updateGuardian(m, dt); return; }
   // salto en curso (afijo Saltador)
   if(m.jump){
     const j = m.jump; j.t += dt/.7;
@@ -662,6 +671,9 @@ function updateMonster(m, dt){
           else if(MD.zap) G.projs.push({x:m.x + m.face*8, y:m.y-20, vx:ax/al*340, vy:ay/al*340, life:1.3, kind:'bolt', from:'mon', mon:m, dmg:m.curDmg, r:4, root: Math.random() < .25 ? .6 : 0, weak: Math.random() < .2 ? 3 : 0, col:['#a08800', '#ffe84a', '#ffffff']});
           else if(MD.flame) G.projs.push({x:m.x + m.face*8, y:m.y-12, vx:ax/al*250, vy:ay/al*250, life:1.1, kind:'flame', from:'mon', mon:m, dmg:m.curDmg, r:5, burn:true});
           else if(MD.dart) G.projs.push({x:m.x + m.face*8, y:m.y-14, vx:ax/al*330, vy:ay/al*330, life:1.2, kind:'dart', from:'mon', mon:m, dmg:m.curDmg, r:3, ang:Math.atan2(ay,ax), root: Math.random() < .3 ? 1.1 : 0, steal:true});
+          else if(MD.harpoon) G.projs.push({x:m.x + m.face*8, y:m.y-18, vx:ax/al*330, vy:ay/al*330, life:1.3, kind:'harpoon', from:'mon', mon:m, dmg:m.curDmg, r:4, ang:Math.atan2(ay,ax), slow:1.5});
+          else if(MD.bubble) G.projs.push({x:m.x + m.face*10, y:m.y-24, vx:ax/al*170, vy:ay/al*170, life:2.4, kind:'bubble', from:'mon', mon:m, dmg:m.curDmg, r:9, freeze:1.3, slow:2});
+          else if(MD.charm){ G.hazards.push({type:'charm', x:target.x, y:target.y, r:62, life:1.05, max:1.05, mon:m, dmg:m.curDmg*.8}); sfx('alba'); }
           else if(MD.icearrow) G.projs.push({x:m.x + m.face*8, y:m.y-16, vx:ax/al*300, vy:ay/al*300, life:1.3, kind:'arrow', from:'mon', mon:m, dmg:m.curDmg, r:3, ang:Math.atan2(ay,ax), ice:true, slow:2.5, freeze: Math.random() < .4 ? 1.1 : 0});
           else if(MD.snowball) G.projs.push({x:m.x + m.face*12, y:m.y-30, vx:ax/al*205, vy:ay/al*205, life:2.1, kind:'snowball', from:'mon', mon:m, dmg:m.curDmg, r:8, slow:2.5});
           else if(MD.rock) G.projs.push({x:m.x + m.face*10, y:m.y-24, vx:ax/al*215, vy:ay/al*215, life:1.9, kind:'rock', from:'mon', mon:m, dmg:m.curDmg, r:6});
@@ -711,7 +723,7 @@ function updateMonster(m, dt){
       if(m.prepT <= 0){
         m.atkCd = 1.3;
         if(d < reach + 8 && see){
-          if(target===P) damagePlayer(m.curDmg, m);
+          if(target===P) damagePlayer(m.curDmg, m, MD.electric ? 'light' : undefined);
           else if(G.mons.includes(target)) hitMonster(target, m.curDmg, {src:'mon', nx:dx/d, ny:dy/d, k:140});
           else damagePet(target, m.curDmg, m);
         }
@@ -798,6 +810,7 @@ function killMonster(m){
   if(L.treasure && !m.summoner && Math.random() < L.treasure + (hasPetAffix('buscatesoros')?.05:0)) dropItem(m.x, m.y, mkItem('treasure'));
   if(MONSTERS[m.type].elf && !m.summoner && !m.small) elfDrop(m);
   if(MONSTERS[m.type].ghost && !m.summoner && !m.small) ghostDrop(m);
+  if(MONSTERS[m.type].sea && !m.summoner && !m.small) seaDrop(m);
   if(lvl >= 8 && !m.summoner && !m.small) luckDrop(m);
   if(!m.summoner && !m.small){ legendDrop(m, lvl); legendExclDrop(m); if(MONSTERS[m.type].temple){ templeDrop(m); elfDrop(m); } }
   legendKill(m);
@@ -1127,6 +1140,7 @@ function damagePet(p, dmg, m, silent, ranged){
   dmg *= Math.max(.2, 1 - petFx(p, 'dr')/100);
   dmg *= Math.max(.4, 1 - (G.pt.petArmor||0)/100);
   if(P.boneT > 0) dmg *= .8;   // hueso para mascota: +5 de armadura
+  if(legendOn('coralheart')) dmg *= .85;   // corazón de coral
   p.hp -= dmg; p.flash = .12; p.regenT = 4;
   if(p.def.stone && p.hp > 0 && dmg >= p.maxHp*.08){ p.stoneT = 2; addText(p.x, p.y-30, '¡Piedra!', '#c8ccd4', 7); burst(p.x, p.y-10, 10, ['#8a8a92','#c8ccd4','#5a5a62'], [30,100], [.3,.6], 200); sfx('breakItem'); }
   if(!silent) addText(p.x, p.y-24, '-'+Math.round(dmg), '#ff9a9a', 7);
@@ -1177,7 +1191,7 @@ function separatePets(dt){
 function updatePet(p, dt){
   const sc = G.sc, art = PET_ART[p.def.id], fly = art.fly;
   p.cd -= dt; p.flash -= dt; p.regenT -= dt;
-  { const reg = (G.pt.petRegen||0) + (P.boneT > 0 ? 5 : 0); if(reg && p.hp > 0 && p.hp < p.maxHp) p.hp = Math.min(p.maxHp, p.hp + reg*dt); }
+  { const reg = (G.pt.petRegen||0) + (P.boneT > 0 ? 5 : 0) + (legendOn('coralheart') ? 3 : 0); if(reg && p.hp > 0 && p.hp < p.maxHp) p.hp = Math.min(p.maxHp, p.hp + reg*dt); }
   // rescate: si una mascota de tierra queda atrapada en un obstáculo, reaparece junto al héroe
   if(!fly && p.exhaustedT <= 0 && blocked(sc, p.x, p.y, 2)){ p.stuckT = (p.stuckT||0) + dt; if(p.stuckT > .5){ const sp = freeSpotNear(P.x-24, P.y+8); p.x = sp.x; p.y = sp.y; p.stuckT = 0; } } else p.stuckT = 0;
   p.item.hp = p.hp;
@@ -1228,6 +1242,11 @@ function updatePet(p, dt){
       for(const r2 of [30, 60, 100, 140]) ring(p.x, p.y-8, r2, '#ffd070', .5);
       burst(p.x, p.y-14, 30, ['#ffd070', '#ff8a30', '#ffffff'], [60, 200], [.5, 1], -60); addText(p.x, p.y-42, '¡Renacer!', '#ffd070', 9); sfx('alba'); G.flash = {x:p.x, y:p.y-10, t:.35};
     }
+  }
+  if(p.def.maelstrom && canFight){   // Krakenito: Remolino cada 24 s (un torbellino arrastra y daña a los enemigos cercanos)
+    p.maelCd = (p.maelCd ?? 8) - dt;
+    const tg = p.maelCd <= 0 ? nearestMonster(p.x, p.y, 240) : null;
+    if(tg){ p.maelCd = 24; G.hazards.push({type:'whirl', x:tg.x, y:tg.y, r:84, life:4, max:4, pet:p, tick:0}); ring(tg.x, tg.y-6, 70, '#c890ff', .5); addText(p.x, p.y-42, '¡Remolino!', '#c8a0ff', 9); sfx('alba'); }
   }
   if(p.def.blizzard && canFight){   // Boreal: Ventisca cada 24 s (congela a los enemigos cercanos y les hace daño)
     p.blizCd = (p.blizCd ?? 8) - dt;
@@ -1594,6 +1613,7 @@ function updateProjs(dt){
         if(pr.root){ P.rootT = Math.max(P.rootT||0, pr.root); addText(P.x, P.y-56, '¡Inmovilizado!', '#c8a0ff', 7); ring(P.x, P.y-4, 18, '#8a60d0', .35); }
         if(pr.freeze && !legendOn('yetiheart')){ P.rootT = Math.max(P.rootT||0, pr.freeze); addText(P.x, P.y-56, '¡Congelado!', '#c8f0ff', 7); ring(P.x, P.y-4, 20, '#c8f0ff', .4); burst(P.x, P.y-16, 12, ['#c8f0ff','#7ac8f0','#ffffff'], [30,100], [.3,.6], 0); }
         if(pr.steal && G.raidGold > 0){ const n = Math.min(G.raidGold, randi(4,12) + (G.sc.lvl||1)); G.raidGold -= n; if(pr.mon) pr.mon.stolen = (pr.mon.stolen||0) + n; addText(P.x, P.y-68, '-' + n + ' oro', '#ffd166', 7); }
+        if(pr.kind==='harpoon'){ const l3 = Math.hypot(pr.vx, pr.vy) || 1; P.vx -= pr.vx/l3*340; P.vy -= pr.vy/l3*340; }   // el arpón te arrastra hacia el pescador
         if(pr.kind==='rock' || pr.kind==='snowball'){ const l2 = Math.hypot(pr.vx, pr.vy) || 1; P.vx += pr.vx/l2*160; P.vy += pr.vy/l2*160; } } pr.life = 0; continue; }
       for(const p of G.pets) if((p.z < 6 || PET_ART[p.def.id].fly) && Math.hypot(p.x-pr.x, p.y-8-(PET_ART[p.def.id].fly ? p.z : 0)-pr.y) < 8){ damagePet(p, pr.dmg, pr.mon, false, true); pr.life = 0; break; }
       continue;
@@ -1665,6 +1685,11 @@ function updateHazards(dt){
       if(h.rad > 400) h.life = 0;
     }
     if(h.type==='boom' && h.life > 0 && Math.floor(h.life*8) !== Math.floor((h.life+dt)*8)) sfx('fuse');
+    if(h.type==='charm' && h.life <= 0){   // canto de sirena: si te pilla, caminas hacia ella 2 s
+      ring(h.x, h.y-4, h.r, '#ff9ae0', .4); burst(h.x, h.y-8, 18, ['#ff9ae0', '#ffffff', '#c8a0ff'], [30, 110], [.4, .8], -30); sfx('alba');
+      if(!P.dead && Math.hypot(P.x-h.x, (P.y-h.y)*1.2) < h.r && !(P.jump || (P.jumpZ||0) > 6) && h.mon && !h.mon.dying && damagePlayer(h.dmg, h.mon)){ P.charmT = 2; P.charmSrc = h.mon; addText(P.x, P.y-62, '¡Hechizado!', '#ff9ae0', 8); }
+      for(const p of G.pets) if(p.z < 8 && Math.hypot(p.x-h.x, p.y-h.y) < h.r) damagePet(p, h.dmg*.5, null, false, true);
+    }
     if(h.type==='rockfall' && h.life <= 0){
       G.shake = Math.max(G.shake, 4); sfx('stoneHit');
       burst(h.x, h.y-4, 18, ['#8a8e98','#c8ccd4','#5a5e66','#ffffff'], [50,170], [.3,.7], 160); ring(h.x, h.y-4, h.r, '#c8ccd4', .3);
@@ -1768,12 +1793,19 @@ function drawArm(a){
     const c = Math.cos(a.ang), s = Math.sin(a.ang);
     const hx = a.x - c*3, hy = a.y - s*3, gx = a.x + c*2, gy = a.y + s*2, ex = a.x + c*21, ey = a.y + s*21;
     pixLine(hx, hy, gx, gy, 3, '#3a2618');                                         // empuñadura
-    const SW = {firesword:['#ff9a30','#ffe08a'], icesword:['#7ac8f0','#f0fcff'], lightningsword:['#e8c020','#fffbd0'], elfsword:['#8ad8b0','#f4fff8'], frostfang:['#7ac8f0','#ffb060'], currentsword:['#4aa8d8','#e8f8ff']}[a.wid];
+    const SW = {firesword:['#ff9a30','#ffe08a'], icesword:['#7ac8f0','#f0fcff'], lightningsword:['#e8c020','#fffbd0'], elfsword:['#8ad8b0','#f4fff8'], frostfang:['#7ac8f0','#ffb060'], currentsword:['#4aa8d8','#e8f8ff'], guardianice:['#7ac8f0','#f0fcff'], guardianfire:['#ff9a30','#ffe08a']}[a.wid];
     pixLine(ex, ey, gx, gy, 4, OUT); pixLine(ex, ey, gx, gy, 2, SW ? SW[0] : '#a8acb4');        // hoja
     b.fillStyle = SW ? SW[1] : '#d8dce4'; b.fillRect(Math.round(lerp(gx,ex,.4)), Math.round(lerp(gy,ey,.4)), 1, 1);
     if(!SW){ b.fillStyle = '#8a5a3a'; b.fillRect(Math.round(lerp(gx,ex,.65)), Math.round(lerp(gy,ey,.65)), 1, 1); }   // óxido
     else if(Math.random() < .3) G.parts.push({x:lerp(gx,ex,Math.random()), y:lerp(gy,ey,Math.random()), vx:rand(-10,10), vy:a.wid==='firesword' ? -25 : rand(-10,10), life:.3, max:.3, size:1, col:SW[1]});
     b.fillStyle = '#8a6420'; pixLine(gx - s*3, gy + c*3, gx + s*3, gy - c*3, 2, '#8a6420');                // guarda
+  }
+  if(a.weapon==='trident'){
+    const c = Math.cos(P.face), s2 = Math.sin(P.face), th = a.thr || 0, tx = a.x + c*(16 + th*30), ty = a.y + s2*(16 + th*30)*.9, col = a.wid==='deeptrident' ? ['#7ac8ff','#ffffff'] : ['#9af0ff','#e8ffff'];
+    pixLine(a.x - c*10, a.y - s2*10, tx, ty, 3, OUT); pixLine(a.x - c*10, a.y - s2*10, tx, ty, 1, '#7a5636');
+    for(const sd2 of [-1, 0, 1]){ const qx = -s2*sd2*3, qy = c*sd2*3; pixLine(tx + qx, ty + qy, tx + qx + c*7, ty + qy + s2*7, 2, OUT); pixLine(tx + qx, ty + qy, tx + qx + c*7, ty + qy + s2*7, 1, col[0]); }
+    pixLine(tx - s2*3, ty + c*3, tx + s2*3, ty - c*3, 1, col[1]);
+    if(th > .3 && Math.random() < .6) G.parts.push({x:tx + c*7, y:ty + s2*7, vx:rand(-30,30), vy:rand(-30,30), life:.2, max:.2, size:1.5, col:pick(['#9af0ff','#ffffff','#ffff90'])});
   }
   if(a.weapon==='bow'){
     // arco curvado perpendicular a la dirección de tiro; la cuerda se tensa al disparar
@@ -1863,6 +1895,10 @@ function drawHero(){
       if(swinging){ a.ang = P.face - 1.3 + 2.6*t; a.x = x + Math.cos(a.ang)*9; a.y = bodyY + Math.sin(a.ang)*7; }
       if(swinging && wk==='greataxe'){ a.ang = P.face + prog*Math.PI*2; a.x = x + Math.cos(a.ang)*11; a.y = bodyY + Math.sin(a.ang)*8; }   // giro completo
     }
+    if(sd===1 && wk==='trident'){
+      const th = P.punchT>0 && kind===wk ? Math.sin(Math.min(1, prog)*Math.PI) : 0;
+      a.weapon = 'trident'; a.wid = w && w.id; a.thr = th; a.x = x + fx*(8 + th*10); a.y = bodyY + fy*(5 + th*6);
+    }
     if(sd===1 && (isRanged(wk) || wk==='flamethrower')){
       a.weapon = wk; a.x = x + fx*9; a.y = bodyY + fy*6 - 1;
       a.draw = P.punchT>0 && kind===wk ? Math.min(1, prog/.7) : 0;
@@ -1891,7 +1927,7 @@ function drawHero(){
   spr('hood', 0, bob);  if(E.head) armorOv(ovName(E.head, E.head.id==='countessveil' ? 'veil' : E.head.id==='urrhelm' ? 'urrhelm' : 'helmet'), E.head.rarity, 0, bob);
   b.restore();
   // farol
-  const LT = G.inv.equip.lantern, lit = !!LT && P.lantern && (P.oil > 0 || G.sc.kind!=='raid'), silver = LT && LT.id==='silverlantern', lv = !LT ? null : silver ? 'silver' : LT.id==='elflantern' ? 'elf' : null, gm = lanternGem();
+  const LT = G.inv.equip.lantern, lit = !!LT && P.lantern && (P.oil > 0 || G.sc.kind!=='raid'), silver = LT && LT.id==='silverlantern', lv = !LT ? null : silver ? 'silver' : LT.id==='elflantern' ? 'elf' : LT.id==='atlantlantern' ? 'atl' : null, gm = lanternGem();
   const lsw = Math.round(Math.sin(G.t*3 + P.walk*.5)*1.2);
   P.lx = x + dir*7 + lsw; P.ly = y-10+bob;
   b.fillStyle = OUT; b.fillRect(Math.round(x+dir*6), y-16+bob, 1, 2);
@@ -2100,6 +2136,16 @@ function drawProj(pr){
     b.fillStyle = OUT; b.fillRect(x-3, y-3, 6, 6); b.fillStyle = '#5ac8ff'; b.fillRect(x-2, y-2, 4, 4); b.fillStyle = '#e8faff'; b.fillRect(x-2, y-2, 2, 2);
     if(Math.random() < .6) G.parts.push({x:pr.x, y:pr.y, vx:rand(-14,14), vy:rand(-6,18), life:.3, max:.3, size:1.5, col:pick(['#5ac8ff','#aee8ff'])});
   }
+  else if(pr.kind==='harpoon'){
+    const c = Math.cos(pr.ang), s = Math.sin(pr.ang);
+    pixLine(pr.x - c*14, pr.y - s*14, pr.x, pr.y, 3, OUT); pixLine(pr.x - c*14, pr.y - s*14, pr.x, pr.y, 1, '#a8b0b8');
+    b.fillStyle = '#e8f0f8'; b.fillRect(Math.round(pr.x + c*2) - 1, Math.round(pr.y + s*2) - 1, 3, 3); b.fillStyle = '#7a8a98'; b.fillRect(Math.round(pr.x - c*3 - s*2), Math.round(pr.y - s*3 + c*2), 1, 1); b.fillRect(Math.round(pr.x - c*3 + s*2), Math.round(pr.y - s*3 - c*2), 1, 1);
+  }
+  else if(pr.kind==='bubble'){
+    const x = Math.round(pr.x), y = Math.round(pr.y + Math.sin(G.t*8 + pr.x)*1.5);
+    b.globalAlpha = .5; b.fillStyle = '#9ae8ff'; b.beginPath(); b.arc(x, y, 8, 0, Math.PI*2); b.fill(); b.globalAlpha = 1; b.strokeStyle = '#e8ffff'; b.lineWidth = 1; b.beginPath(); b.arc(x, y, 8, 0, Math.PI*2); b.stroke(); b.fillStyle = '#ffffff'; b.fillRect(x-4, y-4, 3, 2);
+    if(Math.random() < .3) G.parts.push({x:pr.x, y:pr.y, vx:rand(-8,8), vy:rand(-14,-4), life:.4, max:.4, size:1.5, col:'#c8f4ff'});
+  }
   else if(pr.kind==='snowball'){
     const x = Math.round(pr.x), y = Math.round(pr.y);
     b.fillStyle = OUT; b.fillRect(x-6, y-6, 12, 12); b.fillRect(x-7, y-5, 14, 10); b.fillStyle = '#dce8f4'; b.fillRect(x-5, y-5, 10, 10); b.fillStyle = '#ffffff'; b.fillRect(x-5, y-5, 6, 4); b.fillStyle = '#a8bcd4'; b.fillRect(x+1, y+1, 4, 4);
@@ -2142,6 +2188,10 @@ function drawHazard(h){
     b.globalAlpha = 1;
   } else if(h.type==='fire'){
     const a = Math.min(1, h.life); b.globalAlpha = a; drawFlames(h.x + Math.sin(h.x*3)*3, h.y, .4); b.globalAlpha = 1;
+  } else if(h.type==='charm'){
+    const t = 1 - h.life/h.max;
+    pixRing(h.x, h.y, h.r, h.r*.45, Math.floor(G.t*10)%2 ? '#ff9ae0' : '#c8a0ff', 30); pixRing(h.x, h.y, h.r*t, h.r*.45*t, '#ffe0f8', 22);
+    if(Math.random() < .5) G.parts.push({x:h.x + rand(-h.r*.7, h.r*.7), y:h.y - rand(0, 10), vx:0, vy:-24, life:.6, max:.6, size:2, col:pick(['#ff9ae0','#ffffff'])});
   } else if(h.type==='rockfall'){
     const t = 1 - h.life/h.max, fall = Math.pow(Math.max(0, 1 - t), 2)*150;   // la roca cae desde arriba; la sombra crece
     b.globalAlpha = .25 + t*.4; pixRing(h.x, h.y, h.r*(.4 + t*.6), h.r*(.4 + t*.6)*.45, '#0a0c12', 24); b.globalAlpha = 1;
@@ -2169,8 +2219,14 @@ function drawHazard(h){
   }
 }
 function drawChest(c){
+  if(c.legend && !c.open){   // el cofre legendario brilla: halo pulsante y columna de luz
+    const x = Math.round(c.x), y = Math.round(c.y), pul = .5 + .5*Math.sin(G.t*3);
+    b.save(); b.fillStyle = '#ff9a3a'; b.globalAlpha = .13 + .09*pul; b.beginPath(); b.ellipse(x, y-8, 44, 24, 0, 0, Math.PI*2); b.fill();
+    b.globalAlpha = .17 + .1*pul; b.beginPath(); b.ellipse(x, y-8, 30, 17, 0, 0, Math.PI*2); b.fill();
+    b.fillStyle = '#ffe08a'; b.globalAlpha = .1 + .06*pul; b.fillRect(x-7, y-84, 14, 76); b.globalAlpha = .08 + .05*pul; b.fillRect(x-14, y-70, 28, 62); b.restore();
+  }
   drawSP(ART.chest[c.legend ? 'legend' : c.rare ? 'rare' : 'normal'][c.open ? 1 : 0], c.x, c.y);
-  if(c.rare && !c.open && Math.random() < (c.legend ? .18 : .06)) G.parts.push({x:c.x+rand(-8,8), y:c.y-rand(4,14), vx:0, vy:-15, life:.6, max:.6, size:1, col:c.legend ? pick(['#ff9a3a','#ffe08a','#ffffff']) : '#ffe08a'});
+  if(c.rare && !c.open && Math.random() < (c.legend ? .5 : .06)) G.parts.push({x:c.x+rand(c.legend ? -16 : -8, c.legend ? 16 : 8), y:c.y-rand(4,c.legend ? 26 : 14), vx:rand(-6,6), vy:c.legend ? -26 : -15, life:c.legend ? .9 : .6, max:c.legend ? .9 : .6, size:c.legend ? 1.6 : 1, col:c.legend ? pick(['#ff9a3a','#ffe08a','#ffffff']) : '#ffe08a'});
 }
 function drawCage(c){
   drawSP(ART.cageBack, c.x, c.y);
