@@ -64,8 +64,9 @@ const SERUM_ODDS = ' 25 % de que la mascota muera · 25 % de que no pase nada ·
 function injectSerum(sr, it){
   const r = Math.random();
   if(r < .25){
-    const homed = it.homed, name = itemName(it), id = it.pet, shiny = !!it.shiny; removePetItem(it);
-    if(homed) G.save.fallen.push({pet:id, shiny});
+    const name = itemName(it), id = it.pet, shiny = !!it.shiny; removePetItem(it);
+    // el laboratorio está en la guarida: la mascota ya la conocía siempre, así que Chemma puede resucitarla
+    G.save.collection[id] = true; if(shiny) G.save.shinies[id] = true; G.save.fallen.push({pet:id, shiny});
     sfx('petDown'); return {msg:`¡${name} no ha sobrevivido al suero!`, dead:true};
   }
   if(r < .5) return {msg:'El suero no ha hecho efecto... no ha pasado nada.'};

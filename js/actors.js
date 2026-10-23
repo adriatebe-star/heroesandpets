@@ -50,7 +50,7 @@ function gearStats(){
     for(const a of it.affixes || []){ const st = affixStat(a.k); s[st] = (s[st]||0) + a.v; const A = ITEM_AFFIX[a.k]; if(A && A.stat2 && a.w !== undefined) s[A.stat2] = (s[A.stat2]||0) + a.w; }
   }
   for(const it of E.tal || []) if(it) for(const a of it.affixes || []){ const st = affixStat(a.k); s[st] = (s[st]||0) + a.v; }   // talismanes con bonos fijos (legendarios)
-  s.move += (typeof lanternGem === 'function' ? lanternGem().move : 0) || 0;
+  if(typeof lanternGem === 'function'){ const gm = lanternGem(); s.move += gm.move || 0; s.dmg += gm.dmg || 0; s.sreg += gm.sreg || 0; }   // zafiro (velocidad) y obsidiana (daño y estamina)
   s.gold += (MS('exp',10) ? 10 : 0) + (MS('exp',15) ? 10 : 0);
   return s;
 }

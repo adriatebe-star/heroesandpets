@@ -5,22 +5,22 @@
 
 // ---------- gemas: botín exclusivo de la mina; Aish las engarza en el farolillo ----------
 const GEMS = {
-  ruby:      {name:'Rubí',       col:'#ff4a5a', pal:{L:'#6a0a1a', l:'#d02a40', w:'#ff7a8a', W:'#ffe0e4'}, value:150, regen:1.5, tint:'255,40,50',
-              desc:'Regenera 1,5 de vida por segundo. Luz roja.'},
+  ruby:      {name:'Rubí',       col:'#ff4a5a', pal:{L:'#6a0a1a', l:'#d02a40', w:'#ff7a8a', W:'#ffe0e4'}, value:150, regen:2.5, tint:'255,40,50',
+              desc:'Regenera 2,5 de vida por segundo. Luz roja.'},
   emerald:   {name:'Esmeralda',  col:'#3adc78', pal:{L:'#0a4a24', l:'#22b058', w:'#7af0a0', W:'#e0ffe8'}, value:140, regen:1.5, petRegen:1.5, tint:'50,255,110',
               desc:'Regenera 1,5 de vida por segundo a ti y a tus mascotas. Luz verde.'},
   amethyst:  {name:'Amatista',   col:'#b070ff', pal:{L:'#3a1a6a', l:'#8a48d8', w:'#c898ff', W:'#f0e4ff'}, value:120, oil:50, light:1.25, tint:'170,80,255',
               desc:'+50 de capacidad de aceite y mayor área de luz. Luz violeta.'},
-  topaz:     {name:'Topacio',    col:'#ffa030', pal:{L:'#7a3a08', l:'#e08a20', w:'#ffc060', W:'#fff0d0'}, value:130, oil:100, dr:.05, tint:'255,150,30',
-              desc:'+100 de capacidad de aceite y −5 % de daño recibido. Luz naranja.'},
+  topaz:     {name:'Topacio',    col:'#ffa030', pal:{L:'#7a3a08', l:'#e08a20', w:'#ffc060', W:'#fff0d0'}, value:130, oil:125, dr:.08, tint:'255,150,30',
+              desc:'+125 de capacidad de aceite y −8 % de daño recibido. Luz naranja.'},
   sapphire:  {name:'Zafiro',     col:'#4a7aff', pal:{L:'#0a1a6a', l:'#2a58d8', w:'#7aa0ff', W:'#e0e8ff'}, value:140, light:1.25, move:15, tint:'50,110,255',
               desc:'Mayor área de luz y +15 % de velocidad de movimiento. Luz azul.'},
-  aquamarine:{name:'Aguamarina', col:'#7ae8ff', pal:{L:'#0a4a5a', l:'#38b8d0', w:'#9af0ff', W:'#eafcff'}, value:130, light:1.25, freeze:true, tint:'120,230,255',
-              desc:'Mayor área de luz; los enemigos dentro del área pueden congelarse. Luz azul clara.'},
+  aquamarine:{name:'Aguamarina', col:'#7ae8ff', pal:{L:'#0a4a5a', l:'#38b8d0', w:'#9af0ff', W:'#eafcff'}, value:130, light:1.15, freeze:true, tint:'120,230,255',
+              desc:'Un poco más de área de luz; los enemigos dentro del área pueden congelarse (con poca frecuencia). Luz azul clara.'},
   opal:      {name:'Ópalo',      col:'#ffb8f0', pal:{L:'#5a4a8a', l:'#a8c8e8', w:'#f8d0f0', W:'#ffffff'}, value:220, oil:100, oilRegen:.6, tint:'rainbow',
               desc:'+100 de capacidad de aceite y regenera 0,6 de aceite por segundo. Luz arcoíris.'},
-  obsidian:  {name:'Obsidiana',  col:'#8a7ab0', pal:{L:'#0a0814', l:'#2a2438', w:'#5a4e7a', W:'#a89ad0'}, value:100, noSocket:true, tint:null,
-              desc:'Una piedra volcánica de brillo oscuro. Aish todavía no sabe cómo engarzarla.'},
+  obsidian:  {name:'Obsidiana',  col:'#8a7ab0', pal:{L:'#0a0814', l:'#2a2438', w:'#5a4e7a', W:'#a89ad0'}, value:100, light:.02, hpDrain:3, dmg:8, sreg:35, tint:null,
+              desc:'Te quita 3 de vida por segundo en las expediciones (sin llegar a matarte) y el farolillo casi no da luz, pero ganas +8 de daño y +35 % de regeneración de estamina.'},
   diamond:   {name:'Diamante',   col:'#e8f4ff', pal:{L:'#6a7a98', l:'#c8dcf0', w:'#f4fbff', W:'#ffffff'}, value:400, oil:50, light:2, oilRegen:.9, tint:'255,255,255',
               desc:'+50 de capacidad de aceite, duplica el área de luz y regenera 0,9 de aceite por segundo. Luz blanca intensa.'},
 };
@@ -42,6 +42,7 @@ function gemTint(gm){
 function updateLanternGem(dt){
   const gm = lanternGem(); if(gm === NOGEM || P.dead) return;
   const inRaid = G.sc.kind === 'raid', lit = P.lantern && (P.oil > 0 || !inRaid);
+  if(gm.hpDrain && inRaid && P.hp > 1) P.hp = Math.max(1, P.hp - gm.hpDrain*dt);   // obsidiana: te debilita poco a poco, pero nunca te mata
   if(lit && gm.regen && P.hp < P.maxHp) P.hp = Math.min(P.maxHp, P.hp + gm.regen*dt);
   if(lit && gm.petRegen) for(const p of G.pets) if(p.hp > 0 && p.hp < p.maxHp) p.hp = Math.min(p.maxHp, p.hp + gm.petRegen*dt);
   if(gm.oilRegen && inRaid && P.oil < oilMax()) P.oil = Math.min(oilMax(), P.oil + gm.oilRegen*dt);
@@ -52,7 +53,7 @@ function updateLanternGem(dt){
       for(const m of G.mons){
         if(m.dying || m.spawnIn < 1 || Math.hypot(m.x-P.x, m.y-P.y) > R2) continue;
         if(gm.burn) m.burnT = Math.max(m.burnT || 0, 1.5);
-        if(gm.freeze && Math.random() < .12 && !MONSTERS[m.type].boss && !(m.freezeT > 0) && !(m.freezeImmT > 0)){ m.freezeT = 1.6; m.freezeImmT = 1.6 + 10; burst(m.x, m.y-m.r, 12, ['#c8f0ff','#7ac8f0','#ffffff'], [30,100], [.3,.6], 0); ring(m.x, m.y-4, 20, '#c8f0ff', .3); }
+        if(gm.freeze && Math.random() < .07 && !MONSTERS[m.type].boss && !(m.freezeT > 0) && !(m.freezeImmT > 0)){ m.freezeT = 1.2; m.freezeImmT = 1.2 + 10; burst(m.x, m.y-m.r, 12, ['#c8f0ff','#7ac8f0','#ffffff'], [30,100], [.3,.6], 0); ring(m.x, m.y-4, 20, '#c8f0ff', .3); }
       }
     }
   }

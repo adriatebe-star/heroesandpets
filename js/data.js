@@ -114,7 +114,7 @@ function mkGear(id, rarity='normal', lvl=1){
 }
 // instancia de objeto
 function mkItem(id, n=1, lvl=1, bonus=0){
-  if(id==='treasure') id = pick(TREASURES);
+  if(id==='treasure') id = rollTreasure();   // los tesoros especiales de orcos y elfos salen en sus zonas (treasure.js)
   const d = ITEMS[id];
   if(d.gear) return mkGear(id, d.unique ? 'unique' : rollRarity(lvl, bonus), lvl);
   const it = {id};
