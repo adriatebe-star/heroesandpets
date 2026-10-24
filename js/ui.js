@@ -709,7 +709,8 @@ function drawHUD(){
   if(raid){
     textO(`Mascotas rescatadas: ${G.rescued}/${G.sc.cages.length}`, W-20, my+ms+44);
     textO('Vuelve al caballo [F] o a un portal', W-20, my+ms+62, '#a89a80');
-  } else { const q = questLines(); if(q) q.forEach((t, i) => textO(t, W-20, my+ms+44+i*18, i ? '#e8d8b0' : '#ffd166')); else textO('Habla con Juan · El caballo te lleva', W-20, my+ms+44, '#a89a80'); }
+    { const q = questLines(); if(q) q.forEach((t, i) => textO(t, W-20, my+ms+92+i*18, i === 0 ? '#c8a050' : i === 1 ? '#fff2a0' : '#e8d8b0')); }   // la misión sigue a la vista dentro de las expediciones
+  } else { const q = questLines(); if(q) q.forEach((t, i) => textO(t, W-20, my+ms+44+i*18, i === 0 ? '#c8a050' : i === 1 ? '#fff2a0' : '#e8d8b0')); else textO('Habla con Juan · El caballo te lleva', W-20, my+ms+44, '#a89a80'); }
   ctx.textAlign = 'left';
   if(!raid) drawPetCounter();
   drawTutorial(); drawElfBuff();
@@ -900,6 +901,11 @@ function drawWorldOverlay(){
     if(c.open || Math.hypot(c.x-P.x, c.y-P.y) > 640) continue;
     const [sx, sy] = toScreen(c.x, c.y-30), bob = Math.sin(G.t*4)*3;
     ctx.fillStyle = '#7ae09a'; ctx.beginPath(); ctx.moveTo(sx, sy+bob+9); ctx.lineTo(sx-7, sy+bob); ctx.lineTo(sx+7, sy+bob); ctx.fill();
+  }
+  if(G.sc.kind !== 'raid') for(const n of G.sc.npcs){   // puntos de pasiva sin gastar: +N sobre la cabeza de Gonzalo (habilidades) y de Chemma (mascotas)
+    const pts = n.id === 'gonzalo' ? (G.save.skillPts || 0) : n.id === 'druid' ? Math.max(0, petPoints()) : 0; if(!pts) continue;
+    const [nx, ny] = toScreen(n.x, n.y - 74 + Math.sin(G.t*3)*1.5), pul = .75 + .25*Math.sin(G.t*5);
+    ctx.textAlign = 'center'; ctx.font = `${11*S}px ${FONT}`; ctx.globalAlpha = pul; textO('+' + pts, nx, ny, '#7affb0'); ctx.globalAlpha = 1;
   }
   for(const t of G.texts){
     const [sx, sy] = toScreen(t.x, t.y), a = clamp(t.life/t.max*2, 0, 1), sc = 1 + Math.max(0, (t.life-t.max+.12))*4;
@@ -1093,7 +1099,7 @@ UI.renderMapInfo = function(id){
      <div class="mpets">${rows}</div>
      ${legendInfoHTML(e)}
      ${e.boss ? bossInfoHTML(e) : ''}
-     ${lk ? `<button disabled>${blockBoss(e) && (G.save.maxExp||0) >= e.lvl - 1 ? 'Derrota a ' + MONSTERS[blockBoss(e).boss].name + ' para desbloquearla' : 'Supera la Expedición ' + (e.lvl-1) + ' para desbloquearla'}</button>` : e.needKey && !G.inv.bag.some(o => o && o.id==='minekey') ? '<button disabled>Necesitas una llave de la mina en la mochila</button>' : sel ? '<button id="mapGo">Viajar' + (e.needKey ? ' (gasta 1 llave de la mina)' : '') + '</button>' : '<p class="sub">Haz clic para seleccionarla</p>'}`;
+     ${lk ? `<button disabled>${blockQuest(e) && (G.save.maxExp||0) >= e.lvl - 1 ? 'Completa la misión «' + blockQuest(e).title + '» para desbloquearla' : blockBoss(e) && (G.save.maxExp||0) >= e.lvl - 1 ? 'Derrota a ' + MONSTERS[blockBoss(e).boss].name + ' para desbloquearla' : 'Supera la Expedición ' + (e.lvl-1) + ' para desbloquearla'}</button>` : e.needKey && !G.inv.bag.some(o => o && o.id==='minekey') ? '<button disabled>Necesitas una llave de la mina en la mochila</button>' : sel ? '<button id="mapGo">Viajar' + (e.needKey ? ' (gasta 1 llave de la mina)' : '') + '</button>' : '<p class="sub">Haz clic para seleccionarla</p>'}`;
   const go = $('mapGo'); if(go) go.onclick = () => {
     if(e.needKey){ const ix = G.inv.bag.findIndex(o => o && o.id==='minekey'); if(ix < 0){ toast('Necesitas una llave de la mina'); return; } if(--G.inv.bag[ix].n <= 0) G.inv.bag[ix] = null; }
     this.closeRaidMap(); startRaid(e.id);
@@ -1202,7 +1208,7 @@ UI.drawTree = function(){
 // los jefes bloquean el avance: no se puede pasar al nivel siguiente sin derrotar al jefe del anterior (las partidas que ya llegaron más lejos lo dan por hecho)
 const bossDown = e => !e.boss || !!(G.save.bossDone && G.save.bossDone[e.id]) || !!(G.save.bossGift && G.save.bossGift[e.id]) || (G.save.maxExp||0) > e.lvl;
 const blockBoss = e => EXPEDITIONS.find(x => x.boss && x.lvl === e.lvl - 1 && !bossDown(x));
-const expLocked = e => e.locked || (G.save.maxExp||0) < e.lvl - 1 || !!blockBoss(e);
+const expLocked = e => e.locked || (G.save.maxExp||0) < e.lvl - 1 || !!blockBoss(e) || !!blockQuest(e);
 
 // ---------- cartel de enhorabuena al rescatar una mascota ----------
 UI.showPetCard = function(id, shiny=false){

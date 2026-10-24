@@ -221,9 +221,11 @@ function talkAlexandra(){
     return;
   }
   if(!s.alexandraMet){
-    UI.say('Alexandra, la nórdica jugona', ['¡Gracias por el cobijo! Ya he montado mi mesa.', 'Apuesta lo que quieras: la rueda no engaña... mucho. ¡Hagan juego!'], () => { s.alexandraMet = true; saveGame(); UI.openRoulette(); });
+    UI.say('Alexandra, la nórdica jugona', ['¡Gracias por el cobijo! Ya he montado mi mesa.', 'Apuesta lo que quieras: la rueda no engaña... mucho. ¡Hagan juego!', 'Desde el primer día tienes la ruleta a tu disposición (con el oro de la guarida). Si me traes mi máquina tragaperras, también habrá tragaperras.'], () => { s.alexandraMet = true; saveGame(); UI.openRoulette(); });
     return;
   }
+  if(questTalk('alexandra')) return;
+  if(s.slotsOpen){ UI.say('Alexandra, la nórdica jugona', [{text:'¿A qué quieres jugar?', choice:[{label:'La ruleta', fn:() => UI.openRoulette()}, {label:'Las tragaperras', fn:() => UI.openSlots()}, {label:'Nada, gracias'}]}]); return; }
   UI.openRoulette();
 }
 

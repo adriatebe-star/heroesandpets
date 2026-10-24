@@ -114,10 +114,11 @@ UI.renderPetLab = function(body){
   const box = $('labSerums');
   for(const sr of SERUMS){
     const has = sel && !sr.ok(sel), card = document.createElement('div'); card.className = 'labcard';
-    card.innerHTML = `<img src="${ICONS[sr.icon].toDataURL()}" draggable="false"><b>${sr.name}</b><small>${sr.desc}</small><button ${!sel || has || G.save.wallet < sr.price ? 'disabled' : ''}>${has ? sr.done : 'Inyectar · ' + sr.price + ' oro'}</button>`;
+    card.innerHTML = `<img src="${ICONS[sr.icon].toDataURL()}" draggable="false"><b>${sr.name}</b><small>${sr.desc}</small><button ${!sel || has || (G.save.wallet < sr.price && !(G.save.freeSerum > 0)) ? 'disabled' : ''}>${has ? sr.done : G.save.freeSerum > 0 ? 'Inyectar · gratis (1 uso)' : 'Inyectar · ' + sr.price + ' oro'}</button>`;
     card.querySelector('button').onclick = () => {
-      if(G.save.wallet < sr.price){ toast('No tienes suficiente oro', 1.6); return; }
-      G.save.wallet -= sr.price; sfx('potion'); sfx('coin');
+      const free = G.save.freeSerum > 0;
+      if(!free && G.save.wallet < sr.price){ toast('No tienes suficiente oro', 1.6); return; }
+      if(free){ G.save.freeSerum--; toast('Usas el suero gratis de Chemma', 2.4); } else G.save.wallet -= sr.price; sfx('potion'); sfx('coin');
       const res = injectSerum(sr, sel);
       if(res.dead){ this.labPet = null; this.labDead = res.entry; } else { sel.hp = petMaxHp(sel); G.pets = G.pets.filter(q => q.item !== sel); }
       syncPets(); for(const q of G.pets) q.maxHp = petMaxHp(q.item);

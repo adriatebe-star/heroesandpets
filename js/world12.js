@@ -76,8 +76,27 @@ function bossRain(m, kinds, n, spread, mul){   // zonas de peligro sobre el hér
   }
   sfx('summon');
 }
-function bossBeam(m, ang, delay, w, len, mul, col, fx){   // rayo en línea con aviso previo
-  G.hazards.push({type:'beam', x:m.x, y:m.y - 12, ang, len, w, delay, life:.4, max:.4, dmg:(m.curDmg || m.dmg)*mul, mon:m, col:col || '#ff4a4a', fx});
+function bossBeam(m, ang, delay, w, len, mul, col, fx, ox = 0, oy = 0){   // rayo en línea con aviso previo
+  const h = {type:'beam', x:m.x + ox, y:m.y - 12 + oy, ang, len, w, delay, life:.4, max:.4, dmg:(m.curDmg || m.dmg)*mul, mon:m, col:col || '#ff4a4a', fx}; G.hazards.push(h); return h;
+}
+function bossRingBooms(m, n, radius, mul){   // corona de explosiones alrededor del jefe que estallan en espiral (hay que moverse, no saltar)
+  const dmg = (m.curDmg || m.dmg)*mul;
+  for(let i = 0; i < n; i++){ const a = i/n*Math.PI*2, life = .9 + i*.07; G.hazards.push({type:'boom', x:m.x + Math.cos(a)*radius, y:m.y + Math.sin(a)*radius*.8, r:44, life, max:life, dmg}); }
+  for(let i = 0; i < Math.round(n/2); i++){ const a = (i + .5)/(n/2)*Math.PI*2, life = 1.3 + i*.09; G.hazards.push({type:'boom', x:m.x + Math.cos(a)*radius*1.7, y:m.y + Math.sin(a)*radius*1.7*.8, r:44, life, max:life, dmg}); }
+  sfx('fuse');
+}
+function bossBarrage(m, rows, mul){   // muro de explosiones que avanza hacia el héroe; cada fila tiene un hueco por el que pasar
+  const a = angTo(m), dmg = (m.curDmg || m.dmg)*mul, px = -Math.sin(a), py = Math.cos(a); let gap = Math.floor(Math.random()*5) - 2;
+  for(let k = 0; k < rows; k++){
+    gap = clamp(gap + (Math.random() < .5 ? -1 : 1), -2, 2);
+    for(let j = -3; j <= 3; j++){ if(Math.abs(j - gap) <= 0) continue; const d = 70 + k*64, life = .8 + k*.3; G.hazards.push({type:'boom', x:m.x + Math.cos(a)*d + px*j*50, y:m.y + Math.sin(a)*d*.9 + py*j*50*.8, r:34, life, max:life, dmg}); }
+  }
+  sfx('fuse');
+}
+function bossGrid(m, n, spacing, mul){   // cuadrícula de descargas en damero alrededor del héroe
+  const dmg = (m.curDmg || m.dmg)*mul;
+  for(let gx = -n; gx <= n; gx++) for(let gy = -n; gy <= n; gy++){ if((gx + gy + 2*n) % 2) continue; G.hazards.push({type:'zap', x:P.x + gx*spacing, y:P.y + gy*spacing*.8, r:34, delay:.55 + Math.random()*.25, life:.55, max:.55, dmg:dmg*1.1, mon:m, weak:3}); }
+  sfx('summon');
 }
 function bossPull(m, dur, r, str, mul){   // succión: arrastra al héroe y a las mascotas hacia el jefe
   G.hazards.push({type:'pull', x:m.x, y:m.y, r, life:dur, max:dur, str, dmg:(m.curDmg || m.dmg)*mul, mon:m, tick:0});
@@ -170,14 +189,28 @@ function buildRectWorld(cfg, seed){
     const [c, r] = nb[Math.floor(R()*nb.length)], b = at(c, r); seen.add(b); edges.push([a, b]); stack.push(b);
   }
   for(const a of nodes) for(const [dc, dr] of [[1, 0], [0, 1]]){ const c = a.c + dc, r = a.r + dr; if(c < COLS && r < ROWS){ const b = at(c, r); if(!edges.some(([p, q]) => (p === a && q === b) || (p === b && q === a)) && R() < (cfg.loops ?? .3)) edges.push([a, b]); } }
-  const rects = [];
-  for(const n of nodes) rects.push({x:n.x - n.w/2, y:n.y - n.h/2, w:n.w, h:n.h});
+  const rects = [], org = !!cfg.organic;
+  if(!org) for(const n of nodes) rects.push({x:n.x - n.w/2, y:n.y - n.h/2, w:n.w, h:n.h});
   for(const [a, b] of edges){
+    if(org){   // senderos que unen los centros de las islas con un quiebro
+      const bw = Math.round(BW*.8);
+      if(a.r === b.r){ const [l, r2] = a.x < b.x ? [a, b] : [b, a], mx = Math.round((l.x + r2.x)/2); rects.push({x:l.x, y:l.y - bw/2, w:mx - l.x + bw/2, h:bw}, {x:mx - bw/2, y:Math.min(l.y, r2.y) - bw/2, w:bw, h:Math.abs(l.y - r2.y) + bw}, {x:mx - bw/2, y:r2.y - bw/2, w:r2.x - mx + bw/2, h:bw}); }
+      else { const [t, bt] = a.y < b.y ? [a, b] : [b, a], my = Math.round((t.y + bt.y)/2); rects.push({x:t.x - bw/2, y:t.y, w:bw, h:my - t.y + bw/2}, {x:Math.min(t.x, bt.x) - bw/2, y:my - bw/2, w:Math.abs(t.x - bt.x) + bw, h:bw}, {x:bt.x - bw/2, y:my - bw/2, w:bw, h:bt.y - my + bw/2}); }
+      continue;
+    }
     if(a.r === b.r){ const [l, r2] = a.x < b.x ? [a, b] : [b, a], y = Math.round((l.y + r2.y)/2); rects.push({x:l.x + l.w/2 - 4, y:y - BW/2, w:(r2.x - r2.w/2) - (l.x + l.w/2) + 8, h:BW}); }
     else { const [t, bt] = a.y < b.y ? [a, b] : [b, a], x = Math.round((t.x + bt.x)/2); rects.push({x:x - BW/2, y:t.y + t.h/2 - 4, w:BW, h:(bt.y - bt.h/2) - (t.y + t.h/2) + 8}); }
   }
   const grid = new Uint8Array(GW*GH);
   for(const rc of rects) for(let gy = Math.floor((rc.y - Y0)/CELL); gy <= Math.floor((rc.y + rc.h - Y0)/CELL); gy++) for(let gx = Math.floor((rc.x - X0)/CELL); gx <= Math.floor((rc.x + rc.w - X0)/CELL); gx++) if(gx >= 0 && gx < GW && gy >= 0 && gy < GH) grid[gy*GW + gx] = 1;
+  if(org) for(const n of nodes){   // islas de contorno irregular (elipse deformada por ondas)
+    const s1 = R()*6.28, s2 = R()*6.28, s3 = R()*6.28, ex = n.w/2*(n.boss ? 1.05 : 1.12), ey = n.h/2*(n.boss ? 1.05 : 1.12);
+    for(let gy = Math.floor((n.y - ey*1.4 - Y0)/CELL); gy <= Math.floor((n.y + ey*1.4 - Y0)/CELL); gy++) for(let gx = Math.floor((n.x - ex*1.4 - X0)/CELL); gx <= Math.floor((n.x + ex*1.4 - X0)/CELL); gx++){
+      if(gx < 0 || gx >= GW || gy < 0 || gy >= GH) continue;
+      const dx = (X0 + gx*CELL - n.x)/ex, dy = (Y0 + gy*CELL - n.y)/ey, th = Math.atan2(dy, dx), r = Math.pow(Math.pow(Math.abs(dx), 2.6) + Math.pow(Math.abs(dy), 2.6), 1/2.6);
+      if(r < .84 + .13*Math.sin(3*th + s1) + .09*Math.sin(5*th + s2) + .05*Math.sin(9*th + s3)) grid[gy*GW + gx] = 1;
+    }
+  }
   const walk = (x, y) => { const gx = Math.floor((x - X0)/CELL), gy = Math.floor((y - Y0)/CELL); return gx >= 0 && gx < GW && gy >= 0 && gy < GH && grid[gy*GW + gx] === 1; };
   if(cfg.solid === 'water') sc.waterAt = (x, y) => !walk(x, y); else sc.solidAt = (x, y) => !walk(x, y);
   sc.walk = walk;
@@ -187,8 +220,8 @@ function buildRectWorld(cfg, seed){
     const near = walk(x - 9, y) || walk(x + 9, y) || walk(x, y - 9) || walk(x, y + 9);
     return hx(cfg.void(x, y, near));
   };
-  sc.spawn = {x:start.x, y:start.y + start.h/2 - 40};
-  sc.horse = {x:start.x - 60, y:start.y + start.h/2 - 22, dir:1};
+  sc.spawn = org ? {x:start.x, y:Math.round(start.y + start.h*.22)} : {x:start.x, y:start.y + start.h/2 - 40};
+  sc.horse = org ? {x:start.x - 60, y:Math.round(start.y + start.h*.2), dir:1} : {x:start.x - 60, y:start.y + start.h/2 - 22, dir:1};
   addCollider(sc, {t:'r', x:sc.horse.x - 24, y:sc.horse.y - 7, w:46, h:12});
   sc.houses = []; sc.wisps = [];
   sc.bossRoom = {x:boss.x - boss.w/2 + 20, y:boss.y - boss.h/2 + 10, w:boss.w - 40, h:boss.h - 20};
@@ -197,7 +230,7 @@ function buildRectWorld(cfg, seed){
   const pointOn = (n, r) => { for(let i = 0; i < 60; i++){ const x = Math.round(n.x + rr(-n.w/2 + 20, n.w/2 - 20)), y = Math.round(n.y + rr(-n.h/2 + 30, n.h/2 - 20)); if(free(x, y, r)) return {x, y}; } return null; };
   const addChest = (p, rare) => { if(!p) return; const ch = {x:p.x, y:p.y, rare, open:false}; ch.col = addCollider(sc, {t:'r', x:p.x - 9, y:p.y - 8, w:18, h:8}); sc.chests.push(ch); };
   const H = {R, rr, walk, free, pointOn, addChest, nodes, start, boss, edges};
-  for(const n of nodes){ sc.lights.push({x:n.x, y:n.y - 10, r:Math.max(190, n.w*.7), a:cfg.lightA ?? .75, warm:cfg.warm !== false, flick:.1}); cfg.decor(sc, n, H); }
+  for(const n of nodes){ sc.lights.push({x:n.x, y:n.y - 10, r:Math.max(190, n.w*.7), a:cfg.lightA ?? .75, warm:cfg.warm !== false, flick:.1}); if(!n.boss) cfg.decor(sc, n, H); }
   cfg.bossDecor && cfg.bossDecor(sc, boss, H);
   nodes.forEach(n => { if(n !== start && !n.boss && R() < (cfg.chestChance ?? .55)) addChest(pointOn(n, 10), R() < .22); });
   for(const n of nodes.filter(q => q.r >= 2 && !q.boss).slice(0, 3)) addChest(pointOn(n, 10), true);

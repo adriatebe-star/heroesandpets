@@ -117,14 +117,14 @@ Object.assign(MON_COLORS, {raptor:['#4a7a3a', '#c0392b', '#c8f090'], dilo:['#7a4
 BRAINS.rex = {wake:'¡Rex, el tirano alfa, ha despertado!', rage:'¡Rex ruge y la isla tiembla!', col:'#ffb347', chargeSpd:480, keep:60, dust:'#8a7a48', chargeMul:1.5, p2spd:1.3,
   attacks:[
     {id:'bite', name:'Mordisco', prep:.75, w:30, max:140, warn:110, cast:m => bossSlash(m, 112, .85, 1.5, ['#ffffff', '#ff5a3a'], () => { P.bleedT = Math.max(P.bleedT || 0, 5); })},
-    {id:'stomp', name:'Pisotón', prep:1, w:18, warn:125, cast:m => { bossSlam(m, 125, 1.1, '#c8a050'); bossRings(m, 2, .85, 230); }},
+    {id:'stomp', name:'Pisotón', prep:1, w:18, warn:125, cast:m => { bossSlam(m, 125, 1.1, '#c8a050'); bossRingBooms(m, 10, 170, .9); }},
     {id:'charge', name:'¡Embestida!', prep:.95, w:16, min:150, cast:m => bossChargeStart(m)},
     {id:'roar', name:'¡Rugido!', prep:1.1, w:12, warn:300, cast:m => { bossSummon(m, ['raptor', 'raptor', 'ptero'], 3, 6); if(Math.hypot(P.x - m.x, P.y - m.y) < 320){ P.weakT = Math.max(P.weakT || 0, 5); addText(P.x, P.y - 62, '¡Debilitado!', '#c8b8ff', 8); } G.shake = Math.max(G.shake, 10); ring(m.x, m.y - 30, 160, '#ffb347', .6); }},
     {id:'tail', name:'Latigazo de cola', prep:.7, w:14, max:160, warn:155, cast:m => { bossSlam(m, 155, 1.25, '#ff9a4a'); }},
     {id:'meteor', name:'¡Meteoritos!', prep:1.1, w:16, p2:true, cast:m => bossRain(m, ['boom'], 9, 280, 1)},
     {id:'leap', name:'¡Salto aplastante!', prep:.8, w:14, p2:true, min:120, cast:m => bossLeap(m, P.x, P.y, .8)},
   ],
-  land:m => { bossSlam(m, 135, 1.5, '#ff7a3a'); bossRings(m, 3, .9, 250, .5); }};
+  land:m => { bossSlam(m, 135, 1.5, '#ff7a3a'); bossRingBooms(m, 12, 190, .9); }};
 
 // ---------- mascotas de la isla jurásica (arte por formas) ----------
 function petDinoShell(f, o){
@@ -171,27 +171,45 @@ regPets(['compy', 'libelula', 'amonita', 'estegui', 'pteri', 'anquilo', 'raptorc
              attack:'Doble mordisco con sangrado. Rugido primigenio cada 20 s: los enemigos cercanos huyen 3 s y haces +25 % de daño 5 s'},
 }, PET_SHAPES);
 
-// ---------- el mapa: selva por salas unidas por senderos, rodeada de mar ----------
-const JUN = ['#244e22', '#2a5a26', '#306a2c', '#3a7a34'], JUN_DIRT = ['#6a5a34', '#7a6a3e', '#8a7a48'], JUN_SEA = ['#0e3a4a', '#12485a', '#1a5a70', '#2a7088'];
+// ---------- el mapa: archipiélago tropical de islas irregulares unidas por senderos ----------
+const JUN = ['#2a6a2a', '#318032', '#3a9238', '#46a642'], JUN_DIRT = ['#9a8450', '#aa9460', '#b8a46c'], JUN_SEA = ['#0e4a5a', '#12607a', '#1a7a96', '#2a98b0'];
+// palmeras, helechos, arbustos con flores y hojas grandes
+const PALM_G = ['#14502a', '#1f7a36', '#3aa84a', '#7ae070'], PALM_T = ['#4a2e14', '#7a5028', '#a87a40'];
+function palmShapes(lean){
+  const T = [27 + lean, 20], s = [];
+  s.push({l:[22, 60, 23 + lean/2, 44, 3.6], c:PALM_T}, {l:[23 + lean/2, 44, 25 + lean, 30, 3], c:PALM_T}, {l:[25 + lean, 30, T[0], T[1], 2.6], c:PALM_T});
+  for(let i = 0; i < 8; i++){ const a = Math.PI + i*Math.PI/7, mx = T[0] + Math.cos(a)*12, my = T[1] + Math.sin(a)*8 - 3, tx = T[0] + Math.cos(a)*22, ty = T[1] + Math.sin(a)*9 + 10;
+    s.push({l:[T[0], T[1], mx, my, 2.8], c:PALM_G}, {l:[mx, my, tx, ty, 2.2], c:PALM_G}); }
+  s.push({e:[T[0] - 2, T[1] + 2, 2.4, 2.4], c:['#5a3a14', '#8a5a24']}, {e:[T[0] + 2, T[1] + 3, 2.4, 2.4], c:['#5a3a14', '#8a5a24']});
+  return s;
+}
+const SPR_PALM = [SP(paintSprite(54, 62, palmShapes(-3)), 25, 60), SP(paintSprite(54, 62, palmShapes(4)), 27, 60), SP(paintSprite(54, 62, palmShapes(0)), 26, 60)];
+const SPR_FERN = SP(paintSprite(28, 18, (() => { const s = []; for(let i = 0; i < 8; i++){ const a = -Math.PI + .35 + i*(Math.PI - .7)/7, tx = 14 + Math.cos(a)*13, ty = 16 + Math.sin(a)*13; s.push({l:[14, 16, tx, ty, 1.8], c:['#1c5a2a', '#2f8a3a', '#5ac85a']}); } return s; })()), 14, 16);
+const SPR_FLOWERS = SP(paintSprite(24, 16, [{e:[12, 10, 10, 6], c:['#1c5a2a', '#2f8a3a', '#5ac85a'], tex:611}, {p:[[6, 6, '#ff5a8a'], [7, 6, '#ff8aaa'], [12, 4, '#ffd23a'], [13, 4, '#fff08a'], [17, 7, '#ff6a3a'], [10, 8, '#ff5a8a'], [16, 10, '#ffffff'], [5, 10, '#ffd23a']]}]), 12, 14);
+const SPR_LEAF = SP(paintSprite(30, 24, [{poly:[[15, 22], [3, 10], [8, 2], [15, 8]], c:['#1c6a2a', '#2f9a3a', '#5ad85a']}, {poly:[[15, 22], [27, 10], [22, 2], [15, 8]], c:['#1c6a2a', '#2f9a3a', '#5ad85a']}, {poly:[[15, 22], [7, 20], [3, 14], [12, 14]], c:['#14502a', '#1f7a36', '#3aa84a']}, {poly:[[15, 22], [23, 20], [27, 14], [18, 14]], c:['#14502a', '#1f7a36', '#3aa84a']}, {l:[15, 22, 15, 6, .8], c:'#7ae070'}]), 15, 22);
 function buildJurassic(seed){
-  const sc = buildRectWorld({id:'jurassic', name:'La isla jurásica', lvl:12, petExp:'12a', cols:3, rows:4, nodeW:[300, 380], nodeH:[250, 320], boss:{w:600, h:500}, spacingX:480, spacingY:420,
-    solid:'water', darkness:.9, loops:.35, warm:true, lightA:.7, corridor:60,
+  const sc = buildRectWorld({id:'jurassic', name:'La isla jurásica', lvl:12, petExp:'12a', cols:3, rows:4, nodeW:[320, 400], nodeH:[270, 340], boss:{w:640, h:520}, spacingX:500, spacingY:440, organic:true,
+    solid:'water', darkness:.88, loops:.35, warm:true, lightA:.75, corridor:60,
     floor:(x, y, e) => e ? JUN_DIRT[tq(hash(x, y, 51), x, y, 3)] : JUN[tq(vnoise(x/16, y/16, 501)*.6 + vnoise(x/5, y/5, 502)*.3 + hash(x, y, 503)*.2, x, y, 4)],
-    void:(x, y, near) => near ? '#c8b878' : JUN_SEA[tq(vnoise(x/14, y/14, 505)*.7 + hash(x, y, 506)*.3, x, y, 4)],
+    void:(x, y, near) => near ? '#e0cf94' : JUN_SEA[tq(vnoise(x/14, y/14, 505)*.7 + hash(x, y, 506)*.3, x, y, 4)],
     groups:[['raptor', 'raptor', 'ptero'], ['dilo', 'raptor'], ['trike', 'dilo'], ['ptero', 'raptor', 'dilo'], ['trike', 'raptor']],
     decor:(sc, n, H) => {
-      const cnt = Math.round(n.w*n.h/5200);
+      const cnt = Math.round(n.w*n.h/4600);
       for(let i = 0; i < cnt; i++){
         const p = H.pointOn(n, 12); if(!p) continue; const r = H.R();
-        if(r < .45) propTree(sc, p.x, p.y, Math.floor(H.R()*1e6));
-        else if(r < .7) propBush(sc, p.x, p.y, Math.floor(H.R()*1e6));
-        else if(r < .88) propRock(sc, p.x, p.y, Math.floor(H.R()*1e6));
-        else if(r < .95) propSprite(sc, ART.bones, p.x, p.y, null);
+        if(r < .3) propSprite(sc, SPR_PALM[Math.floor(H.R()*3)], p.x, p.y, {t:'c', x:p.x, y:p.y - 2, r:5}, [11, 3]);
+        else if(r < .4) propTree(sc, p.x, p.y, Math.floor(H.R()*1e6));
+        else if(r < .55) propSprite(sc, SPR_FERN, p.x, p.y, null);
+        else if(r < .68) propSprite(sc, SPR_FLOWERS, p.x, p.y, null);
+        else if(r < .78) propSprite(sc, SPR_LEAF, p.x, p.y, null);
+        else if(r < .88) propBush(sc, p.x, p.y, Math.floor(H.R()*1e6));
+        else if(r < .94) propRock(sc, p.x, p.y, Math.floor(H.R()*1e6));
+        else if(r < .97) propSprite(sc, ART.bones, p.x, p.y, null);
         else propGlowshroom(sc, p.x, p.y);
       }
     },
-    bossDecor:(sc, n, H) => {
-      for(let i = 0; i < 14; i++){ const a = i/14*Math.PI*2, x = Math.round(n.x + Math.cos(a)*(n.w/2 - 36)), y = Math.round(n.y + Math.sin(a)*(n.h/2 - 36)); if(H.walk(x, y) && !blocked(sc, x, y, 14)) i % 2 ? propRock(sc, x, y, 700 + i) : propSprite(sc, ART.skullpile, x, y, null); }
+    bossDecor:(sc, n, H) => {   // la arena de Rex va despejada: solo calaveras y plantas sin colisión
+      for(let i = 0; i < 16; i++){ const a = i/16*Math.PI*2, x = Math.round(n.x + Math.cos(a)*(n.w/2 - 40)), y = Math.round(n.y + Math.sin(a)*(n.h/2 - 40)); if(H.walk(x, y)) i % 3 ? propSprite(sc, SPR_FERN, x, y, null) : propSprite(sc, ART.skullpile, x, y, null); }
     }}, seed);
   return sc;
 }

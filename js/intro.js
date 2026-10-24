@@ -121,6 +121,7 @@ function questTarget(){
   if(!sc || sc.kind === 'raid') return null;
   if(q === 'juan'){ const n = sc.npcs.find(n => n.id === 'juan'); return n ? {x:n.x, y:n.y-30, name:'Juan, el sabio'} : null; }
   if(q === 'horse' && sc.horse) return {x:sc.horse.x, y:sc.horse.y-40, name:'El caballo'};
+  if(q === 'done' && sc.kind === 'den') for(const n of sc.npcs){ if(questMark(n.id)) return {x:n.x, y:n.y-30, name:n.name, mark:true}; }
   return null;
 }
 function questLines(){
@@ -128,7 +129,7 @@ function questLines(){
   if(q === 'tutorial') return ['MISIÓN', 'Completa el tutorial'];
   if(q === 'juan') return ['MISIÓN', 'Habla con Juan, el sabio', '(el «!» sobre su cabeza)'];
   if(q === 'horse') return ['MISIÓN', 'Monta el caballo [F] y viaja', 'a la expedición 1: El pueblo', 'abandonado'];
-  return null;
+  return q === 'done' && typeof questPanelLines === 'function' ? questPanelLines() : null;
 }
 // flecha guía: sobre el objetivo si está a la vista; en el borde de la pantalla apuntando hacia él si no
 function drawQuestArrow(){
@@ -136,7 +137,7 @@ function drawQuestArrow(){
   const [sx, sy] = toScreen(tg.x, tg.y), m = 54, bob = Math.sin(G.t*5)*5;
   const inside = sx > m && sx < W - m && sy > m && sy < H - m;
   if(inside){
-    if(G.save.quest === 'juan') return;      // Juan ya lleva su «!»
+    if(G.save.quest === 'juan' || tg.mark) return;      // el PNJ ya lleva su «!»
     ctx.fillStyle = '#7ae09a'; ctx.strokeStyle = '#0c0a0e'; ctx.lineWidth = 3;
     ctx.beginPath(); ctx.moveTo(sx, sy+bob-6); ctx.lineTo(sx-12, sy+bob-24); ctx.lineTo(sx+12, sy+bob-24); ctx.closePath(); ctx.stroke(); ctx.fill();
     return;
@@ -144,7 +145,7 @@ function drawQuestArrow(){
   const cx = W/2, cy = H/2, ang = Math.atan2(sy-cy, sx-cx), k = Math.min((W/2 - m)/Math.abs(Math.cos(ang) || 1e-6), (H/2 - m)/Math.abs(Math.sin(ang) || 1e-6));
   const ax = cx + Math.cos(ang)*k, ay = cy + Math.sin(ang)*k, d = Math.round(Math.hypot(tg.x-P.x, tg.y-P.y)/16);
   ctx.save(); ctx.translate(ax, ay); ctx.rotate(ang);
-  ctx.fillStyle = G.save.quest === 'juan' ? '#ffd040' : '#7ae09a'; ctx.strokeStyle = '#0c0a0e'; ctx.lineWidth = 3;
+  ctx.fillStyle = G.save.quest === 'juan' || tg.mark ? '#ffd040' : '#7ae09a'; ctx.strokeStyle = '#0c0a0e'; ctx.lineWidth = 3;
   ctx.beginPath(); ctx.moveTo(16 + bob*.4, 0); ctx.lineTo(-10, -13); ctx.lineTo(-4, 0); ctx.lineTo(-10, 13); ctx.closePath(); ctx.stroke(); ctx.fill(); ctx.restore();
   ctx.textAlign = 'center'; ctx.font = `${6*S}px ${FONT}`; textO(`${tg.name} · ${d} m`, ax - Math.cos(ang)*38, ay - Math.sin(ang)*38 - 4, '#ffe9a8');
 }

@@ -87,7 +87,7 @@ BRAINS.arthur = {wake:'¡Arturo, el rey sin descanso, se alza de su trono!', rag
     {id:'excal', name:'¡Excalibur!', prep:1, w:22, cast:m => { const n = m.phase2 ? 5 : 3, a0 = angTo(m); for(let i = 0; i < n; i++) bossBeam(m, a0 + (i - (n - 1)/2)*.42, .9, 36, 560, 1.45, '#ffe08a', 'weak'); }},
     {id:'round', name:'Mesa Redonda', prep:1, w:12, warn:150, cast:m => { bossSummon(m, ['rknight', 'rarcher'], 2, 4); ring(m.x, m.y - 20, 120, '#ffe08a', .5); }},
     {id:'cavalry', name:'¡Carga de caballería!', prep:.95, w:16, min:150, cast:m => bossChargeStart(m)},
-    {id:'judge', name:'Juicio del rey', prep:1, w:16, warn:120, cast:m => { bossSlam(m, 120, 1.1, '#ffe08a'); bossRings(m, 3, .9, 240); }},
+    {id:'judge', name:'Juicio del rey', prep:1, w:16, warn:120, cast:m => { bossSlam(m, 120, 1.1, '#ffe08a'); bossBarrage(m, 5, .9); }},
     {id:'blades', name:'Lluvia de espadas', prep:1.1, w:16, cast:m => bossRain(m, ['zap', 'boom'], 8, 260, 1)},
     {id:'dragon', name:'Aliento del Dragón Rojo', prep:1.2, w:18, p2:true, cast:m => { const a0 = angTo(m); for(let i = 0; i < 4; i++) bossBeam(m, a0 + i*Math.PI/2, .9, 40, 560, 1.3, '#ff6a3a', 'burn'); for(let i = 0; i < 4; i++) bossBeam(m, a0 + Math.PI/4 + i*Math.PI/2, 1.7, 40, 560, 1.3, '#ff6a3a', 'burn'); }},
     {id:'blink', name:'Paso de Avalón', prep:.5, w:12, p2:true, cast:m => { bossBlink(m, 60); m.aim = angTo(m); bossSlash(m, 120, .9, 1.4, ['#ffffff', '#c8b8ff']); }},

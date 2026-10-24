@@ -551,7 +551,7 @@ function updateMonster(m, dt){
   const sc = G.sc;
   if(m.dying){ m.dying += dt; return; }
   m.spawnIn = Math.min(1, m.spawnIn + dt*2.5);
-  m.flash -= dt; m.atkCd -= dt*(m.freezeT>0 ? .4 : 1); m.lastHit += dt; m.tauntT -= dt; m.exposedT -= dt; m.auraT -= dt; m.stunT -= dt; m.slowT -= dt; m.freezeT -= dt; m.freezeImmT = (m.freezeImmT||0) - dt; m.weakT -= dt; m.revealT -= dt; m.fleeT -= dt; m.fearT -= dt; if(m.markT > 0) m.markT -= dt; if(m.confuseT > 0) m.confuseT -= dt;
+  m.flash -= dt; m.atkCd -= dt*(m.freezeT>0 ? .4 : 1); m.lastHit += dt; m.tauntT -= dt; m.exposedT -= dt; m.auraT -= dt; m.stunT -= dt; m.slowT -= dt; if(m.slowT > 0) m._slowed = true; else if(m._slowed){ m._slowed = false; m.slowImmT = 10; } m.slowImmT -= dt; m.freezeT -= dt; m.freezeImmT = (m.freezeImmT||0) - dt; m.weakT -= dt; m.revealT -= dt; m.fleeT -= dt; m.fearT -= dt; if(m.markT > 0) m.markT -= dt; if(m.confuseT > 0) m.confuseT -= dt;
   // daño en el tiempo
   if(m.poisonT > 0 || m.burnT > 0 || m.bleedT > 0){
     m.poisonT -= dt; m.burnT -= dt; m.bleedT -= dt;
@@ -782,7 +782,7 @@ function hitMonster(m, dmg, o){
   if(!m.affixes.includes('pesado') && !MONSTERS[m.type].boss && o.k){ const k = o.k/(m.r/11); m.vx += o.nx*k; m.vy += o.ny*k; }
   if(!MONSTERS[m.type].boss) m.atkCd = Math.max(m.atkCd, .35);   // los jefes no retrasan su ataque al recibir golpes (Urr se quedaba parado si lo atacabas muy seguido)
   if(o.stun && !MONSTERS[m.type].boss) m.stunT = Math.max(m.stunT, o.stun);
-  if(o.slow) m.slowT = Math.max(m.slowT, o.slow);
+  if(o.slow && !(m.slowImmT > 0)) m.slowT = Math.max(m.slowT, o.slow);   // tras un ralentizado, 10 s de inmunidad
   if(o.poison) m.poisonT = Math.max(m.poisonT, o.poison);
   if(o.burn){ if(!(m.burnT > 0)){ burst(m.x, m.y-m.r, 14, ['#ff5a1a','#ff8a2a','#ffc04a','#fff0a0'], [30,100], [.3,.6], -80); ring(m.x, m.y-4, 18, '#ff8a2a', .25); } m.burnT = Math.max(m.burnT, o.burn); }
   if(o.freeze && !(m.freezeImmT > 0)){ m.freezeImmT = o.freeze + 10; m.freezeT = Math.max(m.freezeT||0, o.freeze);   // tras descongelarse, 10 s sin poder volver a congelarse
@@ -848,7 +848,9 @@ function killMonster(m){
       G.save.bossGift[eid] = true; saveGame();
       const sp = freeSpotNear(m.x, m.y + 30, 14), cage = {x:Math.round(sp.x), y:Math.round(sp.y), pet:null, shiny:true, gift:true, open:false};
       cage.col = addCollider(G.sc, {t:'r', x:cage.x-12, y:cage.y-8, w:24, h:8}); G.sc.cages.push(cage);
-      toast('¡El jefe ha dejado una jaula brillante! Contiene una mascota brillante', 4.5); ring(cage.x, cage.y-10, 40, '#ffe08a', .5);
+      G.sc.lights.push({x:cage.x, y:cage.y-14, r:120, a:.9, warm:true, tint:'rgba(255,220,120,.2)', flick:.15});
+      toast('¡El jefe ha dejado una jaula con una mascota BRILLANTE!', 5); ring(cage.x, cage.y-10, 40, '#ffe08a', .5); sfx('levelup');
+      setTimeout(() => UI.showScreen('<h1 style="color:#ffe08a">¡JAULA BRILLANTE!</h1><p>Has derrotado a un jefe por primera vez: ha dejado una jaula con una mascota BRILLANTE.</p><p class="sub">Busca la jaula que brilla con un «!» cerca de donde ha caído el jefe.</p>', '¡Genial!'), 1800);
     }
     const ul = MONSTERS[m.type].uniques || [];
     if(ul.length && Math.random() < UNIQUE_CHANCE){ dropItem(m.x, m.y, mkItem(pick(ul))); toast(`¡${MONSTERS[m.type].name} ha dejado caer un objeto único!`, 4); }
@@ -860,7 +862,6 @@ function addXP(n){
   while(s.xp >= xpFor(s.level)){
     s.xp -= xpFor(s.level); s.level++;
     s.skillPts = (s.skillPts||0) + 1;
-    if(!s.gonzalo){ s.gonzalo = true; toast('Alguien te espera en la guarida para enseñarte...', 4); }
     refreshStats(); P.hp = Math.min(P.maxHp, P.hp + 10);
     toast('¡Nivel ' + s.level + '!', 2.5); sfx('levelup');
     if(petSlots(s.level) > petSlots(s.level-1)) toast('¡Nuevo hueco de mascota desbloqueado!', 3);
@@ -1093,7 +1094,7 @@ function drawTraps(){
   }
 }
 
-const FOLLOW_OFF = [[-30,10], [-20,-24], [-52,28]];
+const FOLLOW_OFF = [[-34,14], [-78,-22], [-120,20]];
 // primer hueco libre alrededor de un punto (para que las mascotas no aparezcan dentro del caballo o de un muro)
 function freeSpotNear(x, y, r=6){
   if(!blocked(G.sc, x, y, r)) return {x, y};
@@ -1198,7 +1199,7 @@ function separatePets(dt){
   const ps = G.pets.filter(p => p.hp > 0 && p.exhaustedT <= 0 && !p.stamp && !p.gal);
   for(let i = 0; i < ps.length; i++) for(let j = i+1; j < ps.length; j++){
     const A = ps[i], B = ps[j]; let dx = B.x-A.x, dy = (B.y-A.y)*1.4, d = Math.hypot(dx, dy);
-    const min = 26; if(d >= min) continue;
+    const min = 42; if(d >= min) continue;
     if(d < .5){ dx = Math.cos(i*2.4+j); dy = Math.sin(i*2.4+j); d = 1; }
     const push = (min - d)*Math.min(1, dt*9)*.5, ux = dx/d, uy = dy/d/1.4;
     for(const [P2, sg] of [[A,-1],[B,1]]){
@@ -1604,7 +1605,8 @@ function updatePet(p, dt){
     if(p.state==='follow' && p.exhaustedT<=0){ tx = P.x - side*-10; ty = P.y - 6; }
   }
   const dx = tx-p.x, dy = ty-p.y, d = Math.hypot(dx,dy);
-  if(d > 420){ p.x = P.x - side*20; p.y = P.y + 6; return; }
+  { const offScr = Math.abs(p.x-P.x)*PX > W/2 + 30 || Math.abs(p.y-P.y)*PX > H/2 + 30;   // si se separa tanto que sale de la pantalla, se teletransporta junto al héroe
+    if(d > 420 || (offScr && !p.stamp)){ const sp = freeSpotNear(P.x + side*Math.abs(off[0]), P.y + off[1], 8); p.x = sp.x; p.y = sp.y; p.state = 'follow'; p.target = null; p.phase = null; burst(p.x, p.y-8, 8, ['#ffffff','#c8d0e0'], [20,70], [.2,.4], 0); return; } }
   const spd = d < 4 ? 0 : Math.min(maxSpd, d*(p.state==='engage'?8:5)) * (p.exhaustedT>0 ? .6 : 1);
   const vx = d ? dx/d*spd : 0, vy = d ? dy/d*spd : 0;
   if(ignoreWalls){   // las voladoras sobrevuelan el decorado pero no atraviesan las paredes de las mazmorras
@@ -2134,6 +2136,10 @@ function drawLoot(l){
   const icon = l.item.id==='pet' ? null : ICONS[ITEMS[l.item.id].icon];
   if(icon) b.drawImage(icon, Math.round(l.x)-6, y-11);
   else drawSP(PET_ART[l.item.pet].fr[0], l.x, l.y);
+  if(ITEMS[l.item.id]?.quest){   // objeto de misión: halo verde fluorescente y chispas
+    const pul = .5 + .5*Math.sin(G.t*4); b.globalAlpha = .25 + .2*pul; b.fillStyle = '#39ff14'; b.fillRect(Math.round(l.x) - 9, y - 14, 18, 18); b.globalAlpha = 1;
+    if(Math.random() < .3) G.parts.push({x:l.x + rand(-6, 6), y:y - rand(4, 14), vx:0, vy:-26, life:.7, max:.7, size:1.5, col:'#7affa0'});
+  }
   if(ITEMS[l.item.id]?.treasure && Math.random() < .05) G.parts.push({x:l.x+rand(-5,5), y:y-rand(3,10), vx:0, vy:-12, life:.5, max:.5, size:1, col:'#ffe08a'});
 }
 function drawProj(pr){
@@ -2267,6 +2273,11 @@ function drawChest(c){
   if(c.rare && !c.open && Math.random() < (c.legend ? .5 : .06)) G.parts.push({x:c.x+rand(c.legend ? -16 : -8, c.legend ? 16 : 8), y:c.y-rand(4,c.legend ? 26 : 14), vx:rand(-6,6), vy:c.legend ? -26 : -15, life:c.legend ? .9 : .6, max:c.legend ? .9 : .6, size:c.legend ? 1.6 : 1, col:c.legend ? pick(['#ff9a3a','#ffe08a','#ffffff']) : '#ffe08a'});
 }
 function drawCage(c){
+  if(c.gift && !c.open){   // jaula de regalo del jefe: halo arcoíris pulsante y un «!» sobre ella
+    const pul = .5 + .5*Math.sin(G.t*4), hue = Math.floor((G.t*120)%360);
+    b.globalAlpha = .2 + .15*pul; b.fillStyle = 'hsl(' + hue + ',90%,65%)'; b.beginPath(); b.ellipse(Math.round(c.x), Math.round(c.y) - 8, 30, 20, 0, 0, Math.PI*2); b.fill(); b.globalAlpha = 1;
+    if(Math.random() < .25) G.parts.push({x:c.x + rand(-12, 12), y:c.y - rand(0, 24), vx:0, vy:-24, life:.7, max:.7, size:1.5, col:'hsl(' + ((hue + rand(0, 90))%360) + ',90%,75%)'});
+  }
   drawSP(ART.cageBack, c.x, c.y);
   if(!c.open){
     // el contenido es un misterio hasta abrirla: solo se ven dos ojos que brillan en la sombra
@@ -2276,6 +2287,7 @@ function drawCage(c){
   }
   drawSP(ART.cageFront[c.open ? 1 : 0], c.x, c.y-2);
   if(!c.open) drawSP(ART.lock, c.x, c.y-6);
+  if(c.gift && !c.open){ const x = Math.round(c.x), y = Math.round(c.y - 52 + Math.sin(G.t*3)*1.5), hh = 'hsl(' + Math.floor((G.t*120)%360) + ',90%,65%)'; b.fillStyle = '#121015'; b.fillRect(x-3, y-1, 6, 12); b.fillRect(x-3, y+12, 6, 5); b.fillStyle = hh; b.fillRect(x-2, y, 4, 9); b.fillRect(x-2, y+13, 4, 3); b.fillStyle = '#ffffff'; b.fillRect(x-2, y, 1, 9); }
 }
 function drawPortal(p){
   const x = Math.round(p.x), y = Math.round(p.y), t = G.t;

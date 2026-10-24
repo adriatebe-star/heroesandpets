@@ -74,6 +74,8 @@ UI.openTrainer = function(tab){
 };
 UI.closeTrainer = function(){ this.hideColPop(); this.trainerOpen = false; $('trainer').classList.add('hidden'); $('tip').classList.add('hidden'); sfx('ui'); };
 UI.renderTrainer = function(){
+  const labBtn = document.querySelector('#trTabs [data-tab="lab"]'); if(labBtn) labBtn.style.display = G.save.labUnlocked ? '' : 'none';   // «Mejorar mascotas» se desbloquea con el botiquín de Chemma
+  if(this.trainerTab === 'lab' && !G.save.labUnlocked) this.trainerTab = 'train';
   const tab = this.trainerTab, body = $('trBody');
   document.querySelectorAll('#trTabs button').forEach(b => b.classList.toggle('on', b.dataset.tab === tab));
   $('trGold').textContent = `Oro en la guarida: ${G.save.wallet}`;

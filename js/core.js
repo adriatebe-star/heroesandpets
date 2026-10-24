@@ -8,6 +8,9 @@ const darkC = document.createElement('canvas'), dk = darkC.getContext('2d'); // 
 let W = 0, H = 0;
 function resize(){ W = cv.width = innerWidth; H = cv.height = innerHeight; }
 addEventListener('resize', resize); resize();
+// Ctrl + rueda / Ctrl + «+» «−» harían zoom del navegador y mostrarían más mapa: se bloquea
+addEventListener('wheel', e => { if(e.ctrlKey) e.preventDefault(); }, {passive:false});
+addEventListener('keydown', e => { if((e.ctrlKey || e.metaKey) && ['Equal', 'Minus', 'NumpadAdd', 'NumpadSubtract', 'Digit0', 'Numpad0'].includes(e.code)) e.preventDefault(); });
 
 const PX = 2;                       // cada píxel del mundo ocupa PX×PX píxeles de pantalla
 const OUT = '#121015';              // color de contorno

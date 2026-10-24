@@ -25,7 +25,7 @@ function slotInfo(n){
 const STASH_SIZE = 100;
 function defaultSave(){
   return {petRecover:true, introDone:false, tut:0, quest:'tutorial', name:null, level:1, xp:0, wallet:0, stash:Array(STASH_SIZE).fill(null), talked:false, inRaid:false, inv:null, runs:0,
-          uakalaMet:false, uakalaHome:false, aishMet:false, aishHome:false, alexandraMet:false, alexandraHome:false, trapis:false, trapisMet:false, druid:false, druidMet:false, fallen:[],
+          uakalaMet:false, uakalaHome:false, aishMet:false, aishHome:false, alexandraMet:false, alexandraHome:false, trapis:false, trapisMet:false, druid:false, druidMet:false, fallen:[], qs:{}, labUnlocked:false, freeSerum:0, freeSlot:0, slotsOpen:false,
           gonzalo:false, gonzaloMet:false, skillPts:0, skills:{agr:0, agi:0, car:0, agu:0, exp:0},
           bars:Object.assign({}, DEFAULT_BARS), collection:{}, shinies:{}, bossGift:{}, petsFreed:0, petTree:['start'], maxExp:0, shopSpecials:[], tree:['start'], bossKills:0};
 }
@@ -41,7 +41,7 @@ function loadGame(slot){
   if(old && old.introDone === undefined){ s.introDone = true; s.tut = 99; s.quest = (old.extracts || old.runs) ? 'done' : old.talked ? 'horse' : 'juan'; }   // partidas anteriores: sin intro ni tutorial
   while(s.stash.length < STASH_SIZE) s.stash.push(null);
   if(s.maxExp === 0 && s.trapis) s.maxExp = 1;
-  if(s.level > 1) s.gonzalo = true;
+  questMigrate(s, !!old && old.qs === undefined);   // partidas antiguas: lo ya superado cuenta como misión hecha
   // puntos de Gonzalo: 1 por cada nivel subido, menos los nodos ya aprendidos en el árbol.
   // Se recalculan siempre, así ninguna partida pierde puntos (p. ej. los del árbol antiguo).
   if(!Array.isArray(s.tree) || !s.tree.includes('start')) s.tree = ['start'];
@@ -85,25 +85,25 @@ function enterDen(){
 // 2 portales de vuelta a la guarida en sitios aleatorios y alcanzables (separados entre sí y de la entrada)
 function randomReturnPortals(sc){
   sc.portals = []; sc.lights = sc.lights.filter(l => l.col !== 'portal');
-  const ST = 24, sx = sc.spawn.x, sy = sc.spawn.y, seen = new Map(), key = (i, j) => i + ',' + j, q = [[0, 0]], cells = [];
-  seen.set(key(0, 0), 1);
-  while(q.length){
-    const [i, j] = q.pop(); cells.push([sx + i*ST, sy + j*ST]);
+  // recorrido en anchura desde la entrada con paso fino (así entra por pasillos estrechos) y distancia de camino a cada celda
+  const ST = 12, sx = sc.spawn.x, sy = sc.spawn.y, seen = new Set(['0,0']), cells = [[sx, sy, 0]];
+  for(let h = 0; h < cells.length; h++){
+    const [cx, cy, d] = cells[h], i = Math.round((cx - sx)/ST), j = Math.round((cy - sy)/ST);
     for(const [di, dj] of [[1,0],[-1,0],[0,1],[0,-1]]){
-      const a = i + di, b = j + dj, k = key(a, b); if(seen.has(k)) continue; seen.set(k, 1);
-      if(!blocked(sc, sx + a*ST, sy + b*ST, 12)) q.push([a, b]);
+      const a2 = i + di, b2 = j + dj, k = a2 + ',' + b2; if(seen.has(k)) continue; seen.add(k);
+      if(!blocked(sc, sx + a2*ST, sy + b2*ST, 9)) cells.push([sx + a2*ST, sy + b2*ST, d + 1]);
     }
   }
-  for(let n = cells.length - 1; n > 0; n--){ const m = Math.floor(Math.random()*(n+1)); [cells[n], cells[m]] = [cells[m], cells[n]]; }
-  let cand = [];
-  for(const dEntry of [400, 250, 150, 80]){ cand = cells.filter(([x, y]) => Math.hypot(x - sx, y - sy) >= dEntry); if(cand.length >= 2) break; }   // en mapas pequeños se relaja la distancia a la entrada
-  if(!cand.length) return;
-  const add = ([x, y]) => { sc.portals.push({x:Math.round(x), y:Math.round(y), t:0}); sc.lights.push({x:Math.round(x), y:Math.round(y)-8, r:120, a:.9, warm:false, flick:.1, col:'portal'}); };
-  const p1 = cand[0]; add(p1);
-  // el segundo portal: el más alejado del primero entre muchos candidatos al azar (así nunca salen juntos)
-  let best = null, bd = -1;
-  for(const c of cand.slice(1, 220)){ const d = Math.hypot(c[0] - p1[0], c[1] - p1[1]); if(d > bd){ bd = d; best = c; } }
-  if(best) add(best);
+  const maxD = cells.reduce((m, c) => Math.max(m, c[2]), 1);
+  // el primer portal queda lejos de la entrada (por camino); el segundo, lo más lejos posible del primero y también lejos de la entrada
+  const far = f => cells.filter(c => c[2] >= maxD*f);
+  let c1 = far(.6); if(!c1.length) c1 = far(.3); if(!c1.length) c1 = cells.slice(); if(c1.length < 1) return;
+  const add = c => { sc.portals.push({x:Math.round(c[0]), y:Math.round(c[1]), t:0}); sc.lights.push({x:Math.round(c[0]), y:Math.round(c[1])-8, r:120, a:.9, warm:false, flick:.1, col:'portal'}); };
+  const p1 = c1[Math.floor(Math.random()*c1.length)]; add(p1);
+  let pool = cells.filter(c => c[2] >= maxD*.35), best = null, bd = -1;
+  if(!pool.length) pool = cells;
+  for(let n = 0; n < 400; n++){ const c = pool[Math.floor(Math.random()*pool.length)], dd = Math.hypot(c[0] - p1[0], c[1] - p1[1]); if(dd > bd){ bd = dd; best = c; } }
+  if(best && bd > 160) add(best);
 }
 // cofres y jaulas despejados: se quita el decorado que los tapa o les bloquea el paso
 function clearAroundInteractables(sc){
@@ -114,13 +114,22 @@ function clearAroundInteractables(sc){
     return true;
   });
 }
+// zonas de jefe despejadas (los jefes se atascaban con árboles y rocas): se quitan los obstáculos pequeños del interior de la sala, dejando un margen en los bordes
+function clearBossRoom(sc){
+  const r = sc.bossRoom; if(!r) return; const m = 50, x0 = r.x + m, y0 = r.y + m, x1 = r.x + r.w - m, y1 = r.y + r.h - m;
+  sc.props = sc.props.filter(p => {
+    if(p.w || p.h || !p.col || p.x <= x0 || p.x >= x1 || p.y <= y0 || p.y >= y1) return true;
+    const c = p.col; if(c.t === 'r' && c.w >= 34) return true;   // los muebles grandes (trono, librerías) se quedan
+    removeCollider(sc, c); return false;
+  });
+}
 function startRaid(expId='village'){
   const seed = Math.floor(Math.random()*1e9), exp = EXPEDITIONS.find(e => e.id===expId) || HIDDEN_EXPEDITIONS.find(e => e.id===expId) || EXPEDITIONS[0];
   const sc = RAID_BUILDERS[expId] ? RAID_BUILDERS[expId](seed) : expId==='floatcity' ? buildFloatCity(seed) : expId==='icepeak' ? buildIcePeak(seed) : expId==='temple' ? buildTemple(seed) : expId==='forest' ? buildForest(seed) : expId==='mine' ? buildMine(seed) : expId==='river' ? buildRiver(seed) : expId==='castle' ? buildCastle(seed) : expId==='orccamp' ? buildOrcCamp(seed) : expId==='plains' ? buildPlains(seed) : expId==='crypt' ? buildCrypt(seed) : expId==='cemetery' ? buildCemetery(seed) : buildVillage(seed);
   sc.lvl = exp.lvl; sc.exp = exp; sc.petExp = exp.petExp ?? exp.lvl;
   randomReturnPortals(sc);
   if(Math.random() < LEGEND_CHEST_CHANCE) addLegendChest(sc);   // a veces hay un cofre legendario
-  clearAroundInteractables(sc);
+  clearAroundInteractables(sc); clearBossRoom(sc);
   G.save.sold = [];   // Trapis olvida lo recomprable al salir a una expedición
   resetWorld(sc);
   for(const sp of G.sc.monsterSpawns) for(const e of sp.pack){
@@ -130,6 +139,7 @@ function startRaid(expId='village'){
     }
   }
   if(sc.bossSpawn){ const bo = mkMonster(exp.boss || 'countess', 'boss', sc.bossSpawn.x, sc.bossSpawn.y, {affixes:[]}); bo.spawnIn = 1; G.mons.push(bo); }
+  placeQuestStuff(G.sc, expId);
   P.oil = oilMax(); P.lantern = !!G.inv.equip.lantern; G.raidGold = 0; G.rescued = 0; G.rescuedNames = []; G.rescuedIds = []; G.kills = 0;
   G.save.inRaid = true; G.save.runs++; if(G.save.quest !== 'done'){ G.save.quest = 'done'; toast('Misión cumplida: ¡la primera expedición comienza!', 3.4); } saveGame();
   mmBuild(G.sc);
@@ -150,7 +160,7 @@ function extract(how){
   let moved = 0;
   G.inv.bag = G.inv.bag.map(it => { if(it && addTo(G.save.stash, it)){ moved++; return null; } return it; });
   (G.inv.equip.pbag || []).forEach((it, i) => { if(it && (addTo(G.save.petCage || [], it) || addTo(G.save.stash, it))){ moved++; G.inv.equip.pbag[i] = null; } });   // las mascotas de la mochila mágica pasan a la jaula grande (o al alijo)
-  const newTrapis = !G.save.trapis; G.save.trapis = true;
+  const newTrapis = false;
   sfx('extract');
   enterDen();
   UI.showScreen(html, 'Continuar');
@@ -183,12 +193,16 @@ function talkJuan(){
       () => `${n()}... un nombre con fuerza. Escúchame bien, ${n()}.`,
       'Ya has visto lo que hizo el Señor de la Noche: encerró a todas las mascotas del mundo y apagó la luz.',
       () => `Para devolver la luz y la alegría a este mundo tienes que rescatar a las mascotas y vencer al Señor de la Noche, ${n()}.`,
+      'Antes de nada, necesito pedirte un favor. Mis amigos Trapis y Gonzalo se escondieron de los monstruos en las cabañas del pueblo abandonado.',
+      'Si los rescatas vendrán a vivir a la guarida: Trapis te comprará y venderá de todo y Gonzalo te enseñará a hacerte más fuerte. Esa es tu misión.',
+      'No podrás avanzar a otra expedición hasta completar la misión de la que estés. Quien tenga una misión para ti llevará un «!» sobre la cabeza.',
       'Mi caballo te llevará a la primera expedición: el pueblo abandonado. Allí hay mascotas enjauladas esperando.',
       'Ten cuidado: si caes allí fuera lo perderás todo, mascotas incluidas. Vuelve con el caballo o usa uno de los dos portales.',
       'Lo que guardes en el alijo, el cofre de la guarida, estará siempre a salvo. Suerte.',
-    ], () => { s.talked = true; if(s.quest !== 'tutorial') s.quest = 'horse'; saveGame(); });
+    ], () => { s.talked = true; if(s.quest !== 'tutorial') s.quest = 'horse'; saveGame(); questAccept('friends'); });
     return;
   }
+  if(questTalk('juan')) return;
   const tips = [
     () => `¿Qué tal, ${n()}? Si ves una jaula, pulsa [F] cerca de ella para liberar a la mascota.`,
     () => `${n()}, la linterna gasta aceite. Apágala con Shift si necesitas ahorrar, pero cuidado con lo que acecha en la oscuridad.`,
@@ -203,13 +217,18 @@ function talkJuan(){
 }
 function talkTrapis(){
   const s = G.save;
+  if(G.sc.kind === 'raid'){
+    rescueNpc('trapis', 'Trapis', ['¡Chist! No grites, que nos oirán... Menos mal que eres tú, y no uno de esos monstruos.', 'Soy Trapis, el mercader. Llevo días escondido en esta cabaña desde que cayó la noche. Juan me habló de ti.', 'Si me llevas a la guarida abriré mi puesto: te venderé género y te compraré todo lo que encuentres. ¡Nos vemos allí!'], 'trapis', 'Trapis se muda a la guarida: ya tienes mercader');
+    return;
+  }
   if(!s.trapisMet){
     UI.say('Trapis', [
       () => `¡Vaya, vaya! Así que tú eres ${s.name}, quien ha vuelto con vida del pueblo abandonado. Juan no para de hablar de ti.`,
       'Me llamo Trapis y soy mercader. Bueno... era mercader, hasta que la noche se lo tragó todo.',
       'Traigo pociones, aceite para tu linterna, setas, piedras, palos y rodelas. Todo a buen precio, palabra de Trapis.',
       'Y si encuentras tesoros ahí fuera, cálices, anillos, relojes... tráemelos. Te los compro por buen oro.',
-    ], () => { s.trapisMet = true; saveGame(); UI.toggleInv('shop'); });
+      'En la tienda tienes dos pestañas: «Comprar» y «Recomprar» (lo que me vendes puedes recuperarlo algo más caro mientras estés en la guarida). También vendo ampliaciones de mochila y de alijo.',
+    ], () => { s.trapisMet = true; saveGame(); if(!questTalk('trapis')) UI.toggleInv('shop'); });
     return;
   }
   toast(pick(['Trapis: ¿Qué te pongo hoy?', 'Trapis: ¡Género fresco, recién rescatado de la oscuridad!', `Trapis: Para ti, ${s.name}, precio de amigo.`]), 2);
@@ -217,20 +236,31 @@ function talkTrapis(){
 }
 function talkDruid(){
   const s = G.save;
+  if(G.sc.kind === 'raid'){
+    rescueNpc('druid', 'Chemma, el druida', ['¡Por fin alguien! Llevo días atrapado entre estas tumbas, sin poder volver...', 'Soy Chemma, druida experto en mascotas. Mi primo Gonzalo te habrá hablado de mí. Sácame de aquí y viviré en tu guarida: cuidaré de tus mascotas.'], 'druid', 'Chemma se muda a la guarida: ya tienes druida');
+    return;
+  }
   if(!s.druidMet){
     UI.say('Chemma, el druida', [
-      () => `Siento la vida de una criatura rescatada en ti, ${s.name}. El bosque me ha traído hasta aquí.`,
+      () => `Gracias por sacarme de aquel cementerio, ${s.name}. Ya estoy en casa.`,
       'Soy un druida. Durante años cuidé de las mascotas, antes de que el Señor de la Noche las encerrara.',
+      'Esto es lo que puedo hacer por ti: en «Adiestrador» aprendes habilidades para tus mascotas con los puntos que ganas al liberarlas (1 por cada 5); en «Colección / Resucitar» ves todas las mascotas y devuelvo la vida a las caídas por oro; y en «Tienda» vendo jaula grande, mochila mágica y talismanes.',
+      'Y cuando me traigas mi botiquín (te lo pediré pronto) abriré «Mejorar mascotas»: sueros que fortalecen a tus mascotas, aunque con algo de riesgo.',
       'Escúchame: ahí fuera las mascotas pueden morir. Si caen en combate, o si caes tú, no volverán por sí solas.',
       'Pero el espíritu de una mascota que ya conoce esta guarida queda ligado a ella. Tráeme oro para las ofrendas y la devolveré a la vida.',
       'Las que mueran antes de pisar la guarida... esas se pierden para siempre. Tráelas a casa cuanto antes.',
-    ], () => { s.druidMet = true; saveGame(); UI.openTrainer(); });
+    ], () => { s.druidMet = true; saveGame(); if(!questTalk('druid')) UI.openTrainer(); });
     return;
   }
+  if(questTalk('druid')) return;
   UI.openTrainer();
 }
 function talkGonzalo(){
   const s = G.save;
+  if(G.sc.kind === 'raid'){
+    rescueNpc('gonzalo', 'Gonzalo el profesor', ['¡Un superviviente! Creía que los monstruos me habían encontrado...', 'Soy Gonzalo, profesor de la academia. Me escondí en esta cabaña cuando se apagó la luz. Juan me ha hablado de ti.', 'Llévame a la guarida y te enseñaré a hacerte más fuerte con los puntos que ganes al subir de nivel.'], 'gonzalo', 'Gonzalo se muda a la guarida: ya tienes profesor');
+    return;
+  }
   if(!s.gonzaloMet){
     UI.say('Gonzalo el profesor', [
       () => `Ajá... tú debes de ser ${s.name}. Juan me ha contado que empiezas a hacerte fuerte ahí fuera.`,
@@ -238,9 +268,10 @@ function talkGonzalo(){
       'Cada vez que aprendes algo en tus expediciones, cada vez que subes de nivel, ganas un punto de entrenamiento.',
       'Conmigo puedes invertirlos en cinco disciplinas: Agresividad, Agilidad, Cardio, Aguante y Explorador. Veinte lecciones en cada una.',
       'Elige con cabeza. Un buen alumno sabe en qué es fuerte.',
-    ], () => { s.gonzaloMet = true; saveGame(); UI.openSkills(); });
+    ], () => { s.gonzaloMet = true; saveGame(); if(!questTalk('gonzalo')) UI.openSkills(); });
     return;
   }
+  if(questTalk('gonzalo')) return;
   UI.openSkills();
 }
 // ofertas especiales de Trapis: equipo mágico o raro que cambia tras cada expedición
@@ -270,9 +301,10 @@ function talkUakala(){
     return;
   }
   if(!s.uakalaMet){
-    UI.say('Uakala, el herrero orco', ['Gracias por acogerme. Mi yunque y mi fragua son tuyos.', 'Puedo reparar tu equipo por unas monedas. Y si te atreves, probar a mejorarlo en el yunque... aunque el metal es caprichoso.'], () => { s.uakalaMet = true; saveGame(); UI.openSmith(); });
+    UI.say('Uakala, el herrero orco', ['Gracias por acogerme. Mi yunque y mi fragua son tuyos.', 'Puedo reparar tu equipo por unas monedas (pestaña «Reparar»). Y si te atreves, probar a mejorarlo en el yunque (pestaña «Mejorar»): forjar afijos nuevos o afilar el daño de las armas... aunque el metal es caprichoso y a veces se rompe.'], () => { s.uakalaMet = true; saveGame(); if(!questTalk('uakala')) UI.openSmith(); });
     return;
   }
+  if(questTalk('uakala')) return;
   UI.openSmith();
 }
 // Aish, el elfo de luz: pide cobijo en la guarida y engarza gemas en el farolillo
@@ -295,9 +327,10 @@ function talkAish(){
     return;
   }
   if(!s.aishMet){
-    UI.say('Aish, elfo de luz', ['Gracias por el cobijo. Aquí la oscuridad no me alcanza.', 'Trae gemas de la mina de los enanos y las engarzaré en tu farolillo: cada una le da un poder distinto.'], () => { s.aishMet = true; saveGame(); UI.openAish(); });
+    UI.say('Aish, elfo de luz', ['Gracias por el cobijo. Aquí la oscuridad no me alcanza.', 'Trae gemas de la mina de los enanos y las engarzaré en tu farolillo: cada una le da un poder distinto.', 'La mina de los enanos solo se abre con una llave de la mina (se gasta una por viaje): los elfos poseídos las llevan.'], () => { s.aishMet = true; saveGame(); if(!questTalk('aish')) UI.openAish(); });
     return;
   }
+  if(questTalk('aish')) return;
   UI.openAish();
 }
 function talkHorse(){
@@ -314,7 +347,7 @@ function interactables(){
   const sc = G.sc, list = [];
   const add = (x, y, r, text, fn, py) => { const d = Math.hypot(P.x-x, P.y-y); if(d < r) list.push({d, x, y:py ?? y-40, text, fn}); };
   const talk = {juan:talkJuan, trapis:talkTrapis, druid:talkDruid, gonzalo:talkGonzalo, uakala:talkUakala, aish:talkAish, alexandra:talkAlexandra, rolecs:talkRolecs};
-  for(const n of sc.npcs) add(n.x, n.y, 34, n.id==='rolecs' ? '[F] Rolecs, señor del tiempo' : n.id==='alexandra' ? (sc.kind==='raid' ? '[F] Hablar con Alexandra' : '[F] Alexandra, la nórdica jugona') : n.id==='aish' ? (sc.kind==='raid' ? '[F] Hablar con Aish' : '[F] Aish, elfo de luz') : n.id==='uakala' ? (sc.kind==='raid' ? '[F] Hablar con Uakala' : '[F] Herrero Uakala') : n.id==='trapis' ? '[F] Comerciar con Trapis' : n.id==='druid' ? '[F] Hablar con Chemma' : n.id==='gonzalo' ? '[F] Hablar con Gonzalo' : '[F] Hablar con Juan, el sabio', talk[n.id], n.y-52);
+  for(const n of sc.npcs) add(n.x, n.y, 34, n.rescue ? '[F] Hablar con ' + n.name : n.id==='rolecs' ? '[F] Rolecs, señor del tiempo' : n.id==='alexandra' ? (sc.kind==='raid' ? '[F] Hablar con Alexandra' : '[F] Alexandra, la nórdica jugona') : n.id==='aish' ? (sc.kind==='raid' ? '[F] Hablar con Aish' : '[F] Aish, elfo de luz') : n.id==='uakala' ? (sc.kind==='raid' ? '[F] Hablar con Uakala' : '[F] Herrero Uakala') : n.id==='trapis' ? '[F] Comerciar con Trapis' : n.id==='druid' ? '[F] Hablar con Chemma' : n.id==='gonzalo' ? '[F] Hablar con Gonzalo' : '[F] Hablar con Juan, el sabio', talk[n.id], n.y-52);
   if(sc.horse){
     if(sc.kind==='den') add(sc.horse.x, sc.horse.y, 46, '[F] Caballo', () => { sfx('horse'); talkHorse(); }, sc.horse.y-42);
     else add(sc.horse.x, sc.horse.y, 46, '[F] Volver a casa', () => { sfx('horse'); startChannel(3, 'Volviendo a casa...', () => extract('Has vuelto a lomos del caballo de Juan.'), '#c8a070'); }, sc.horse.y-42);
@@ -371,7 +404,6 @@ function openCage(c){
   { const rf = (G.inv.equip.tal || []).findIndex(t => t && t.id === 'rabbitfoot'); if(rf >= 0 && PETS[c.pet].rarity === 'legendary'){ G.inv.equip.tal[rf] = null; toast('La pata de conejo se ha desvanecido...', 3); refreshStats(); } }
   G.save.petsFreed = (G.save.petsFreed || 0) + 1;
   c.open = true; G.rescued++; G.rescuedNames.push(PETS[c.pet].name); G.rescuedIds.push(c.pet); sfx('cage');
-  if(!G.save.druid){ G.save.druid = true; saveGame(); }
   const it = mkPetItem(c.pet, false, shiny), p = PETS[c.pet];
   if(!addToBag(it)){ dropItem(c.x, c.y+6, it); toast('Mochila llena: la mascota espera en el suelo', 2.5); }
   toast(shiny ? `¡${p.name} es BRILLANTE! (${RARITY[p.rarity].name})` : `¡Has rescatado a ${p.name}! (${RARITY[p.rarity].name})`, 3);
@@ -405,6 +437,7 @@ function update(dt){
   updateTutorial(dt);
   if(!UI.dlg && !UI.screen && !G.paused && pressed.KeyI) UI.toggleInv(UI.invOpen ? UI.mode : false);
   if(!UI.dlg && !UI.screen && !G.paused && pressed.Tab){ G.bigMap = !G.bigMap; sfx('ui'); }
+  if(pressed.Escape && UI.slotsOpen){ if(!SL.spinning) UI.closeSlots(); pressed.Escape = false; }
   if(pressed.Escape && UI.rouletteOpen){ if(!UI.rouletteSpinning) UI.closeRoulette(); pressed.Escape = false; }
   if(pressed.Escape){
     if(G.paused) closePause();
@@ -435,7 +468,7 @@ function update(dt){
   for(const t of G.texts){ t.life -= dt; t.y += t.vy*dt; t.vy *= .94; }
   G.texts = G.texts.filter(t => t.life > 0);
   if(G.flash){ G.flash.t -= dt; if(G.flash.t <= 0) G.flash = null; }
-  updateFairies(dt); updateLegends(dt); updateLegends2(dt); updateLegends3(dt); updateIcePeak(dt); updateWorld12(dt);
+  updateFairies(dt); updateLegends(dt); updateLegends2(dt); updateLegends3(dt); updateIcePeak(dt); updateWorld12(dt); updateQuests(dt);
   for(const c of G.sc.chests) if(c.pinged > 0) c.pinged -= dt;
   for(const p of G.sc.portals) if(!p.seen && Math.hypot(p.x-P.x, p.y-P.y) < 260) p.seen = true;   // los portales se marcan en el mapa al descubrirlos
   // fuegos fatuos: deambulan despacio alrededor de su sitio
@@ -458,7 +491,7 @@ function collectLights(){
   for(const w of G.sc.wisps || []) L.push({x:w.x, y:w.y-12, r:48, a:.5, warm:false});
   for(const s of G.sc.lights){
     const fl = 1 + Math.sin(t*13 + s.x)*(s.flick||0)*.3 + (Math.random()-.5)*(s.flick||0)*.2;
-    L.push({x:s.x, y:s.y, r:s.r*fl, a:s.a, warm:s.warm, col:s.col});
+    L.push({x:s.x, y:s.y, r:s.r*fl, a:s.a, warm:s.warm, col:s.col, tint:s.tint});
   }
   if(!P.dead){
     if(P.lantern && !(P.hallT > 0) && (P.oil > 0 || G.sc.kind!=='raid')){
@@ -539,11 +572,12 @@ function draw(){
   for(const n of sc.npcs){
     n.dir = P.x < n.x ? -1 : 1;
     list.push({y:n.y, draw:() => { pshadow(n.x, n.y, 10, 3); drawSP(ART[n.id][Math.sin(G.t*1.6 + n.x)>0?0:1], n.x, n.y, n.dir<0);
-      if(((n.id === 'uakala' && sc.kind === 'raid') || (n.id === 'juan' && G.save.quest === 'juan')) && Math.sin(G.t*6) > -.2){   // «!» parpadeante: tiene algo que contar
-        const x = Math.round(n.x), y = Math.round(n.y - 66 + Math.sin(G.t*3)*1.5);
+      const mk = n.rescue || (sc.kind === 'raid' && ['uakala', 'aish', 'alexandra'].includes(n.id)) || (n.id === 'juan' && G.save.quest === 'juan') ? 'new' : (sc.kind === 'den' ? questMark(n.id) : null);
+      if(mk && Math.sin(G.t*6) > -.2){   // «!» parpadeante: tiene una misión para ti (verde si ya puedes entregarla)
+        const x = Math.round(n.x), y = Math.round(n.y - 66 + Math.sin(G.t*3)*1.5), c1 = mk === 'ready' ? '#5aff8a' : '#ffd040', c2 = mk === 'ready' ? '#d0ffe0' : '#fff4b0';
         b.fillStyle = '#121015'; b.fillRect(x-3, y-1, 6, 12); b.fillRect(x-3, y+12, 6, 5);
-        b.fillStyle = '#ffd040'; b.fillRect(x-2, y, 4, 9); b.fillRect(x-2, y+13, 4, 3);
-        b.fillStyle = '#fff4b0'; b.fillRect(x-2, y, 1, 9);
+        b.fillStyle = c1; b.fillRect(x-2, y, 4, 9); b.fillRect(x-2, y+13, 4, 3);
+        b.fillStyle = c2; b.fillRect(x-2, y, 1, 9);
       } }});
   }
   if(sc.horse) list.push({y:sc.horse.y, draw:() => { const h = sc.horse; pshadow(h.x, h.y, 22, 4); drawSP(ART.horse[Math.sin(G.t*.9)>.6?1:0], h.x, h.y, h.dir<0); }});

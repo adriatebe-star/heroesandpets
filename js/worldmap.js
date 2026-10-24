@@ -3,8 +3,8 @@
 //  Mapa de incursiones: mundo grande con cámara (arrastrar para mover, rueda para acercar/alejar),
 //  terreno detallado y nombres legibles sobre placas
 // =====================================================================
-const MAP_W = 1800, MAP_H = 1200;
-const mapU = (u, v) => [300 + u*1200, 220 + v*760];            // coordenadas de las expediciones (0..1) → mundo del mapa
+const MAP_W = 3800, MAP_H = 2500, MAP_K = 5.5;   // mapa amplio: las expediciones están muy separadas y sus nombres no se solapan
+const mapU = (u, v) => [760 + u*2900, 420 + v*1800];            // coordenadas de las expediciones (0..1) → mundo del mapa
 const MAP_DEN = {mapX:.08, mapY:.84};
 UI.mapCam = null; UI._mapBase = null; UI._mapHits = []; UI._mapHover = null; UI._mapInit = false;
 
@@ -13,24 +13,25 @@ function buildMapBase(){
   const c = document.createElement('canvas'); c.width = MAP_W; c.height = MAP_H; const g = c.getContext('2d');
   const H = (i, j, s) => hash(i, j, 900 + s);
   g.fillStyle = '#cdb98e'; g.fillRect(0, 0, MAP_W, MAP_H);
-  for(let i=0;i<14000;i++){ const x = H(i,1,1)*MAP_W, y = H(i,2,1)*MAP_H; g.fillStyle = H(i,3,1) > .5 ? 'rgba(120,90,50,.07)' : 'rgba(255,244,210,.08)'; g.fillRect(x|0, y|0, 2, 2); }
-  for(let i=0;i<260;i++){ const x = H(i,4,1)*MAP_W, y = H(i,5,1)*MAP_H, l = 8 + H(i,6,1)*22; g.strokeStyle = 'rgba(110,80,40,.06)'; g.lineWidth = 1; g.beginPath(); g.moveTo(x, y); g.lineTo(x + l, y + (H(i,7,1)-.5)*8); g.stroke(); }   // fibras
-  for(let i=0;i<18;i++){ const x = H(i,1,2)*MAP_W, y = H(i,2,2)*MAP_H, r = 60 + H(i,3,2)*140, gr = g.createRadialGradient(x, y, 0, x, y, r); gr.addColorStop(0, 'rgba(110,80,40,.10)'); gr.addColorStop(1, 'rgba(110,80,40,0)'); g.fillStyle = gr; g.fillRect(x-r, y-r, r*2, r*2); }   // manchas
+  for(let i=0;i<14000*MAP_K;i++){ const x = H(i,1,1)*MAP_W, y = H(i,2,1)*MAP_H; g.fillStyle = H(i,3,1) > .5 ? 'rgba(120,90,50,.07)' : 'rgba(255,244,210,.08)'; g.fillRect(x|0, y|0, 2, 2); }
+  for(let i=0;i<260*MAP_K;i++){ const x = H(i,4,1)*MAP_W, y = H(i,5,1)*MAP_H, l = 8 + H(i,6,1)*22; g.strokeStyle = 'rgba(110,80,40,.06)'; g.lineWidth = 1; g.beginPath(); g.moveTo(x, y); g.lineTo(x + l, y + (H(i,7,1)-.5)*8); g.stroke(); }   // fibras
+  for(let i=0;i<18*MAP_K;i++){ const x = H(i,1,2)*MAP_W, y = H(i,2,2)*MAP_H, r = 60 + H(i,3,2)*140, gr = g.createRadialGradient(x, y, 0, x, y, r); gr.addColorStop(0, 'rgba(110,80,40,.10)'); gr.addColorStop(1, 'rgba(110,80,40,0)'); g.fillStyle = gr; g.fillRect(x-r, y-r, r*2, r*2); }   // manchas
   // praderas, bosques y zonas áridas (grandes manchas suaves)
   const patch = (u, v, rx, ry, col) => { const [x, y] = mapU(u, v), gr = g.createRadialGradient(x, y, 0, x, y, Math.max(rx, ry)); gr.addColorStop(0, col); gr.addColorStop(1, 'rgba(0,0,0,0)'); g.save(); g.translate(x, y); g.scale(1, ry/rx); g.translate(-x, -y); g.fillStyle = gr; g.fillRect(x-rx, y-rx, rx*2, rx*2); g.restore(); };
-  patch(.55, .62, 330, 220, 'rgba(120,140,70,.22)'); patch(.45, .25, 260, 180, 'rgba(110,130,70,.2)'); patch(.05, .25, 220, 200, 'rgba(50,90,50,.3)'); patch(.75, .3, 260, 170, 'rgba(150,130,80,.25)');
-  patch(.62, .72, 200, 130, 'rgba(110,60,40,.18)'); patch(.9, .05, 300, 200, 'rgba(90,80,70,.28)'); patch(.1, .56, 160, 120, 'rgba(70,60,60,.22)');
+  const BIOME = {village:'rgba(120,180,70,.55)', cemetery:'rgba(60,72,72,.55)', crypt:'rgba(70,56,78,.55)', plains:'rgba(222,184,70,.55)', orccamp:'rgba(160,72,40,.55)', castle:'rgba(110,110,122,.5)', river:'rgba(80,150,115,.42)', forest:'rgba(28,92,46,.6)', mine:'rgba(120,86,52,.55)', temple:'rgba(230,220,150,.6)', icepeak:'rgba(238,248,255,.8)', floatcity:'rgba(100,170,205,.45)', timehall:'rgba(140,110,215,.5)'};
+  for(const e of EXPEDITIONS) if(BIOME[e.id]){ patch(e.mapX, e.mapY, 620, 430, BIOME[e.id]); patch(e.mapX, e.mapY, 380, 270, BIOME[e.id]); }
+  patch(.9, .05, 900, 520, 'rgba(90,80,70,.28)');
   // río (de oeste a sur, pasando por El río travieso) con afluente y orillas
   const riv = [[-.28,.37],[.0,.37],[.16,.37],[.26,.42],[.31,.52],[.32,.62],[.33,.76],[.31,.9],[.34,1.1],[.36,1.3]].map(p => mapU(p[0], p[1]));
   const curve = (pts, w, col, dash) => { g.strokeStyle = col; g.lineWidth = w; g.lineCap = 'round'; g.lineJoin = 'round'; g.setLineDash(dash || []); g.beginPath(); g.moveTo(pts[0][0], pts[0][1]);
     for(let i=1;i<pts.length-1;i++){ const mx = (pts[i][0] + pts[i+1][0])/2, my = (pts[i][1] + pts[i+1][1])/2; g.quadraticCurveTo(pts[i][0], pts[i][1], mx, my); } g.lineTo(pts[pts.length-1][0], pts[pts.length-1][1]); g.stroke(); g.setLineDash([]); };
-  curve(riv, 15, 'rgba(60,40,20,.32)'); curve(riv, 11, '#5f8ea8'); curve(riv, 6, '#86b4cc'); curve(riv, 1.5, 'rgba(255,255,255,.55)', [10, 12]);
-  const trib = [[.16,.37],[.1,.3],[.06,.26],[.0,.22],[-.1,.2]].map(p => mapU(p[0], p[1])); curve(trib, 9, '#5f8ea8'); curve(trib, 4, '#86b4cc');
-  const [lx, ly] = mapU(.46, .04); g.fillStyle = 'rgba(60,40,20,.3)'; g.beginPath(); g.ellipse(lx, ly, 96, 52, .1, 0, Math.PI*2); g.fill(); g.fillStyle = '#6a9ab4'; g.beginPath(); g.ellipse(lx, ly, 90, 47, .1, 0, Math.PI*2); g.fill(); g.fillStyle = '#92bdd2'; g.beginPath(); g.ellipse(lx-10, ly-8, 52, 22, .1, 0, Math.PI*2); g.fill();   // lago
+  curve(riv, 24, 'rgba(60,40,20,.32)'); curve(riv, 18, '#5f8ea8'); curve(riv, 10, '#86b4cc'); curve(riv, 2, 'rgba(255,255,255,.55)', [12, 14]);
+  const trib = [[.16,.37],[.1,.3],[.06,.26],[.0,.22],[-.1,.2]].map(p => mapU(p[0], p[1])); curve(trib, 14, '#5f8ea8'); curve(trib, 6, '#86b4cc');
+  const [lx, ly] = mapU(.52, .06); g.fillStyle = 'rgba(60,40,20,.3)'; g.beginPath(); g.ellipse(lx, ly, 250, 130, .1, 0, Math.PI*2); g.fill(); g.fillStyle = '#6a9ab4'; g.beginPath(); g.ellipse(lx, ly, 236, 118, .1, 0, Math.PI*2); g.fill(); g.fillStyle = '#92bdd2'; g.beginPath(); g.ellipse(lx-10, ly-8, 52, 22, .1, 0, Math.PI*2); g.fill();   // lago
   const riverDist = (x, y) => { let best = 1e9; for(let i=0;i<riv.length-1;i++){ const dx = riv[i+1][0]-riv[i][0], dy = riv[i+1][1]-riv[i][1], t = clamp(((x-riv[i][0])*dx + (y-riv[i][1])*dy)/(dx*dx + dy*dy), 0, 1); best = Math.min(best, Math.hypot(x - riv[i][0] - dx*t, y - riv[i][1] - dy*t)); } return best; };
   const nodePts = EXPEDITIONS.map(e => mapU(e.mapX, e.mapY)).concat([mapU(MAP_DEN.mapX, MAP_DEN.mapY)]);
   const nearNode = (x, y, r) => nodePts.some(p => Math.hypot(x-p[0], y-p[1]) < r) || (x - 300 > 0 && false);
-  const okSpot = (x, y, rn) => !nearNode(x, y, rn) && riverDist(x, y) > 16 && Math.hypot(x-lx, (y-ly)*1.6) > 100;
+  const okSpot = (x, y, rn) => !nearNode(x, y, rn) && riverDist(x, y) > 16 && Math.hypot(x-lx, (y-ly)*1.9) > 250;
   // montañas con sombra y cumbre nevada
   const mount = (x, y, s) => {
     g.fillStyle = 'rgba(60,40,20,.25)'; g.beginPath(); g.ellipse(x+s*.2, y+2, s*1.1, s*.18, 0, 0, Math.PI*2); g.fill();
@@ -40,18 +41,44 @@ function buildMapBase(){
     g.strokeStyle = 'rgba(40,28,14,.55)'; g.lineWidth = 1.5; g.beginPath(); g.moveTo(x-s, y); g.lineTo(x, y-s*1.25); g.lineTo(x+s, y); g.stroke();
   };
   const ranges = [[.78, 1.2, -.2, .5, 70], [-.25, .08, -.2, .06, 28], [.6, 1.1, .92, 1.2, 26], [.25, .6, -.2, -.02, 24]];
-  for(const [u0, u1, v0, v1, n] of ranges) for(let i=0;i<n;i++){ const [x, y] = mapU(u0 + H(i,1,3+u0*10)*(u1-u0), v0 + H(i,2,3+u0*10)*(v1-v0)); if(okSpot(x, y, 95)) mount(x, y + 8, 14 + H(i,3,4)*22); }
+  for(const [u0, u1, v0, v1, n] of ranges) for(let i=0;i<n*MAP_K*.7;i++){ const [x, y] = mapU(u0 + H(i,1,3+u0*10)*(u1-u0), v0 + H(i,2,3+u0*10)*(v1-v0)); if(okSpot(x, y, 95)) mount(x, y + 8, 20 + H(i,3,4)*30); }
   // colinas
-  for(let i=0;i<110;i++){ const x = H(i,1,5)*MAP_W, y = H(i,2,5)*MAP_H; if(!okSpot(x, y, 70)) continue; g.strokeStyle = 'rgba(80,60,30,.45)'; g.lineWidth = 2; g.beginPath(); g.arc(x, y, 9 + H(i,3,5)*6, Math.PI, 0); g.stroke(); g.beginPath(); g.arc(x+14, y+3, 7, Math.PI, 0); g.stroke(); }
+  for(let i=0;i<110*MAP_K;i++){ const x = H(i,1,5)*MAP_W, y = H(i,2,5)*MAP_H; if(!okSpot(x, y, 70)) continue; g.strokeStyle = 'rgba(80,60,30,.45)'; g.lineWidth = 2; g.beginPath(); g.arc(x, y, 9 + H(i,3,5)*6, Math.PI, 0); g.stroke(); g.beginPath(); g.arc(x+14, y+3, 7, Math.PI, 0); g.stroke(); }
   // bosques: pinos y árboles de copa redonda (más densos en el oeste y el norte)
   const pine = (x, y, s) => { g.fillStyle = 'rgba(40,24,10,.25)'; g.fillRect(x-s*.5, y+s*.55, s, 2); g.fillStyle = '#3a5a32'; g.beginPath(); g.moveTo(x, y-s*1.2); g.lineTo(x-s*.62, y+s*.15); g.lineTo(x+s*.62, y+s*.15); g.fill(); g.fillStyle = '#4a7240'; g.beginPath(); g.moveTo(x, y-s*.7); g.lineTo(x-s*.78, y+s*.6); g.lineTo(x+s*.78, y+s*.6); g.fill(); g.fillStyle = '#5a3a1e'; g.fillRect(x-1, y+s*.6, 2, s*.4); };
   const oak = (x, y, s) => { g.fillStyle = 'rgba(40,24,10,.25)'; g.fillRect(x-s*.7, y+s*.6, s*1.4, 2); g.fillStyle = '#5a3a1e'; g.fillRect(x-1, y+s*.1, 2, s*.55); g.fillStyle = '#4a6a2a'; g.beginPath(); g.arc(x, y-s*.2, s*.65, 0, Math.PI*2); g.fill(); g.fillStyle = '#62882e'; g.beginPath(); g.arc(x-s*.2, y-s*.35, s*.35, 0, Math.PI*2); g.fill(); };
-  const forest = (u0, u1, v0, v1, n, pines) => { for(let i=0;i<n;i++){ const [x, y] = mapU(u0 + H(i,1,6+n)*(u1-u0), v0 + H(i,2,6+n)*(v1-v0)); if(!okSpot(x, y, 60)) continue; (pines || H(i,3,6) > .4 ? pine : oak)(x, y, 9 + H(i,4,6)*7); } };
-  forest(-.28, .22, .0, .46, 220, true); forest(.12, .42, .05, .3, 70, true); forest(.4, .75, .22, .5, 40, false); forest(.12, .5, .55, .8, 45, false); forest(.55, .9, .55, .9, 36, false); forest(.78, 1.2, .42, .75, 36, true); forest(-.28, .1, .5, 1.1, 70, true); forest(.35, .85, -.2, .08, 40, true);
+  const forest = (u0, u1, v0, v1, n, pines) => { n = n*MAP_K*.7|0; for(let i=0;i<n;i++){ const [x, y] = mapU(u0 + H(i,1,6+n)*(u1-u0), v0 + H(i,2,6+n)*(v1-v0)); if(!okSpot(x, y, 60)) continue; (pines || H(i,3,6) > .4 ? pine : oak)(x, y, 9 + H(i,4,6)*7); } };
+  const E = id => EXPEDITIONS.find(e => e.id === id);
+  const around = (id, rx, ry, n, fn, seed) => { const e = E(id); if(!e) return; const [px, py] = mapU(e.mapX, e.mapY); for(let i=0;i<n;i++){ const a = H(i,1,40+seed)*6.283, r = Math.sqrt(H(i,2,40+seed)), x = px + Math.cos(a)*rx*r, y = py + Math.sin(a)*ry*r; if(Math.hypot(x-px, (y-py)*1.2) < 80 || !okSpot(x, y, 60)) continue; fn(x, y, 8 + H(i,3,40+seed)*8, i); } };
+  const dead = (x, y, s) => { g.strokeStyle = '#3a2e26'; g.lineWidth = 2; g.beginPath(); g.moveTo(x, y + s*.6); g.lineTo(x, y - s); g.moveTo(x, y - s*.2); g.lineTo(x - s*.6, y - s*.8); g.moveTo(x, y - s*.5); g.lineTo(x + s*.55, y - s*1.05); g.stroke(); };
+  const grave = (x, y, s) => { g.fillStyle = 'rgba(40,24,10,.25)'; g.fillRect(x - s*.5, y + s*.5, s, 2); g.fillStyle = '#8a8a86'; g.fillRect(x - s*.35, y - s*.5, s*.7, s*.95); g.beginPath(); g.arc(x, y - s*.5, s*.35, Math.PI, 0); g.fill(); g.fillStyle = '#5a5a58'; g.fillRect(x - 1, y - s*.4, 2, s*.5); };
+  const acacia = (x, y, s) => { g.fillStyle = '#5a3a1e'; g.fillRect(x - 1, y - s*.3, 2, s*.9); g.fillStyle = '#7a8a32'; g.beginPath(); g.ellipse(x, y - s*.5, s*.95, s*.3, 0, 0, Math.PI*2); g.fill(); g.fillStyle = '#9aa83a'; g.beginPath(); g.ellipse(x - s*.2, y - s*.6, s*.5, s*.16, 0, 0, Math.PI*2); g.fill(); };
+  const tuft = (x, y, s) => { g.strokeStyle = 'rgba(150,120,40,.8)'; g.lineWidth = 1.4; g.beginPath(); for(const d of [-3, 0, 3]){ g.moveTo(x, y); g.lineTo(x + d, y - s*.6); } g.stroke(); };
+  const spike = (x, y, s) => { g.fillStyle = 'rgba(40,24,10,.3)'; g.fillRect(x - s*.4, y + s*.6, s*.8, 2); g.fillStyle = '#4a2a20'; g.beginPath(); g.moveTo(x - s*.35, y + s*.6); g.lineTo(x - s*.1, y - s*1.1); g.lineTo(x + s*.35, y + s*.6); g.fill(); g.fillStyle = '#7a3a28'; g.beginPath(); g.moveTo(x, y + s*.6); g.lineTo(x - s*.1, y - s*1.1); g.lineTo(x + s*.35, y + s*.6); g.fill(); };
+  const mound = (x, y, s) => { g.fillStyle = 'rgba(40,24,10,.25)'; g.fillRect(x - s*.8, y + s*.3, s*1.6, 2); g.fillStyle = '#7a7a84'; g.beginPath(); g.ellipse(x, y + s*.3, s*.9, s*.6, 0, Math.PI, 0); g.fill(); g.fillStyle = '#9a9aa4'; g.beginPath(); g.ellipse(x - s*.2, y + s*.2, s*.4, s*.3, 0, Math.PI, 0); g.fill(); };
+  const snowPine = (x, y, s) => { pine(x, y, s); g.fillStyle = '#f4f8ff'; g.beginPath(); g.moveTo(x, y - s*1.2); g.lineTo(x - s*.34, y - s*.55); g.lineTo(x + s*.34, y - s*.55); g.fill(); };
+  const snowMount = (x, y, s) => { mount(x, y, s); g.fillStyle = 'rgba(245,250,255,.85)'; g.beginPath(); g.moveTo(x - s*.55, y - s*.5); g.lineTo(x, y - s*1.25); g.lineTo(x + s*.55, y - s*.5); g.lineTo(x + s*.2, y - s*.35); g.lineTo(x - s*.1, y - s*.55); g.fill(); };
+  const pillar = (x, y, s) => { g.fillStyle = 'rgba(40,24,10,.2)'; g.fillRect(x - s*.4, y + s*.5, s*.8, 2); g.fillStyle = '#f2ecd8'; g.fillRect(x - s*.22, y - s*.6, s*.44, s*1.1); g.fillStyle = '#d8d0b4'; g.fillRect(x - s*.34, y - s*.7, s*.68, s*.18); g.fillRect(x - s*.34, y + s*.4, s*.68, s*.16); };
+  const crystal = (x, y, s) => { g.fillStyle = '#7a5ad8'; g.beginPath(); g.moveTo(x - s*.25, y + s*.4); g.lineTo(x, y - s*1.1); g.lineTo(x + s*.25, y + s*.4); g.fill(); g.fillStyle = '#c8b0ff'; g.beginPath(); g.moveTo(x, y + s*.4); g.lineTo(x, y - s*1.1); g.lineTo(x + s*.25, y + s*.4); g.fill(); };
+  const hut = (x, y, s) => { g.fillStyle = 'rgba(40,24,10,.25)'; g.fillRect(x - s*.8, y + s*.5, s*1.6, 2); g.fillStyle = '#8a6a44'; g.fillRect(x - s*.6, y - s*.1, s*1.2, s*.7); g.fillStyle = '#a04a30'; g.beginPath(); g.moveTo(x - s*.8, y - s*.1); g.lineTo(x, y - s*.9); g.lineTo(x + s*.8, y - s*.1); g.fill(); };
+  const reed = (x, y, s) => { g.strokeStyle = 'rgba(70,100,60,.8)'; g.lineWidth = 1.3; g.beginPath(); for(const d of [-2, 0, 2]){ g.moveTo(x + d, y); g.lineTo(x + d*1.5, y - s*.9); } g.stroke(); };
+  around('village', 520, 360, 70, (x, y, s, i) => i % 4 === 0 ? hut(x, y, s*.9) : oak(x, y, s), 1);
+  around('cemetery', 540, 380, 110, (x, y, s, i) => i % 3 ? grave(x, y, s*.9) : dead(x, y, s), 2);
+  around('crypt', 540, 380, 80, (x, y, s, i) => i % 3 ? mound(x, y, s) : grave(x, y, s*.9), 3);
+  around('plains', 600, 420, 110, (x, y, s, i) => i % 3 ? tuft(x, y, s) : acacia(x, y, s), 4);
+  around('orccamp', 560, 400, 100, (x, y, s, i) => i % 5 ? spike(x, y, s) : mound(x, y, s*.9), 5);
+  around('castle', 560, 400, 80, (x, y, s, i) => i % 4 ? mound(x, y, s) : pine(x, y, s), 6);
+  around('river', 520, 380, 80, (x, y, s, i) => i % 3 ? reed(x, y, s) : oak(x, y, s), 7);
+  around('forest', 640, 460, 340, (x, y, s, i) => i % 5 ? pine(x, y, s) : oak(x, y, s), 8);
+  around('mine', 560, 400, 50, (x, y, s) => mount(x, y + 8, s*1.5), 9);
+  around('temple', 560, 400, 70, (x, y, s, i) => i % 3 ? pillar(x, y, s) : oak(x, y, s), 10);
+  around('icepeak', 620, 440, 90, (x, y, s, i) => i % 3 ? snowPine(x, y, s) : snowMount(x, y + 8, s*1.5), 11);
+  around('floatcity', 700, 470, 50, (x, y, s) => snowPine(x, y, s), 12);
+  around('timehall', 520, 380, 36, (x, y, s) => crystal(x, y, s*1.1), 13);
   // pantano junto al cementerio, matas de hierba y rocas
   const [cx, cy] = mapU(.4, .6); for(let i=0;i<26;i++){ const x = cx - 130 + H(i,1,7)*260, y = cy + 30 + H(i,2,7)*90; if(!okSpot(x, y, 50)) continue; g.strokeStyle = 'rgba(70,90,50,.7)'; g.lineWidth = 1.5; g.beginPath(); g.moveTo(x, y); g.lineTo(x-3, y-7); g.moveTo(x, y); g.lineTo(x, y-9); g.moveTo(x, y); g.lineTo(x+3, y-7); g.stroke(); }
-  for(let i=0;i<500;i++){ const x = H(i,1,8)*MAP_W, y = H(i,2,8)*MAP_H; if(!okSpot(x, y, 40)) continue; g.strokeStyle = 'rgba(80,100,50,.45)'; g.lineWidth = 1; g.beginPath(); g.moveTo(x, y); g.lineTo(x-2, y-4); g.moveTo(x, y); g.lineTo(x+2, y-4); g.stroke(); }
-  for(let i=0;i<70;i++){ const x = H(i,1,9)*MAP_W, y = H(i,2,9)*MAP_H; if(!okSpot(x, y, 50)) continue; g.fillStyle = 'rgba(90,76,58,.7)'; g.beginPath(); g.ellipse(x, y, 5, 3, 0, 0, Math.PI*2); g.fill(); g.fillStyle = 'rgba(230,220,200,.5)'; g.fillRect(x-2, y-2, 2, 1); }
+  for(let i=0;i<500*MAP_K;i++){ const x = H(i,1,8)*MAP_W, y = H(i,2,8)*MAP_H; if(!okSpot(x, y, 40)) continue; g.strokeStyle = 'rgba(80,100,50,.45)'; g.lineWidth = 1; g.beginPath(); g.moveTo(x, y); g.lineTo(x-2, y-4); g.moveTo(x, y); g.lineTo(x+2, y-4); g.stroke(); }
+  for(let i=0;i<70*MAP_K;i++){ const x = H(i,1,9)*MAP_W, y = H(i,2,9)*MAP_H; if(!okSpot(x, y, 50)) continue; g.fillStyle = 'rgba(90,76,58,.7)'; g.beginPath(); g.ellipse(x, y, 5, 3, 0, 0, Math.PI*2); g.fill(); g.fillStyle = 'rgba(230,220,200,.5)'; g.fillRect(x-2, y-2, 2, 1); }
   // tierras desconocidas: oscurecimiento en los bordes + rótulos
   const ed = g.createRadialGradient(MAP_W/2, MAP_H/2, MAP_H*.38, MAP_W/2, MAP_H/2, MAP_W*.68); ed.addColorStop(0, 'rgba(70,40,15,0)'); ed.addColorStop(1, 'rgba(70,40,15,.6)'); g.fillStyle = ed; g.fillRect(0, 0, MAP_W, MAP_H);
   g.fillStyle = 'rgba(70,45,20,.38)'; g.font = `italic 22px ${FONT}`; g.textAlign = 'center';
@@ -95,8 +122,8 @@ function mapDenIcon(g){ g.fillStyle = '#3a2a1a'; g.beginPath(); g.ellipse(0, 0, 
 
 // ---------- cámara y dibujo ----------
 UI.mapEnsureCam = function(c){
-  if(!this.mapCam){ const [x, y] = mapU(.5, .5); this.mapCam = {x, y, z:clamp(Math.min(c.width/1400, c.height/950), .35, .9)}; }   // al abrir se ve casi todo el mapa
-  const cam = this.mapCam; cam.z = clamp(cam.z, .35, 1.5);
+  if(!this.mapCam){ const e0 = EXPEDITIONS.find(q => q.id === this.mapSel) || EXPEDITIONS[0], [x, y] = mapU(e0.mapX, e0.mapY); this.mapCam = {x, y, z:clamp(Math.min(c.width/1500, c.height/900), .55, .85)}; }
+  const cam = this.mapCam; cam.z = clamp(cam.z, .4, 1.5);
   const vw = c.width/cam.z, vh = c.height/cam.z;
   cam.x = vw >= MAP_W ? MAP_W/2 : clamp(cam.x, vw/2, MAP_W - vw/2); cam.y = vh >= MAP_H ? MAP_H/2 : clamp(cam.y, vh/2, MAP_H - vh/2);
 };
@@ -127,6 +154,7 @@ UI.renderRaidMap = function(){
     g.fillStyle = opt.col || '#f8ecc8'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(txt, x, by + h/2 + 1); g.textBaseline = 'alphabetic';
   };
   plate('Guarida', sx(dx0), sy(dy0) + 24*ik, {sz:12, border:'#8a6a3a'});
+  const taken = [];
   for(const e of EXPEDITIONS){
     const [wx, wy] = mapU(e.mapX, e.mapY), x = sx(wx), y = sy(wy), sel = this.mapSel === e.id, hov = this._mapHover === e.id, lk = expLocked(e);
     if(x < -80 || y < -80 || x > Wm + 80 || y > Hm + 80) { hits.push({id:e.id, x, y, r:0}); continue; }
@@ -135,7 +163,7 @@ UI.renderRaidMap = function(){
     g.save(); g.translate(x, y); g.scale(ik, ik); mapIcon(g, e, lk); g.restore();
     if(e.boss && !e.locked){ const bx = x + 30*ik, by = y - 26*ik; g.fillStyle = '#5a1010'; g.beginPath(); g.arc(bx, by, 12*ik, 0, Math.PI*2); g.fill(); g.strokeStyle = '#2a0808'; g.lineWidth = 2; g.stroke();
       g.fillStyle = '#f0e6d0'; g.beginPath(); g.arc(bx, by - 2*ik, 7*ik, 0, Math.PI*2); g.fill(); g.fillRect(bx - 4*ik, by + 2*ik, 8*ik, 6*ik); g.fillStyle = '#5a1010'; g.fillRect(bx - 4*ik, by - 3*ik, 3*ik, 3*ik); g.fillRect(bx + 1*ik, by - 3*ik, 3*ik, 3*ik); g.fillRect(bx - 1*ik, by + 3*ik, 2*ik, 4*ik); }
-    const label = e.locked ? '???' : e.hall ? e.name : `${e.lvl}. ${e.name}`, up = ['castle', 'forest', 'orccamp'].includes(e.id), ly = up ? y - 24*ik - 28 : y + 24*ik, ex = up ? -30 : 30;   // algunos nombres van encima del icono para no solaparse
+    const label = e.locked ? '???' : e.hall ? e.name : `${e.lvl}. ${e.name}`, ex = 30; let ly = y + 24*ik; { g.font = `13px ${FONT}`; const w1 = g.measureText(label).width + 18; for(let k = 0; k < 3 && taken.some(r => Math.abs(r.x - x) < (r.w + w1)/2 + 6 && Math.abs(r.y - ly) < 32); k++) ly += 30; taken.push({x, y:ly, w:w1}); if(!e.locked && lk || e.needKey) taken.push({x, y:ly + 30, w:110}); }
     plate(label, x, ly, {sz:13, col: lk ? '#b0a690' : '#fff4d0', bg: lk ? 'rgba(46,38,30,.9)' : 'rgba(36,22,12,.95)', border: sel ? '#ffd870' : lk ? '#6a5a44' : '#c8a060'});
     if(e.needKey && !lk) plate('requiere llave', x, ly + ex, {sz:10, col:'#ffd8a0', border:'#8a6a3a'});
     else if(!e.locked && lk) plate('bloqueada', x, ly + ex, {sz:10, col:'#b0a690', border:'#6a5a44'});
@@ -172,7 +200,7 @@ UI.openRaidMap = function(){
       const id = hitAt(p); if(id !== UI._mapHover){ UI._mapHover = id; c.style.cursor = id ? 'pointer' : 'grab'; UI.renderRaidMap(); }
     });
     c.addEventListener('mouseleave', () => { if(UI._mapHover){ UI._mapHover = null; UI.renderRaidMap(); } });
-    c.addEventListener('wheel', e => { e.preventDefault(); const p = toCanvas(e), cam = UI.mapCam, z0 = cam.z, z1 = clamp(z0*(e.deltaY < 0 ? 1.15 : 1/1.15), .35, 1.5);
+    c.addEventListener('wheel', e => { e.preventDefault(); const p = toCanvas(e), cam = UI.mapCam, z0 = cam.z, z1 = clamp(z0*(e.deltaY < 0 ? 1.15 : 1/1.15), .4, 1.5);
       cam.x += (p.x - c.width/2)/z0 - (p.x - c.width/2)/z1; cam.y += (p.y - c.height/2)/z0 - (p.y - c.height/2)/z1; cam.z = z1; UI.mapEnsureCam(c); UI.mapRedraw(); }, {passive:false});
     addEventListener('keydown', e => {
       if(!UI.mapOpen) return; const cam = UI.mapCam, st = 80/cam.z, k = e.code;

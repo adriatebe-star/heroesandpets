@@ -94,12 +94,12 @@ function bossWarp(m){   // se reubica en otro punto de la sala
 BRAINS.argos = {wake:'ARGOS-9000: «Lo siento. No puedo dejar que salgas de aquí».', rage:'ARGOS-9000 reinicia todos los sistemas: ¡sobrecarga!', col:'#ff3a2a', p2spd:1,
   cd:() => rand(2.2, 3), cd2:() => rand(1.5, 2.2),
   attacks:[
-    {id:'laser', name:'Barrido láser', prep:.9, w:24, cast:m => { const a0 = angTo(m), n = m.phase2 ? 4 : 3; for(let i = 0; i < n; i++) bossBeam(m, a0 + (i - 1)*.38, .55 + i*.45, 30, 600, 1.35, '#ff3a3a', 'burn'); }},
+    {id:'laser', name:'Barrido láser', prep:.9, w:24, cast:m => { const a0 = angTo(m), n = m.phase2 ? 5 : 3, px = -Math.sin(a0), py = Math.cos(a0); for(let i = 0; i < n; i++){ const off = (i - (n - 1)/2)*70; bossBeam(m, a0, .9, 30, 640, 1.35, '#ff3a3a', 'burn', px*off, py*off); } }},
     {id:'airlock', name:'¡Esclusa abierta!', prep:1, w:16, cast:m => { bossPull(m, 2.6, 380, 155, 1); (m.later = m.later || []).push({t:2.6, fn:mm => { bossSlam(mm, 130, 1.5, '#7affea'); }}); }},
     {id:'drones', name:'Enjambre de drones', prep:1, w:14, cast:m => bossSummon(m, ['drone'], 3, 6)},
     {id:'overload', name:'Sobrecarga eléctrica', prep:1.1, w:18, cast:m => bossRain(m, ['zap'], 9, 270, 1)},
-    {id:'emp', name:'Pulso electromagnético', prep:1, w:16, warn:130, cast:m => { bossSlam(m, 130, 1.1, '#7affea'); bossRings(m, 3, .9, 250); }},
-    {id:'cross', name:'Cruz láser', prep:1.2, w:16, p2:true, cast:m => { const a0 = angTo(m); for(let i = 0; i < 4; i++) bossBeam(m, a0 + i*Math.PI/2, .9, 34, 620, 1.3, '#ff3a3a', 'burn'); for(let i = 0; i < 4; i++) bossBeam(m, a0 + Math.PI/4 + i*Math.PI/2, 1.7, 34, 620, 1.3, '#ff3a3a', 'burn'); }},
+    {id:'emp', name:'Pulso electromagnético', prep:1, w:16, warn:130, cast:m => { bossSlam(m, 130, 1.1, '#7affea'); bossGrid(m, 2, 72, .9); }},
+    {id:'cross', name:'Cruz láser', prep:1.2, w:16, p2:true, cast:m => { const a0 = angTo(m); for(let i = 0; i < 9; i++) bossBeam(m, a0 + i*.32, .7 + i*.28, 30, 620, 1.3, '#ff3a3a', 'burn'); }},
     {id:'reboot', name:'Reinicio del sistema', prep:.8, w:14, p2:true, cast:m => { bossWarp(m); bossRain(m, ['zap', 'boom'], 8, 280, 1); bossSummon(m, ['robot'], 1, 2); }},
   ]};
 
