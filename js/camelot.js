@@ -2,7 +2,7 @@
 // =====================================================================
 //  Expedición 12 (portal de Rolecs) · El castillo de Camelot: la corte del rey Arturo, corrompida por la noche eterna.
 // =====================================================================
-HIDDEN_EXPEDITIONS.push({id:'camelot', lvl:12, petExp:'12b', hidden:true, name:'El castillo de Camelot', boss:'arthur',
+HIDDEN_EXPEDITIONS.push({id:'camelot', lvl:12, petExp:'12b', hidden:true, viaPortal:true, from:'timehall', mapX:0.23, mapY:-0.31, name:'El castillo de Camelot', boss:'arthur',
   desc:'La corte del rey Arturo, atrapada en un instante que nunca acabó. Los caballeros de la Mesa Redonda vigilan salones de piedra donde Excalibur aún brilla.',
   monsters:'Caballeros de la Mesa Redonda, arqueros reales, hechiceras de Avalón y sabuesos espectrales. Jefe: Arturo, el rey sin descanso'});
 iconFrom([

@@ -353,6 +353,7 @@ function interactables(){
     else add(sc.horse.x, sc.horse.y, 46, '[F] Volver a casa', () => { sfx('horse'); startChannel(3, 'Volviendo a casa...', () => extract('Has vuelto a lomos del caballo de Juan.'), '#c8a070'); }, sc.horse.y-42);
   }
   if(sc.bigCage) add(sc.bigCage.x, sc.bigCage.y, 32, '[F] Jaula grande (mascotas)', () => UI.toggleInv('cage'), sc.bigCage.y-44);
+  if(sc.slotProp) add(sc.slotProp.x, sc.slotProp.y, 34, '[F] Tragaperras', () => UI.openSlots(), sc.slotProp.y - 52);
   if(sc.stash) add(sc.stash.x, sc.stash.y, 30, '[F] Alijo', () => UI.toggleInv('stash'), sc.stash.y-26);
   if(sc.portalProp) add(0, -150, 60, '[F] Portal del tiempo', useTimePortal, -190);
   for(const c of sc.chests) if(!c.open) add(c.x, c.y, 26, c.legend ? '[F] Abrir cofre legendario' : c.rare ? '[F] Abrir cofre raro' : '[F] Abrir cofre', () => startChannel((c.legend ? 1.8 : c.rare ? 1.2 : .7)*(1 - SK('exp')*.03), 'Abriendo...', () => openChest(c)), c.y-24);
@@ -418,7 +419,7 @@ function pickLoot(l){
 }
 function updatePortals(dt){
   for(const p of G.sc.portals){
-    if(Math.hypot(P.x-p.x, P.y-p.y) < 22 && !P.dead){
+    if(Math.hypot(P.x-p.x, P.y-p.y) < 34 && !P.dead){
       if(p.t === 0 || Math.floor(p.t/1.2) !== Math.floor((p.t+dt)/1.2)) sfx('portal', .5);
       p.t += dt;
       G.channel = {t:p.t, dur:5, label:'El portal te envuelve...', col:'#9a7aff', fn(){}, x:P.x, y:P.y, hp:P.hp, portal:true};
@@ -478,7 +479,7 @@ function update(dt){
   if(!P.dead){
     if(G.sc.kind==='raid') updatePortals(dt);
     if(G.channel && !G.channel.portal) updateChannel(dt);
-    G.prompt = UI.blocking() || G.channel ? null : interactables();
+    G.prompt = UI.blocking() || G.channel || G.noIntT > 0 ? null : interactables();
     if(G.prompt && pressed.KeyF && !UI.blocking()) G.prompt.fn();
   }
   // muerte
@@ -596,7 +597,7 @@ function draw(){
   for(const al of G.allies) list.push({y:al.y, draw:() => drawAlly(al)});
   for(const g of G.parts) if(g.ghost) list.push({y:g.y-1, draw:() => drawGhost(g)});
   for(const pr of G.projs) list.push({y:pr.y+10, draw:() => drawProj(pr)});
-  list.push({y:P.y, draw:drawHero});
+  list.push({y:P.y, draw:() => { if(P.frozenT > 0 && !P.dead){ b.save(); b.filter = 'sepia(1) hue-rotate(170deg) saturate(2.6) brightness(1.2)'; drawHero(); b.restore(); if(Math.random() < .3) G.parts.push({x:P.x + rand(-7, 7), y:P.y - rand(2, 30), vx:0, vy:-10, life:.5, max:.5, size:1.5, col:'#e8faff'}); } else drawHero(); }});
   if(P.flameT > 0 && !P.dead) list.push({y:P.y + 2, draw:drawFlameJet});
   list.sort((a,c) => a.y - c.y);
   for(const o of list) o.draw();

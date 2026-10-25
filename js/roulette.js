@@ -84,6 +84,7 @@ function rlSpin(){
     // resultado
     RL.hist.push(win); const back = rlPayout(win), net = back - tot, col = tr({red:'rojo', black:'negro', green:'verde'}[rlColor(win)]);
     G.save.wallet += back; RL.bets = {}; RL.spinning = false; UI.rouletteSpinning = false;
+    (G.save.rlLog ??= []).push({n:win, bet:tot, back, t:Date.now()}); if(G.save.rlLog.length > 300) G.save.rlLog.shift();
     RL.msg = `<b class="rlbig ${rlColor(win)}">${win}</b> ${col}. ` + (net > 0 ? `<span class="good">${tr('Ganas')} ${net} ${tr('oro')}</span>` : net === 0 ? tr('Recuperas lo apostado') : `<span class="bad">${tr('Pierdes')} ${-net} ${tr('oro')}</span>`);
     sfx(net > 0 ? 'levelup' : 'ui'); if(back > 0) sfx('coin');
     saveGame(); UI.renderRoulette();
@@ -107,3 +108,20 @@ function rlDrawWheel(){
   const bx = C + Math.cos(RL.ballA)*R*RL.ballR*.98, by = C + Math.sin(RL.ballA)*R*RL.ballR*.98;
   g.fillStyle = 'rgba(0,0,0,.35)'; g.beginPath(); g.arc(bx + 2, by + 2, S*.02, 0, Math.PI*2); g.fill(); g.fillStyle = '#f4f4f8'; g.beginPath(); g.arc(bx, by, S*.02, 0, Math.PI*2); g.fill();
 }
+
+// ---------- historial de jugadas ----------
+{
+  const bt = document.createElement('button'); bt.id = 'rlHistBtn'; bt.textContent = 'Historial'; document.querySelector('#roulette .rlbtns').insertBefore(bt, $('rlClose'));
+  const pn = document.createElement('div'); pn.id = 'rlLog'; pn.className = 'hidden'; pn.style.cssText = 'position:absolute;inset:0;background:rgba(10,6,4,.96);z-index:3;padding:16px 20px;overflow:auto;border-radius:8px';
+  document.querySelector('#roulette .rlbox').style.position = 'relative'; document.querySelector('#roulette .rlbox').append(pn);
+  const show = () => {
+    const log = (G.save.rlLog || []).slice().reverse(), tot = log.reduce((s, e) => s + e.back - e.bet, 0), fmt = t => new Date(t).toLocaleString();
+    pn.innerHTML = `<h2 style="margin:0 0 6px;color:#ffd88a">${tr('Historial de jugadas')}</h2><div style="margin-bottom:8px">${tr('Jugadas')}: <b>${log.length}</b> · ${tr('Balance total')}: <b style="color:${tot >= 0 ? '#7aff9a' : '#ff9a9a'}">${tot >= 0 ? '+' : ''}${tot} ${tr('oro')}</b></div>
+      <div style="display:grid;grid-template-columns:auto auto auto auto;gap:3px 16px;font-size:13px;align-items:center"><b>${tr('Fecha')}</b><b>${tr('Número')}</b><b>${tr('Apuesta')}</b><b>${tr('Resultado')}</b>${log.map(e => { const net = e.back - e.bet; return `<span style="color:#9a8e78">${fmt(e.t)}</span><span class="rlh ${rlColor(e.n)}">${e.n}</span><span>${e.bet}</span><b style="color:${net > 0 ? '#7aff9a' : net < 0 ? '#ff9a9a' : '#e8d8b0'}">${net > 0 ? '+' : ''}${net}</b>`; }).join('') || '<span style="grid-column:1/5">' + tr('Todavía no has jugado.') + '</span>'}</div>
+      <button id="rlLogClose" style="margin-top:12px;padding:8px 18px">${tr('Volver')}</button>`;
+    pn.classList.remove('hidden'); $('rlLogClose').onclick = () => { pn.classList.add('hidden'); sfx('ui'); };
+  };
+  bt.onclick = () => { sfx('ui'); show(); };
+}
+Object.assign(LANG_EN, {'Historial':'History', 'Historial de jugadas':'Play history', 'Jugadas':'Plays', 'Balance total':'Total balance', 'Fecha':'Date', 'Número':'Number', 'Apuesta':'Bet', 'Resultado':'Result', 'Todavía no has jugado.':'You have not played yet.', 'Volver':'Back', 'Legendarios':'Legendary', 'solo por el portal':'portal only', 'Solo se puede acceder a través del portal del tiempo de Rolecs':'Only reachable through Rolecs\'s time portal'});
+LANG.load(LANG_EN);

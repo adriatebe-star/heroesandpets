@@ -13,7 +13,7 @@ const ACTIONS = {
   lantern: {name:'Farolillo: encender / apagar', trigger:true},
   potion:  {name:'Beber poción de vida', trigger:true, item:['potion', 'superpotion']},
   bandage: {name:'Usar vendas', trigger:true, item:['bandage']},
-  oil:     {name:'Usar frasco de aceite', trigger:true, item:['oil']},
+  oil:     {name:'Usar frasco de aceite', trigger:true, item:['oil', 'oil2']},
   cookie:  {name:'Dar una galleta a las mascotas', trigger:true, item:['cookie']},
   mushroom:{name:'Comer una seta', trigger:true, item:['mushroom']},
 };

@@ -69,7 +69,8 @@ const qIndex = id => QUESTS.findIndex(q => q.id === id);
 const qAvailable = q => !qState(q.id) && (qIndex(q.id) === 0 || qDone(QUESTS[qIndex(q.id) - 1].id)) && !!(GIVER_HERE[q.giver] && GIVER_HERE[q.giver]());
 const qReady = q => qState(q.id) === 'active' && !q.auto && !!q.met();
 function takeItem1(id){ return takeItem(id); }
-function giveQuestItem(id, n){ const it = mkItem(id, n); addToBagOrStash(it); }
+let QUEST_REW = null;
+function giveQuestItem(id, n){ const it = mkItem(id, n); if(QUEST_REW) QUEST_REW.push(it); else addToBagOrStash(it); }
 // misión que bloquea la expedición e (la de la expedición anterior)
 function blockQuest(e){
   const i = EXPEDITIONS.indexOf(e); if(i < 0 || e.hidden || e.hall) return null;
@@ -83,8 +84,9 @@ function questAccept(id){
   if(q.met() && q.auto) questComplete(q);
 }
 function questComplete(q){
-  qsMap()[q.id] = 'done';
+  qsMap()[q.id] = 'done'; QUEST_REW = [];
   if(q.reward) q.reward();
+  const rew = QUEST_REW; QUEST_REW = null; if(rew.length) setTimeout(() => UI.showRewards(rew, q.title), 350);
   toast('¡Misión completada: ' + q.title + '!', 4); sfx('levelup'); G.flash = {x:P.x, y:P.y-20, t:.3};
   saveGame(); UI.refresh && UI.refresh();
 }
@@ -108,6 +110,7 @@ function questMark(npcId){
 // actualización: las misiones automáticas se completan solas y las demás avisan al estar listas
 let questTimer = 0;
 function updateQuests(dt){
+  if(G.noIntT > 0) G.noIntT -= dt;
   questTimer -= dt; if(questTimer > 0 || !G.save || !G.sc) return; questTimer = .5;
   for(const q of QUESTS){
     if(qState(q.id) !== 'active') continue;
@@ -260,4 +263,41 @@ Object.assign(LANG_EN, {"[F] Hablar con {}":"[F] Talk to {}"});
 LANG.load(LANG_EN);
 
 Object.assign(LANG_EN, {"¡JAULA BRILLANTE!":"BRILLIANT CAGE!", "Has derrotado a un jefe por primera vez: ha dejado una jaula con una mascota BRILLANTE.":"You defeated a boss for the first time: it has left a cage with a BRILLIANT pet.", "Busca la jaula que brilla con un «!» cerca de donde ha caído el jefe.":"Look for the cage that glows with a «!» near where the boss fell.", "¡Genial!":"Great!", "¡El jefe ha dejado una jaula con una mascota BRILLANTE!":"The boss has left a cage with a BRILLIANT pet!"});
+LANG.load(LANG_EN);
+
+// ---------- ventana de recompensa: pequeña, con los objetos para coger con un clic ----------
+UI.rewardOpen = false;
+const _blockingQ = UI.blocking.bind(UI);
+UI.blocking = function(){ return _blockingQ() || this.rewardOpen; };
+{
+  const st = document.createElement('style');
+  st.textContent = `#rewardWin{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);z-index:30;background:#1a120c;border:3px solid #d8a850;border-radius:10px;padding:14px 18px;color:#e8d8b0;text-align:center;min-width:260px;box-shadow:0 0 30px rgba(255,200,100,.35)}#rewardWin.hidden{display:none}
+  #rewardWin h3{margin:0 0 4px;color:#ffd88a;font-size:18px}#rewardWin .sub{font-size:12px;color:#a89a80;margin-bottom:8px}#rwItems{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin:8px 0 12px}
+  .rwslot{width:58px;height:58px;border:2px solid #7a5e36;background:#0e0a08;border-radius:6px;position:relative;cursor:pointer;display:flex;align-items:center;justify-content:center}.rwslot:hover{border-color:#ffd88a;box-shadow:0 0 10px rgba(255,216,138,.5)}
+  .rwslot img{width:44px;height:44px;image-rendering:pixelated}.rwslot i{position:absolute;right:2px;bottom:0;font-style:normal;font-size:12px;color:#fff;text-shadow:1px 1px 0 #000}`;
+  document.head.append(st);
+  const d = document.createElement('div'); d.id = 'rewardWin'; d.className = 'hidden'; d.innerHTML = '<h3>¡Recompensa!</h3><div class="sub" id="rwTitle"></div><div id="rwItems"></div><button id="rwAll">Coger todo</button> <button id="rwClose">Cerrar</button>'; document.body.append(d);
+}
+let REW_LIST = [];
+UI.showRewards = function(items, title){
+  REW_LIST = items.slice(); this.rewardOpen = true; $('rewardWin').classList.remove('hidden'); $('rwTitle').textContent = title; sfx('levelup'); this.renderRewards();
+};
+UI.renderRewards = function(){
+  const box = $('rwItems'); box.innerHTML = '';
+  REW_LIST.forEach((it, i) => {
+    const el = document.createElement('div'); el.className = 'rwslot'; el.innerHTML = `<img src="${itemIconURL(it)}" draggable="false">${it.n > 1 ? '<i>' + it.n + '</i>' : ''}`;
+    el.onmouseenter = e => this.showTip(it, e); el.onmousemove = e => this.moveTip(e); el.onmouseleave = () => $('tip').classList.add('hidden');
+    el.onclick = () => { if(addToBag(it) || addTo(G.save.stash, it)){ REW_LIST.splice(i, 1); sfx('coin'); $('tip').classList.add('hidden'); this.renderRewards(); } else toast('No hay sitio', 1.4); };
+    box.append(el);
+  });
+  if(!REW_LIST.length) this.closeRewards(true);
+};
+UI.closeRewards = function(done){
+  if(!this.rewardOpen) return; this.rewardOpen = false; $('rewardWin').classList.add('hidden'); $('tip').classList.add('hidden'); G.noIntT = .4;
+  if(REW_LIST.length){ for(const it of REW_LIST) addTo(G.save.stash, it); toast('Lo que no cogiste va al alijo', 2.6); REW_LIST = []; }
+  saveGame(); UI.refresh && UI.refresh();
+};
+$('rwAll').onclick = () => { for(const it of REW_LIST.slice()){ if(addToBag(it) || addTo(G.save.stash, it)) REW_LIST.splice(REW_LIST.indexOf(it), 1); } sfx('coin'); UI.renderRewards(); UI.closeRewards(true); };
+$('rwClose').onclick = () => UI.closeRewards();
+Object.assign(LANG_EN, {'¡Recompensa!':'Reward!', 'Coger todo':'Take all', 'Cerrar':'Close', 'Lo que no cogiste va al alijo':'Whatever you did not take goes to the stash', 'No hay sitio':'No room'});
 LANG.load(LANG_EN);

@@ -3,7 +3,8 @@
 //  Nivel 12: portales de Rolecs hacia tres expediciones ocultas (isla jurásica, castillo de Camelot, ciudad espacial).
 //  Aquí vive lo compartido: portal y llaves del tiempo, el marco de los jefes, el constructor de mapas por salas y los legendarios generales.
 // =====================================================================
-const HIDDEN_EXPEDITIONS = [];   // expediciones que solo se alcanzan por el portal de Rolecs (no salen en el mapa de incursiones)
+const HIDDEN_EXPEDITIONS = [];
+const ALL_EXPS = () => EXPEDITIONS.concat(HIDDEN_EXPEDITIONS);   // las del portal también salen en el mapa de incursiones (pero solo se entra por el portal)   // expediciones que solo se alcanzan por el portal de Rolecs (no salen en el mapa de incursiones)
 const RAID_BUILDERS = {};
 const PORTAL_DESTS = ['jurassic', 'camelot', 'space'];
 function takeItem(id){

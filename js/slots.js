@@ -4,6 +4,13 @@
 //  Retorno ≈ 94,5 %: pierdes ≈ 65 %, recuperas la tirada ≈ 24 % y ganas más de lo apostado ≈ 10 %.
 // =====================================================================
 const SLOT_BET = 200;
+ART.slotmachine = SP(paintSprite(30, 38, [
+  {r:[2, 30, 22, 6], c:['#3a2a1a', '#5a4430']}, {r:[1, 8, 24, 24], c:['#6a1010', '#a82020', '#e03a3a'], tex:1501}, {r:[3, 0, 20, 9], c:['#a87a1a', '#e8b82a', '#ffe080']},
+  {p:[[5, 4, '#ffffff'], [9, 4, '#ff5a5a'], [13, 4, '#ffffff'], [17, 4, '#ff5a5a'], [21, 4, '#ffffff']]}, {r:[4, 12, 18, 11], c:['#0a0606', '#1a1010']},
+  {r:[5, 13, 5, 9], c:['#f4ecd8', '#ffffff']}, {r:[11, 13, 5, 9], c:['#f4ecd8', '#ffffff']}, {r:[17, 13, 4, 9], c:['#f4ecd8', '#ffffff']},
+  {p:[[7, 16, '#d02020'], [8, 17, '#d02020'], [13, 16, '#20a040'], [14, 17, '#20a040'], [18, 17, '#2a5ac8'], [19, 18, '#2a5ac8']]}, {r:[8, 25, 10, 4], c:['#c8962e', '#ffe080']},
+  {l:[25, 18, 29, 8, 1.6], c:['#c8ccd4', '#ffffff']}, {e:[29, 7, 2.6, 2.6], c:['#a01010', '#ff4a4a', '#ffd0d0']},
+]), 15, 36);
 const SLOT_SYM = [   // 0 cereza · 1 limón · 2 campana · 3 uvas · 4 estrella · 5 diamante · 6 siete
   {e:'🍒', w:9, n:'Cereza'}, {e:'🍋', w:8, n:'Limón'}, {e:'🔔', w:6, n:'Campana'}, {e:'🍇', w:4, n:'Uvas'}, {e:'⭐', w:3, n:'Estrella'}, {e:'💎', w:1, n:'Diamante'}, {e:'7', w:1, n:'Siete'},
 ];

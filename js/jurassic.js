@@ -2,7 +2,7 @@
 // =====================================================================
 //  Expedición 12 (portal de Rolecs) · La isla jurásica: dinosaurios, Rex el tirano alfa, ámbar y fósiles.
 // =====================================================================
-HIDDEN_EXPEDITIONS.push({id:'jurassic', lvl:12, petExp:'12a', hidden:true, name:'La isla jurásica', boss:'rex',
+HIDDEN_EXPEDITIONS.push({id:'jurassic', lvl:12, petExp:'12a', hidden:true, viaPortal:true, from:'timehall', mapX:0.03, mapY:-0.2, name:'La isla jurásica', boss:'rex',
   desc:'Una isla que el tiempo olvidó: selva húmeda, ríos de lava lejana y bestias que debieron extinguirse hace millones de años. Rex, el tirano alfa, reina sobre ellas.',
   monsters:'Velocirraptores, dilofosaurios, triceratops y pteranodones. Jefe: Rex'});
 iconFrom([
@@ -194,17 +194,17 @@ function buildJurassic(seed){
     void:(x, y, near) => near ? '#e0cf94' : JUN_SEA[tq(vnoise(x/14, y/14, 505)*.7 + hash(x, y, 506)*.3, x, y, 4)],
     groups:[['raptor', 'raptor', 'ptero'], ['dilo', 'raptor'], ['trike', 'dilo'], ['ptero', 'raptor', 'dilo'], ['trike', 'raptor']],
     decor:(sc, n, H) => {
-      const cnt = Math.round(n.w*n.h/4600);
+      const cnt = Math.round(n.w*n.h/7200);
       for(let i = 0; i < cnt; i++){
         const p = H.pointOn(n, 12); if(!p) continue; const r = H.R();
-        if(r < .3) propSprite(sc, SPR_PALM[Math.floor(H.R()*3)], p.x, p.y, {t:'c', x:p.x, y:p.y - 2, r:5}, [11, 3]);
-        else if(r < .4) propTree(sc, p.x, p.y, Math.floor(H.R()*1e6));
-        else if(r < .55) propSprite(sc, SPR_FERN, p.x, p.y, null);
-        else if(r < .68) propSprite(sc, SPR_FLOWERS, p.x, p.y, null);
+        if(r < .16) propSprite(sc, SPR_PALM[Math.floor(H.R()*3)], p.x, p.y, {t:'c', x:p.x, y:p.y - 2, r:5}, [11, 3]);
+        else if(r < .2) propTree(sc, p.x, p.y, Math.floor(H.R()*1e6));
+        else if(r < .42) propSprite(sc, SPR_FERN, p.x, p.y, null);
+        else if(r < .62) propSprite(sc, SPR_FLOWERS, p.x, p.y, null);
         else if(r < .78) propSprite(sc, SPR_LEAF, p.x, p.y, null);
-        else if(r < .88) propBush(sc, p.x, p.y, Math.floor(H.R()*1e6));
-        else if(r < .94) propRock(sc, p.x, p.y, Math.floor(H.R()*1e6));
-        else if(r < .97) propSprite(sc, ART.bones, p.x, p.y, null);
+        else if(r < .86) propBush(sc, p.x, p.y, Math.floor(H.R()*1e6));
+        else if(r < .9) propRock(sc, p.x, p.y, Math.floor(H.R()*1e6));
+        else if(r < .96) propSprite(sc, ART.bones, p.x, p.y, null);
         else propGlowshroom(sc, p.x, p.y);
       }
     },

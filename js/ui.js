@@ -137,7 +137,7 @@ const UI = {
     if(d.i >= d.lines.length){ const cb = d.onDone; this.close(); cb && cb(); }
     else this.renderDlg();
   },
-  close(){ this.dlg = null; $('dialog').classList.add('hidden'); },
+  close(){ this.dlg = null; $('dialog').classList.add('hidden'); G.noIntT = .4; },
   updateDlg(dt){
     const d = this.dlg; if(!d || d.waiting) return;
     if(d.shown < d.full.length){
@@ -201,7 +201,14 @@ const UI = {
     }
     $('sellAll').style.display = '';
     if(!q && typeof renderBagUpgrades === 'function') renderBagUpgrades(box);
-    for(const o of SHOP.filter(o => o.tier <= tier)) offer(shopItem(o), o.price, () => this.buy(o));
+    const CAT_ORDER = ['Consumibles', 'Armas', 'Armaduras', 'Farolillos', 'Munición', 'Talismanes', 'Piedras preciosas', 'Llaves', 'Tesoros'];
+    const rows = SHOP.filter(o => o.tier <= tier).map(o => { const it = shopItem(o); return {o, it, cat:itemCat(it)}; }).filter(r => nameMatch(r.it, q));
+    rows.sort((a, b) => (CAT_ORDER.indexOf(a.cat) + 99) % 99 - (CAT_ORDER.indexOf(b.cat) + 99) % 99);
+    let lastCat = null;
+    for(const r of rows){
+      if(r.cat !== lastCat){ lastCat = r.cat; const h = document.createElement('div'); h.className = 'shophead'; h.textContent = r.cat; box.append(h); }
+      offer(r.it, r.o.price, () => this.buy(r.o));
+    }
     if(!(G.save.shopSpecials||[]).length) rollShopSpecials();
     const sp = G.save.shopSpecials || [];
     if(sp.length){
@@ -992,13 +999,14 @@ UI.closeRaidMap = function(){ this.mapOpen = false; $('raidMap').classList.add('
 function shopItem(o){ return ITEMS[o.id].gear ? mkGear(o.id, 'normal') : mkItem(o.id, o.n); }
 
 // ---------- categorías de objetos (para ordenar el alijo) ----------
-const ITEM_CATS = ['Armas','Armaduras','Farolillos','Munición','Consumibles','Piedras preciosas','Talismanes','Llaves','Tesoros','Mascotas'];
+const ITEM_CATS = ['Legendarios','Armas','Armaduras','Farolillos','Munición','Consumibles','Piedras preciosas','Talismanes','Llaves','Tesoros','Mascotas'];
 function itemCat(it){
   if(it.id==='pet') return 'Mascotas';
   const d = ITEMS[it.id];
+  if(it.rarity === 'legendary' || d.legend) return 'Legendarios';
   if(d.gem) return 'Piedras preciosas';
   if(d.slot==='talisman') return 'Talismanes';
-  if(it.id==='minekey') return 'Llaves';
+  if(it.id==='minekey' || d.key) return 'Llaves';
   if(d.treasure) return 'Tesoros';
   if(d.ammo || d.kind==='ammo') return 'Munición';
   if(d.slot==='lantern') return 'Farolillos';
@@ -1056,7 +1064,7 @@ function bossInfoHTML(e){
   const per = UNIQUE_CHANCE/list.length;
   const rows = list.map(id => {
     const d = ITEMS[id];
-    return `<div class="mpet"><img src="${itemIconURL({id})}"><span class="mpname" style="color:${RARITY.unique ? RARITY.unique.col : '#ff9ad8'}">${d.name}</span><span class="mpch">${(per*100).toFixed(1).replace('.', ',')} %</span><span class="mpst"></span></div>`;
+    return `<div class="mpet" data-item="${id}"><img src="${itemIconURL({id})}"><span class="mpname" style="color:${RARITY.unique ? RARITY.unique.col : '#ff9ad8'}">${d.name}</span><span class="mpch">${(per*100).toFixed(1).replace('.', ',')} %</span><span class="mpst"></span></div>`;
   }).join('');
   return `<div class="mphead bosshead"><span>☠ Jefe: ${MONSTERS[e.boss].name}</span><span>Prob.</span></div>
     <div class="mpets">${rows}</div><p class="sub">Soltará un objeto único con un ${Math.round(UNIQUE_CHANCE*100)} % de probabilidad (se reparte entre los 4).</p>`;
@@ -1064,17 +1072,34 @@ function bossInfoHTML(e){
 function legendInfoHTML(e){
   const list = (typeof EXCL_LEGENDS !== 'undefined' && EXCL_LEGENDS[e.id]) || [];
   if(!list.length) return '';
-  const rows = list.map(id => { const d = ITEMS[id]; return `<div class="mpet"><img src="${itemIconURL({id})}"><span class="mpname" style="color:${RARITY.legendary.col}">${d.name}</span><span class="mpch">≈ 4 %</span></div><div class="sub" style="margin:0 0 5px 8px;font-size:11px;line-height:1.3">${d.desc.replace(/^Objeto legendario[^.]*\. /, '')}</div>`; }).join('');
+  const rows = list.map(id => { const d = ITEMS[id]; return `<div class="mpet" data-item="${id}"><img src="${itemIconURL({id})}"><span class="mpname" style="color:${RARITY.legendary.col}">${d.name}</span><span class="mpch">≈ 4 %</span></div><div class="sub" style="margin:0 0 5px 8px;font-size:11px;line-height:1.3">${d.desc.replace(/^Objeto legendario[^.]*\. /, '')}</div>`; }).join('');
   return `<div class="mphead"><span>Legendarios exclusivos</span><span>Por incursión</span></div><div class="mpets">${rows}</div>`;
+}
+// botín exclusivo de una expedición: lo que solo cae allí (botín con 'only', objetos de monstruos concretos y los tesoros de su zona)
+const EXCL_LOOT_EXTRA = {river:['elfbow', 'elfsword', 'elfmail', 'elfpotion', 'elflantern', 'minekey'], forest:['elfbow', 'elfsword', 'elfmail', 'elfpotion', 'elflantern', 'minekey'], temple:['elfbow', 'elfsword', 'elfmail', 'elfpotion', 'elflantern', 'minekey', 'elfboots', 'elfshield', 'elfbread'],
+  icepeak:['ghostsword', 'ghostbow', 'ghostmail', 'timekey'], floatcity:['atlantlantern', 'timekey']};
+function exclLootIds(e){
+  const ids = new Set(EXCL_LOOT_EXTRA[e.id] || []);
+  for(const T of [LOOT.chestNormal, LOOT.chestRare]) for(const x of T.table) if(x.only === e.id) ids.add(x.id);
+  for(const x of LOOT.monsterTable) if(x.only === e.id) ids.add(x.id);
+  const z = typeof TREASURE_ZONES !== 'undefined' && TREASURE_ZONES[e.id]; if(z && TREASURE_POOL[z]) for(const x of TREASURE_POOL[z]) ids.add(x.id);
+  return [...ids].filter(id => ITEMS[id]);
+}
+function exclLootHTML(e){
+  const list = exclLootIds(e); if(!list.length) return '';
+  const rows = list.map(id => { const d = ITEMS[id], col = d.treasure ? '#e8c070' : d.legend ? RARITY.legendary.col : d.quest ? '#39ff14' : '#e8e2d4';
+    return `<div class="mpet" data-item="${id}"><img src="${itemIconURL({id})}"><span class="mpname" style="color:${col}">${d.name}</span><span class="mpch">${d.treasure ? 'tesoro' : ''}</span></div>`; }).join('');
+  return `<div class="mphead"><span>Botín exclusivo de esta expedición</span><span></span></div><div class="mpets">${rows}</div>`;
 }
 // índice de los legendarios generales (debajo del mapa): todos con su nivel; los que no caen en la expedición señalada salen atenuados
 function renderMapLegends(e){
   const box = $('mapLegends'); if(!box) return;
   const lvl = e && !e.locked ? e.lvl : 0;
-  box.innerHTML = `<div class="lgh">Legendarios generales · índice por nivel de expedición</div><div class="lgrid">${LEGEND_IDS.map(id => `<div class="lgi${ITEMS[id].lvl <= lvl ? '' : ' off'}"><img src="${itemIconURL({id})}"><span>${ITEMS[id].name}</span><small>Nv ${ITEMS[id].lvl}</small></div>`).join('')}</div>`;
+  box.innerHTML = `<div class="lgh">Legendarios generales · índice por nivel de expedición</div><div class="lgrid">${LEGEND_IDS.map(id => `<div class="lgi${ITEMS[id].lvl <= lvl ? '' : ' off'}" data-item="${id}"><img src="${itemIconURL({id})}"><span>${ITEMS[id].name}</span><small>Nv ${ITEMS[id].lvl}</small></div>`).join('')}</div>`;
+  bindTips(box);
 }
 UI.renderMapInfo = function(id){
-  const e = EXPEDITIONS.find(x => x.id === id), sel = id === this.mapSel;
+  const e = ALL_EXPS().find(x => x.id === id), sel = id === this.mapSel;
   renderMapLegends(e);
   if(e.locked){ $('mapInfo').innerHTML = `<h3>???</h3><p>${e.desc}</p><button disabled>Aún no puedes ir</button>`; return; }
   const lk = expLocked(e);
@@ -1087,7 +1112,7 @@ UI.renderMapInfo = function(id){
   const got = pets.filter(p => G.save.collection[p]).length;
   const rows = pets.map(p => {
     const d = PETS[p], have = !!G.save.collection[p];
-    return `<div class="mpet ${have ? 'have' : ''}"><img src="${itemIconURL({id:'pet', pet:p})}">
+    return `<div class="mpet ${have ? 'have' : ''}" data-pet="${p}"><img src="${itemIconURL({id:'pet', pet:p})}">
       <span class="mpname" style="color:${RARITY[d.rarity].col}">${d.name}</span>
       <span class="mpch">${Math.round(CAGE_CHANCE[d.rarity]*100)} %</span>
       <span class="mpst">${have ? '✓' : ''}</span></div>`;
@@ -1097,14 +1122,25 @@ UI.renderMapInfo = function(id){
      <p class="sub">Botín de nivel ${e.lvl}${e.lvl > 1 ? ' (incluye el de las anteriores)' : ''}</p>
      <div class="mphead"><span>Mascotas (${got}/${pets.length} rescatadas)</span><span>Prob.</span></div>
      <div class="mpets">${rows}</div>
+     ${exclLootHTML(e)}
      ${legendInfoHTML(e)}
      ${e.boss ? bossInfoHTML(e) : ''}
-     ${lk ? `<button disabled>${blockQuest(e) && (G.save.maxExp||0) >= e.lvl - 1 ? 'Completa la misión «' + blockQuest(e).title + '» para desbloquearla' : blockBoss(e) && (G.save.maxExp||0) >= e.lvl - 1 ? 'Derrota a ' + MONSTERS[blockBoss(e).boss].name + ' para desbloquearla' : 'Supera la Expedición ' + (e.lvl-1) + ' para desbloquearla'}</button>` : e.needKey && !G.inv.bag.some(o => o && o.id==='minekey') ? '<button disabled>Necesitas una llave de la mina en la mochila</button>' : sel ? '<button id="mapGo">Viajar' + (e.needKey ? ' (gasta 1 llave de la mina)' : '') + '</button>' : '<p class="sub">Haz clic para seleccionarla</p>'}`;
+     ${e.hidden ? '<button disabled>Solo se puede acceder a través del portal del tiempo de Rolecs</button>' : lk ? `<button disabled>${blockQuest(e) && (G.save.maxExp||0) >= e.lvl - 1 ? 'Completa la misión «' + blockQuest(e).title + '» para desbloquearla' : blockBoss(e) && (G.save.maxExp||0) >= e.lvl - 1 ? 'Derrota a ' + MONSTERS[blockBoss(e).boss].name + ' para desbloquearla' : 'Supera la Expedición ' + (e.lvl-1) + ' para desbloquearla'}</button>` : e.needKey && !G.inv.bag.some(o => o && o.id==='minekey') ? '<button disabled>Necesitas una llave de la mina en la mochila</button>' : sel ? '<button id="mapGo">Viajar' + (e.needKey ? ' (gasta 1 llave de la mina)' : '') + '</button>' : '<p class="sub">Haz clic para seleccionarla</p>'}`;
   const go = $('mapGo'); if(go) go.onclick = () => {
     if(e.needKey){ const ix = G.inv.bag.findIndex(o => o && o.id==='minekey'); if(ix < 0){ toast('Necesitas una llave de la mina'); return; } if(--G.inv.bag[ix].n <= 0) G.inv.bag[ix] = null; }
     this.closeRaidMap(); startRaid(e.id);
   };
+  bindMapTips();
 };
+// al pasar el cursor por una mascota o un objeto del mapa de incursiones sale su ficha (descripción y estadísticas)
+function bindMapTips(){ bindTips($('mapInfo')); }
+function bindTips(root){
+  const tip = $('tip');
+  root.querySelectorAll('[data-pet],[data-item]').forEach(el => {
+    el.onmouseenter = ev => { let it; try { it = el.dataset.pet ? mkPetItem(el.dataset.pet) : mkItem(el.dataset.item, 1, 13); } catch(err) { return; } UI.showTip(it, ev); };
+    el.onmousemove = ev => UI.moveTip(ev); el.onmouseleave = () => tip.classList.add('hidden');
+  });
+}
 
 // ---------- árbol de pasivas estilo PoE: grafo de nodos que se va abriendo desde el centro ----------
 UI.treeHover = null;
@@ -1208,7 +1244,7 @@ UI.drawTree = function(){
 // los jefes bloquean el avance: no se puede pasar al nivel siguiente sin derrotar al jefe del anterior (las partidas que ya llegaron más lejos lo dan por hecho)
 const bossDown = e => !e.boss || !!(G.save.bossDone && G.save.bossDone[e.id]) || !!(G.save.bossGift && G.save.bossGift[e.id]) || (G.save.maxExp||0) > e.lvl;
 const blockBoss = e => EXPEDITIONS.find(x => x.boss && x.lvl === e.lvl - 1 && !bossDown(x));
-const expLocked = e => e.locked || (G.save.maxExp||0) < e.lvl - 1 || !!blockBoss(e) || !!blockQuest(e);
+const expLocked = e => !e.hidden && (e.locked || (G.save.maxExp||0) < (e.prevLvl ?? e.lvl - 1) || !!blockBoss(e) || !!blockQuest(e));
 
 // ---------- cartel de enhorabuena al rescatar una mascota ----------
 UI.showPetCard = function(id, shiny=false){
@@ -1233,7 +1269,7 @@ UI.showPetCard = function(id, shiny=false){
 UI.fitRaidMap = function(){
   const info = $('mapInfo'), box = document.querySelector('#raidMap .mapbox'), keep = this.mapSel;
   box.style.zoom = 1; info.style.height = 'auto'; let hmax = 0;
-  for(const e of EXPEDITIONS){ this.mapSel = e.id; this.renderMapInfo(e.id); hmax = Math.max(hmax, info.scrollHeight); }
+  for(const e of ALL_EXPS()){ this.mapSel = e.id; this.renderMapInfo(e.id); hmax = Math.max(hmax, info.scrollHeight); }
   this.mapSel = keep; this.renderMapInfo(keep);
   info.style.height = Math.min(hmax, Math.max(420, innerHeight - 170)) + 'px';   // si la ficha es más alta que la pantalla, se desplaza por dentro
   const need = box.scrollHeight + 24;

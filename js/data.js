@@ -698,7 +698,7 @@ Object.assign(ITEMS, {
              desc:'40 % de probabilidad de congelar al enemigo 2,5 s (lo deja casi inmóvil).'},
   lightningsword:{name:'Espada de rayos', icon:'lightningsword', slot:'weapon', kind:'sword', gear:true, dur:100, dmg:[26,36], weakChance:.4, value:60,
              desc:'40 % de probabilidad de debilitar al enemigo 5 s (hace un 40 % menos de daño).'},
-  flamethrower:{name:'Lanzallamas de aceite', icon:'flamethrower', slot:'weapon', kind:'flamethrower', gear:true, twoHanded:true, dmg:[11,16], burnChance:1, value:140,
+  flamethrower:{name:'Lanzallamas de aceite', icon:'flamethrower', slot:'weapon', kind:'flamethrower', gear:true, twoHanded:true, dur:200, dmg:[11,16], burnChance:1, value:140,
              desc:'A dos manos: no permite llevar escudo. Gasta el aceite del farolillo: lanza una gran llamarada en cono, quema y deja fuego en el suelo.'},
   explosivearrows:{name:'Flechas explosivas', icon:'explosivearrows', stack:100, kind:'ammo', value:1.6,
              desc:'Munición para arco y ballesta (se gastan antes que las demás). Al impactar explotan en área.'},

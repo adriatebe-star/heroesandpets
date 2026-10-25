@@ -87,8 +87,8 @@ TREASURE_POOL.sea = [{id:'blackpearl', w:8}, {id:'nacreshell', w:8}, {id:'goldan
 TREASURE_ZONES.floatcity = 'sea';
 // a la venta en Trapis desde el tier 11 y botín de los hombres pez
 for(const [id, price] of [['trident', 320], ['atlcrown', 280], ['atlantlantern', 260]]) SHOP.push({id, n:1, price, tier:11});
-for(const T of [LOOT.chestNormal, LOOT.chestRare]){ const r = T === LOOT.chestRare; for(const id of ['trident', 'atlcrown', 'atlantlantern']) T.table.push({w:r ? 4 : 2, id, lvl:11}); }
-for(const id of ['trident', 'atlcrown', 'atlantlantern']) LOOT.monsterTable.push({w:3, id, lvl:11});
+for(const T of [LOOT.chestNormal, LOOT.chestRare]){ const r = T === LOOT.chestRare; for(const id of ['trident', 'atlcrown', 'atlantlantern']) T.table.push(Object.assign({w:r ? 4 : 2, id, lvl:11}, id === 'atlantlantern' ? {only:'floatcity'} : {})); }
+for(const id of ['trident', 'atlcrown', 'atlantlantern']) LOOT.monsterTable.push(Object.assign({w:3, id, lvl:11}, id === 'atlantlantern' ? {only:'floatcity'} : {}));
 function seaDrop(m){
   const rk = m.rarity === 'rare' ? 2 : m.rarity === 'magic' ? 1 : 0, bonus = [0, .5, 1.2][rk];
   if(Math.random() < [.025, .05, .1][rk]){ dropItem(m.x + rand(-8, 8), m.y + rand(-4, 4), mkItem('timekey', 1)); addText(m.x, m.y-m.r*2-34, '¡Llave del tiempo!', '#bfe8f4', 7, -20); }

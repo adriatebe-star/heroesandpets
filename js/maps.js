@@ -251,6 +251,7 @@ function buildDen(){
     addCollider(sc, {t:'c', x:0, y:133, r:9});
     propSprite(sc, ART.rltable, 38, 140, {t:'r', x:20, y:130, w:36, h:10}, [22,4]);
     sc.lights.push({x:20, y:112, r:130, a:.7, warm:true, flick:.08});
+    if(G.save.slotsOpen){ propSprite(sc, ART.slotmachine, -42, 144, {t:'r', x:-54, y:136, w:24, h:10}, [14, 3]); sc.slotProp = {x:-42, y:144}; sc.lights.push({x:-42, y:118, r:100, a:.8, warm:true, flick:.25}); }   // la tragaperras de Alexandra
   }
   // alijo (cofre de la guarida)
   sc.stash = {x:-200, y:35};

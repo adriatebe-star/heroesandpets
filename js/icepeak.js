@@ -48,7 +48,7 @@ Object.assign(ITEMS, {
     desc:'Un arco de hielo espectral. Usa flechas. 25 % de probabilidad de causar miedo y 20 % de congelar. Solo lo llevan los fantasmas.'},
   ghostmail: {name:'Coraza fantasmal', icon:'ghostmail', slot:'chest', gear:true, armor:10, move:10, ov:'ghostmail', value:260,
     desc:'Una coraza translúcida y ligera: +10 % de velocidad de movimiento. Cada 10 segundos te vuelves invisible durante 3 segundos (los monstruos te pierden de vista). Muy rara: solo la llevan los fantasmas.'},
-  timekey:   {name:'Llave del tiempo', icon:'timekey', stack:5, value:400,
+  timekey:   {name:'Llave del tiempo', icon:'timekey', stack:5, value:400, key:true,
     desc:'Una llave de hielo que late como un reloj roto. Los fantasmas la guardan... pero todavía no sabes qué puerta abre. Trapis te la compra.'},
 });
 const mkGhostOv = (key, base, pal) => {
@@ -409,7 +409,7 @@ function guardianCast(m){
     return !P.dead && inArc(P) && !(P.jump || (P.jumpZ||0) > 6);
   };
   if(m.cast === 'slashI'){
-    if(arc(125, ['#aee8ff', '#ffffff', '#7ac8f0']) && damagePlayer(dmg*1.2, m, 'frost') && !legendOn('yetiheart')){ P.rootT = Math.max(P.rootT||0, .9); P.slowT = 2.5; addText(P.x, P.y-56, '¡Congelado!', '#c8f0ff', 7); ring(P.x, P.y-4, 20, '#c8f0ff', .4); }
+    if(arc(125, ['#aee8ff', '#ffffff', '#7ac8f0']) && damagePlayer(dmg*1.2, m, 'frost') && !legendOn('yetiheart')){ P.rootT = Math.max(P.rootT||0, .9); P.frozenT = Math.max(P.frozenT||0, .9); P.slowT = 2.5; addText(P.x, P.y-56, '¡Congelado!', '#c8f0ff', 7); ring(P.x, P.y-4, 20, '#c8f0ff', .4); }
   } else if(m.cast === 'slashF'){
     if(arc(125, ['#ff9a30', '#ffe08a', '#ff5a1a']) && damagePlayer(dmg*1.2, m, 'fire')){ P.burnT = Math.max(P.burnT||0, 3); addText(P.x, P.y-56, '¡Quemado!', '#ffb070', 7); }
   } else if(m.cast === 'cross'){

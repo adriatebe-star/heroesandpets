@@ -83,7 +83,7 @@ const SK = k => treeCache().n[k] || 0;                 // nodos asignados en la 
 const MS = (k, m) => treeCache().notables.has(k + m);  // ¿tiene el notable de esa rama?
 const bagSize = () => 20 + [4,8,12,16,20].filter(m => MS('agu', m)).length + ((G.save && G.save.bagUp) || 0)*5;   // + mejoras de mochila de Trapis (5 huecos cada una)
 // cinturón de uso rápido: huecos del equipo para consumibles y munición (se gastan antes que lo de la mochila)
-const QUICK_SLOTS = {potion:['potion','superpotion'], bandage:['bandage'], oil:['oil'], cookie:['cookie'], mushroom:['mushroom'], elfpotion:['elfpotion'], ammo:['arrows','firearrows','explosivearrows']};
+const QUICK_SLOTS = {potion:['potion','superpotion'], bandage:['bandage'], oil:['oil', 'oil2'], cookie:['cookie'], mushroom:['mushroom'], elfpotion:['elfpotion'], ammo:['arrows','firearrows','explosivearrows']};
 const QUICK_LABEL = {potion:'Poción de vida', bandage:'Vendas', oil:'Aceite', cookie:'Galletas', mushroom:'Setas', elfpotion:'Poción élfica', ammo:'Munición'};
 function stackRefs(ids){
   const out = [], E = G.inv.equip;
@@ -201,12 +201,12 @@ function updatePlayer(dt){
   }
   if(P.flameT > 0) P.flameT -= dt;
   P.dashCd -= dt; P.inv -= dt; if(P.potionCd > 0) P.potionCd -= dt;
-  if(P.infernoT > 0){ P.infernoT -= dt; for(const m of G.mons) if(!m.dying && Math.hypot(m.x-P.x, m.y-P.y) < 62) m.burnT = Math.max(m.burnT, 1.2); if(Math.random() < dt*50){ const an = Math.random()*Math.PI*2; G.parts.push({x:P.x+Math.cos(an)*52, y:P.y-8+Math.sin(an)*38, vx:0, vy:-40, life:.4, max:.4, size:2.5, col:pick(['#ff5a1a','#ff8a2a','#ffc04a'])}); } } P.slowT -= dt; P.speedT -= dt; P.noStamT -= dt; if(P.gallopT > 0) P.gallopT -= dt; if(P.eclipseT > 0) P.eclipseT -= dt; if(P.warT > 0) P.warT -= dt;
+  if(P.infernoT > 0){ P.infernoT -= dt; for(const m of G.mons) if(!m.dying && Math.hypot(m.x-P.x, m.y-P.y) < 62) m.burnT = Math.max(m.burnT, 1.2); if(Math.random() < dt*50){ const an = Math.random()*Math.PI*2; G.parts.push({x:P.x+Math.cos(an)*52, y:P.y-8+Math.sin(an)*38, vx:0, vy:-40, life:.4, max:.4, size:2.5, col:pick(['#ff5a1a','#ff8a2a','#ffc04a'])}); } } P.slowT -= dt; if(P.frozenT > 0) P.frozenT -= dt; P.speedT -= dt; P.noStamT -= dt; if(P.gallopT > 0) P.gallopT -= dt; if(P.eclipseT > 0) P.eclipseT -= dt; if(P.warT > 0) P.warT -= dt;
 
-  if(P.bleedT > 0){ P.bleedT -= dt; P.bleedAcc = (P.bleedAcc||0) + 3*dt*(1 - Math.min(.8, (S2.bleedRes||0)/100)); if(P.bleedAcc >= 1){ const d = Math.floor(P.bleedAcc); P.bleedAcc -= d; hurtPlayer(d, '#c8202a'); } }
+  if(P.bleedT > 0){ P.bleedT -= dt; P.bleedAcc = (P.bleedAcc||0) + 5*dt*(1 - Math.min(.8, (S2.bleedRes||0)/100)); if(P.bleedAcc >= 1){ const d = Math.floor(P.bleedAcc); P.bleedAcc -= d; hurtPlayer(d, '#c8202a'); } }
   if(P.regenT > 0){ P.regenT -= dt; P.hp = Math.min(P.maxHp, P.hp + 6*dt); if(Math.random() < dt*8) G.parts.push({x:P.x+rand(-6,6), y:P.y-rand(8,26), vx:0, vy:-20, life:.5, max:.5, size:1.5, col:'#7ad86a'}); }
   if(P.burnT > 0){ P.burnT -= dt; P.burnAcc = (P.burnAcc||0) + 5*dt*(1 - Math.min(.8, (S2.eleRes||0)/100)); if(P.burnAcc >= 1){ const d = Math.floor(P.burnAcc); P.burnAcc -= d; hurtPlayer(d, '#ff8a2a'); } if(Math.random() < dt*30) G.parts.push({x:P.x+rand(-5,5), y:P.y-rand(4,26), vx:0, vy:-30, life:.4, max:.4, size:2, col:pick(['#ff5a1a','#ffc04a'])}); }
-  if(P.poisonT > 0){ P.poisonT -= dt; P.poisonAcc = (P.poisonAcc||0) + 4*dt*(1 - Math.min(.8, (S2.poisRes||0)/100)); if(P.poisonAcc >= 1){ const d=Math.floor(P.poisonAcc); P.poisonAcc-=d; hurtPlayer(d, '#8ad04a'); } }
+  if(P.poisonT > 0){ P.poisonT -= dt; P.poisonAcc = (P.poisonAcc||0) + 7*dt*(1 - Math.min(.8, (S2.poisRes||0)/100)); if(P.poisonAcc >= 1){ const d=Math.floor(P.poisonAcc); P.poisonAcc-=d; hurtPlayer(d, '#8ad04a'); } }
   // Selene (luz de luna) cura al héroe
   if(G.pets.some(p => p.def.moonlight) && P.hp < P.maxHp) P.hp = Math.min(P.maxHp, P.hp + dt);
 
@@ -380,14 +380,15 @@ function resolveAttack(){
 function useConsumable(id){
   let ref = stackRefs([id])[0];
   if(!ref && id==='potion'){ id = 'superpotion'; ref = stackRefs([id])[0]; }
-  if(!ref){ toast({potion:'No tienes pociones de vida', superpotion:'No tienes pociones de vida', bandage:'No tienes vendas', cookie:'No tienes galletas', oil:'No tienes frascos de aceite', mushroom:'No tienes setas', elfpotion:'No tienes pociones élficas', petbone:'No tienes huesos para mascota', hallshroom:'No tienes setas alucinógenas', elfbread:'No tienes pan élfico'}[id]); return; }
+  if(!ref && id==='oil'){ id = 'oil2'; ref = stackRefs([id])[0]; }
+  if(!ref){ toast({potion:'No tienes pociones de vida', superpotion:'No tienes pociones de vida', bandage:'No tienes vendas', oil2:'No tienes frascos de aceite', cookie:'No tienes galletas', oil:'No tienes frascos de aceite', mushroom:'No tienes setas', elfpotion:'No tienes pociones élficas', petbone:'No tienes huesos para mascota', hallshroom:'No tienes setas alucinógenas', elfbread:'No tienes pan élfico'}[id]); return; }
   const it = ref.it;
-  if(id==='oil'){
+  if(id==='oil' || id==='oil2'){
     if(G.sc.kind!=='raid'){ toast('En la guarida la linterna no gasta aceite', 1.5); return; }
     if(!G.inv.equip.lantern){ toast('No llevas ningún farolillo equipado', 1.4); return; }
     if(P.oil >= oilMax()){ toast('El farolillo ya está lleno', 1); return; }
-    P.oil = Math.min(oilMax(), P.oil + 40); P.lantern = true;
-    addText(P.x, P.y-46, '+40 aceite', '#ffe070', 8); sfx('potion');
+    const oilAmt = id === 'oil2' ? 100 : 40; P.oil = Math.min(oilMax(), P.oil + oilAmt); P.lantern = true;
+    addText(P.x, P.y-46, '+' + oilAmt + ' aceite', '#ffe070', 8); sfx('potion');
     burst(P.lx, P.ly, 10, ['#ffe070','#fff4a0'], [20,60], [.4,.8], -60);
   } else if(id==='potion' || id==='superpotion'){
     if((P.potionCd||0) > 0){ toast(`Poción en enfriamiento (${Math.ceil(P.potionCd)} s)`, 1); return; }
@@ -431,11 +432,17 @@ function hurtPlayer(dmg, col='#ff5a5a'){
   if(P.hp <= 0) killPlayer();
 }
 // golpe de un monstruo al héroe
+// el frío congela al héroe: inmóvil y de color azul
+function freezeHero(t){
+  if(P.dead || legendOn('yetiheart')) return;
+  P.rootT = Math.max(P.rootT || 0, t); P.frozenT = Math.max(P.frozenT || 0, t); addText(P.x, P.y-56, '¡Congelado!', '#c8f0ff', 7); ring(P.x, P.y-4, 20, '#c8f0ff', .4);
+  burst(P.x, P.y-18, 12, ['#c8f0ff', '#ffffff', '#7ac8f0'], [30, 90], [.3, .6], 0); sfx('ui');
+}
 function damagePlayer(dmg, m, elem){
   if(P.dead || P.inv > 0 || P.dashT > 0 || P.jumpZ > 5) return false;   // en el aire no te alcanzan
   const S2 = G.stats || gearStats();
   const mc = m && m.type && MONSTERS[m.type];
-  if(mc && mc.crit && Math.random() < mc.crit){ dmg *= 1.8; addText(P.x, P.y-64, '¡Crítico!', '#ffd166', 8); }   // guerreros élficos pesados
+  if(mc && mc.crit && Math.random() < mc.crit){ dmg *= (mc.critMul || 1.8); addText(P.x, P.y-64, '¡Crítico!', '#ffd166', 8); }   // guerreros élficos pesados
   if(legendOn('riverpearl') && Math.random() < .15){ addText(P.x, P.y-50, 'Marea', '#9ad8ff', 7); ring(P.x, P.y-10, 26, '#7ac8f0', .3); return false; }
   if(Math.random() < SK('agi')*.01 + (MS('agi',10) ? .05 : 0) + (P.surge ? .25 : 0) + (S2.dodge||0)/100){ addText(P.x, P.y-50, 'Esquiva', '#c8e8ff', 7); return false; }
   dmg *= 1 - ((typeof lanternGem === 'function' ? lanternGem().dr : 0) || 0);   // topacio engarzado
@@ -449,6 +456,7 @@ function damagePlayer(dmg, m, elem){
     const rawDmg = dmg; dmg *= 1 - blockPct;
     addText(P.x, P.y-50, 'Bloqueo', '#c8d0e0', 7); sfx('block');
     if(sh && sh.id === 'lastwall' && !m.dying) legendReflect(m, rawDmg, -dx/d, -dy/d);
+    if(sh && sh.id === 'valhallashield' && !m.dying && !MONSTERS[m.type].boss && Math.random() < .35 && !(m.freezeImmT > 0)){ m.freezeT = Math.max(m.freezeT || 0, 1.5); addText(m.x, m.y - m.r*2 - 18, '¡Congelado!', '#c8f0ff', 7); }
     burst(P.x+Math.cos(P.face)*10, P.y-18, 6, ['#c8ccd4','#96704a'], [40,120], [.15,.3], 0);
     if(sh && sh.dur !== undefined && wearDur(sh)){ G.inv.equip.shield = null; P.blocking = false; toast(`¡${itemName(sh)} se ha roto!`); sfx('breakItem'); refreshStats(); }
     if(P.st <= 0){ P.st = 0; P.blocking = false; P.noStamT = .8; }
@@ -468,16 +476,17 @@ function damagePlayer(dmg, m, elem){
   if(S2.thorns && !m.dying) hitMonster(m, S2.thorns, {src:'player', nx:-dx/d, ny:-dy/d, k:60});
   // efectos de afijos y del propio monstruo al golpear
   const A = m.affixes;
-  if(monFx(m, 'poison')) P.poisonT = Math.max(P.poisonT, 3);
-  if(monFx(m, 'bleed')) P.bleedT = Math.max(P.bleedT||0, 4);
+  if(monFx(m, 'poison')) P.poisonT = Math.max(P.poisonT, 6);
+  if(monFx(m, 'bleed')) P.bleedT = Math.max(P.bleedT||0, 7);
   if(monFx(m, 'burn')) P.burnT = Math.max(P.burnT||0, 3);
   if(monFx(m, 'slow')) P.slowT = Math.max(P.slowT||0, 2);
-  if(MONSTERS[m.type].poisonHit) P.poisonT = Math.max(P.poisonT, 3);
-  if(MONSTERS[m.type].bleedHit) P.bleedT = Math.max(P.bleedT||0, 4);
+  if(MONSTERS[m.type].poisonHit) P.poisonT = Math.max(P.poisonT, 6);
+  if(MONSTERS[m.type].bleedHit) P.bleedT = Math.max(P.bleedT||0, 7);
   if(MONSTERS[m.type].burnHit) P.burnT = Math.max(P.burnT||0, 3);
   if(MONSTERS[m.type].weakHit){ P.weakT = Math.max(P.weakT||0, 4); addText(P.x, P.y-62, '¡Debilitado!', '#c8b8ff', 7); }
   if(MONSTERS[m.type].electric){ P.weakT = Math.max(P.weakT||0, 3); if(Math.random() < .3 && !legendOn('yetiheart')){ P.rootT = Math.max(P.rootT||0, .6); addText(P.x, P.y-62, '¡Descarga!', '#ffe84a', 8); } burst(P.x, P.y-22, 8, ['#ffe84a','#ffffff','#9af0ff'], [30,100], [.2,.4], 0); }   // tridentes eléctricos
   if(MONSTERS[m.type].stunHit && !legendOn('yetiheart')){ P.stunT = Math.max(P.stunT||0, 1.1); addText(P.x, P.y-62, '¡Aturdido!', '#ffe08a', 8); burst(P.x, P.y-34, 8, ['#ffe08a','#ffffff'], [20,60], [.3,.6], -40); }   // yeti: golpe pesado
+  if(A.includes('gelido') && Math.random() < .35) freezeHero(1.1);
   if(A.includes('gelido') || MONSTERS[m.type].slowHit){ P.slowT = 2; burst(P.x, P.y-20, 6, ['#a0d8ff','#ffffff'], [20,60], [.3,.5], 0); }
   if(A.includes('apagaluces') && G.sc.kind==='raid'){ P.oil = Math.max(0, P.oil-5); addText(P.x, P.y-56, '-5 aceite', '#ffb347', 7); }
   if(A.includes('agotador') && !(P.elfT > 0)){ P.st = Math.max(0, P.st-20); P.stDelay = .8; }
@@ -673,7 +682,7 @@ function updateMonster(m, dt){
         m.atkCd = rand(1.8, 2.6);
         if(see){
           const lead = .25, ax = target.x + (target.vx||0)*lead*.3 - m.x, ay = target.y - 14 - (m.y - 16), al = Math.hypot(ax,ay) || 1;
-          if(MD.shot) G.projs.push(Object.assign({x:m.x + m.face*8, y:m.y-18, life:1.4, kind:'bolt', from:'mon', mon:m, dmg:m.curDmg, r:4, ang:Math.atan2(ay,ax)}, MD.shot, {vx:ax/al*(MD.shot.spd||300), vy:ay/al*(MD.shot.spd||300)}));
+          if(MD.shot){ const nv = MD.shot.volley || 1; for(let vi = 0; vi < nv; vi++){ const an = Math.atan2(ay, ax) + (vi - (nv - 1)/2)*(MD.shot.spread || 0), sp = MD.shot.spd || 300; G.projs.push(Object.assign({x:m.x + m.face*8, y:m.y-18, life:1.4, kind:'bolt', from:'mon', mon:m, dmg:m.curDmg, r:4, ang:an}, MD.shot, {vx:Math.cos(an)*sp, vy:Math.sin(an)*sp, freeze: MD.shot.freezeP ? (Math.random() < MD.shot.freezeP ? (MD.shot.freezeT || 1.3) : 0) : MD.shot.freeze})); } }
           else if(MD.firearrow) G.projs.push({x:m.x + m.face*8, y:m.y-16, vx:ax/al*310, vy:ay/al*310, life:1.3, kind:'arrow', from:'mon', mon:m, dmg:m.curDmg, r:3, ang:Math.atan2(ay,ax), burn:true, fire:true});
           else if(MD.zap) G.projs.push({x:m.x + m.face*8, y:m.y-20, vx:ax/al*340, vy:ay/al*340, life:1.3, kind:'bolt', from:'mon', mon:m, dmg:m.curDmg, r:4, root: Math.random() < .25 ? .6 : 0, weak: Math.random() < .2 ? 3 : 0, col:['#a08800', '#ffe84a', '#ffffff']});
           else if(MD.flame) G.projs.push({x:m.x + m.face*8, y:m.y-12, vx:ax/al*250, vy:ay/al*250, life:1.1, kind:'flame', from:'mon', mon:m, dmg:m.curDmg, r:5, burn:true});
@@ -681,7 +690,7 @@ function updateMonster(m, dt){
           else if(MD.harpoon) G.projs.push({x:m.x + m.face*8, y:m.y-18, vx:ax/al*330, vy:ay/al*330, life:1.3, kind:'harpoon', from:'mon', mon:m, dmg:m.curDmg, r:4, ang:Math.atan2(ay,ax), slow:1.5});
           else if(MD.bubble) G.projs.push({x:m.x + m.face*10, y:m.y-24, vx:ax/al*170, vy:ay/al*170, life:2.4, kind:'bubble', from:'mon', mon:m, dmg:m.curDmg, r:9, freeze:1.3, slow:2});
           else if(MD.charm){ G.hazards.push({type:'charm', x:target.x, y:target.y, r:62, life:1.05, max:1.05, mon:m, dmg:m.curDmg*.8}); sfx('alba'); }
-          else if(MD.icearrow) G.projs.push({x:m.x + m.face*8, y:m.y-16, vx:ax/al*300, vy:ay/al*300, life:1.3, kind:'arrow', from:'mon', mon:m, dmg:m.curDmg, r:3, ang:Math.atan2(ay,ax), ice:true, slow:2.5, freeze: Math.random() < .4 ? 1.1 : 0});
+          else if(MD.icearrow) G.projs.push({x:m.x + m.face*8, y:m.y-16, vx:ax/al*300, vy:ay/al*300, life:1.3, kind:'arrow', from:'mon', mon:m, dmg:m.curDmg, r:3, ang:Math.atan2(ay,ax), ice:true, slow:2.5, freeze: Math.random() < .7 ? 1.4 : 0});
           else if(MD.snowball) G.projs.push({x:m.x + m.face*12, y:m.y-30, vx:ax/al*205, vy:ay/al*205, life:2.1, kind:'snowball', from:'mon', mon:m, dmg:m.curDmg, r:8, slow:2.5});
           else if(MD.rock) G.projs.push({x:m.x + m.face*10, y:m.y-24, vx:ax/al*215, vy:ay/al*215, life:1.9, kind:'rock', from:'mon', mon:m, dmg:m.curDmg, r:6});
           else if(MD.spit) G.projs.push({x:m.x + m.face*8, y:m.y-10, vx:ax/al*260, vy:ay/al*260, life:1.4, kind:'bolt', from:'mon', mon:m, dmg:m.curDmg, r:4, poison:true, col:['#1a6a1a','#4ae04a','#d8ffd8']});
@@ -699,7 +708,7 @@ function updateMonster(m, dt){
     cx = dx/d*spd*hopF; cy = dy/d*spd*hopF;
     m.face = dx > 0 ? 1 : -1;
     // Saltador
-    if(A.includes('saltador')){
+    if(A.includes('saltador') || MD.leaper){
       m.jumpT -= dt;
       if(m.jumpT <= 0 && d < 170 && d > 40 && los(sc, m.x, m.y-4, target.x, target.y-4)){
         m.jumpT = rand(4,6);
@@ -764,6 +773,7 @@ function hitMonster(m, dmg, o){
   if(o.src==='pet' && o.pet && o.pet.def.affixes.includes('valiente') && m.rarity!=='normal') dmg *= 1.4;
   if(m.markT > 0) dmg *= 1.25;
   if(m.exposedT > 0) dmg *= 1.1;   // presa fácil
+  if(o.src==='player' && m.bleedT > 0 && legendOn('fenrirfang')) dmg *= 1.25;
   if(o.src==='pet' && o.pet && petHas(o.pet,'cazadora') && (m.markT > 0 || m.bleedT > 0 || m.burnT > 0)) dmg *= 1.25;
   dmg *= legendHitMod(m);
   if(o.src==='player' && P.eclipseT > 0) dmg *= 1.3;
@@ -852,6 +862,7 @@ function killMonster(m){
       toast('¡El jefe ha dejado una jaula con una mascota BRILLANTE!', 5); ring(cage.x, cage.y-10, 40, '#ffe08a', .5); sfx('levelup');
       setTimeout(() => UI.showScreen('<h1 style="color:#ffe08a">¡JAULA BRILLANTE!</h1><p>Has derrotado a un jefe por primera vez: ha dejado una jaula con una mascota BRILLANTE.</p><p class="sub">Busca la jaula que brilla con un «!» cerca de donde ha caído el jefe.</p>', '¡Genial!'), 1800);
     }
+    { const qd = MONSTERS[m.type].questDrop; if(qd && !(typeof qDone === 'function' && qDone(MONSTERS[m.type].questId)) && countItem(qd) === 0){ dropItem(m.x, m.y + 12, mkItem(qd)); toast('¡Ha soltado un objeto de misión!', 3.5); } }
     const ul = MONSTERS[m.type].uniques || [];
     if(ul.length && Math.random() < UNIQUE_CHANCE){ dropItem(m.x, m.y, mkItem(pick(ul))); toast(`¡${MONSTERS[m.type].name} ha dejado caer un objeto único!`, 4); }
     for(const o of G.mons) if(o.summoner===m && !o.dying) killMonster(o);
@@ -1631,10 +1642,11 @@ function updateProjs(dt){
     if(!pr.ghost && blocked(G.sc, pr.x, pr.y+10, 1)){ pr.life = 0; if(pr.explode) explodeAt(pr.x - pr.vx*dt, pr.y - pr.vy*dt, pr.dmg); else { sfx('stoneHit'); burst(pr.x, pr.y, 4, ['#7e7a72','#57534d'], [30,80], [.15,.3]); } continue; }
     // flechas de los monstruos: dañan al héroe y a las mascotas de tierra
     if(pr.from==='mon'){
-      if(!P.dead && Math.hypot(P.x-pr.x, P.y-14-pr.y) < P.r+5){ if(damagePlayer(pr.dmg, pr.mon, (pr.burn || pr.fire) ? 'fire' : (pr.weak || pr.kind==='zap') ? 'light' : pr.elem)){ if(pr.slow) P.slowT = pr.slow; if(pr.weak) P.weakT = Math.max(P.weakT || 0, pr.weak); if(pr.poison) P.poisonT = Math.max(P.poisonT, 4);
+      if(!P.dead && Math.hypot(P.x-pr.x, P.y-14-pr.y) < P.r+5){ if(damagePlayer(pr.dmg, pr.mon, (pr.burn || pr.fire) ? 'fire' : (pr.weak || pr.kind==='zap') ? 'light' : pr.elem)){ if(pr.slow) P.slowT = pr.slow; if(pr.kind === 'snowball' && Math.random() < .35) freezeHero(1.1); if(pr.weak) P.weakT = Math.max(P.weakT || 0, pr.weak); if(pr.poison) P.poisonT = Math.max(P.poisonT, 7);
         if(pr.burn) P.burnT = Math.max(P.burnT||0, 3);
+        if(pr.bleed) P.bleedT = Math.max(P.bleedT||0, 7);
         if(pr.root){ P.rootT = Math.max(P.rootT||0, pr.root); addText(P.x, P.y-56, '¡Inmovilizado!', '#c8a0ff', 7); ring(P.x, P.y-4, 18, '#8a60d0', .35); }
-        if(pr.freeze && !legendOn('yetiheart')){ P.rootT = Math.max(P.rootT||0, pr.freeze); addText(P.x, P.y-56, '¡Congelado!', '#c8f0ff', 7); ring(P.x, P.y-4, 20, '#c8f0ff', .4); burst(P.x, P.y-16, 12, ['#c8f0ff','#7ac8f0','#ffffff'], [30,100], [.3,.6], 0); }
+        if(pr.freeze && !legendOn('yetiheart')){ P.rootT = Math.max(P.rootT||0, pr.freeze); P.frozenT = Math.max(P.frozenT||0, pr.freeze); addText(P.x, P.y-56, '¡Congelado!', '#c8f0ff', 7); ring(P.x, P.y-4, 20, '#c8f0ff', .4); burst(P.x, P.y-16, 12, ['#c8f0ff','#7ac8f0','#ffffff'], [30,100], [.3,.6], 0); }
         if(pr.steal && G.raidGold > 0){ const n = Math.min(G.raidGold, randi(4,12) + (G.sc.lvl||1)); G.raidGold -= n; if(pr.mon) pr.mon.stolen = (pr.mon.stolen||0) + n; addText(P.x, P.y-68, '-' + n + ' oro', '#ffd166', 7); }
         if(pr.kind==='harpoon'){ const l3 = Math.hypot(pr.vx, pr.vy) || 1; P.vx -= pr.vx/l3*340; P.vy -= pr.vy/l3*340; }   // el arpón te arrastra hacia el pescador
         if(pr.kind==='rock' || pr.kind==='snowball'){ const l2 = Math.hypot(pr.vx, pr.vy) || 1; P.vx += pr.vx/l2*160; P.vy += pr.vy/l2*160; } } pr.life = 0; continue; }
@@ -1688,7 +1700,7 @@ function updateHazards(dt){
     }
     if(h.type==='fire'){ for(const m of G.mons) if(!m.dying && Math.hypot(m.x-h.x, m.y-h.y) < h.r + m.r) m.burnT = Math.max(m.burnT, 1.5); }
     if(h.type==='poison'){
-      if(!P.dead && inside(P, h)) P.poisonT = Math.max(P.poisonT, 1.2);
+      if(!P.dead && inside(P, h)) P.poisonT = Math.max(P.poisonT, 2.5);
       for(const p of G.pets) if(p.z < 6 && inside(p, h)){ p.poisonAcc = (p.poisonAcc||0) + 3*dt; if(p.poisonAcc >= 1){ p.poisonAcc -= 1; damagePet(p, 1, null, true); } }
     }
     if(h.type==='zap'){ if(h.delay > 0){ h.delay -= dt; h.life = h.max; } else if(h.life <= 0) zapStrike(h); }
@@ -1710,7 +1722,7 @@ function updateHazards(dt){
     if(h.type==='beam'){   // rayo en línea con aviso previo
       if(h.delay > 0){ h.delay -= dt; h.life = h.max; if(h.delay <= 0){ h.fired = true; G.shake = Math.max(G.shake, 6); sfx('boom'); G.flash = {x:h.x + Math.cos(h.ang)*60, y:h.y + Math.sin(h.ang)*60, t:.2};
         const hitSeg = t => { const rx = t.x - h.x, ry = (t.y - 14) - h.y, along = rx*Math.cos(h.ang) + ry*Math.sin(h.ang), perp = Math.abs(-rx*Math.sin(h.ang) + ry*Math.cos(h.ang)); return along > 0 && along < h.len && perp < h.w/2 + (t.r || 6); };
-        if(!P.dead && hitSeg(P) && !(P.jump || (P.jumpZ||0) > 6) && damagePlayer(h.dmg, h.mon, h.elem)){ if(h.fx === 'burn') P.burnT = Math.max(P.burnT||0, 3); else if(h.fx === 'weak') P.weakT = Math.max(P.weakT||0, 5); else if(h.fx === 'stun') P.stunT = Math.max(P.stunT||0, .9); else if(h.fx === 'slow') P.slowT = Math.max(P.slowT||0, 3); }
+        if(!P.dead && hitSeg(P) && !(P.jump || (P.jumpZ||0) > 6) && damagePlayer(h.dmg, h.mon, h.elem)){ if(h.fx === 'burn') P.burnT = Math.max(P.burnT||0, 3); else if(h.fx === 'freeze') freezeHero(1.2); else if(h.fx === 'weak') P.weakT = Math.max(P.weakT||0, 5); else if(h.fx === 'stun') P.stunT = Math.max(P.stunT||0, .9); else if(h.fx === 'slow') P.slowT = Math.max(P.slowT||0, 3); }
         for(const p of G.pets) if(p.z < 8 && hitSeg(p)) damagePet(p, h.dmg*.7, null, false, true); } }
     }
     if(h.type==='pull'){   // succión: arrastra al héroe y a las mascotas hacia el centro
@@ -1734,7 +1746,7 @@ function updateHazards(dt){
     }
     if(h.type==='frost' && h.life <= 0){
       burst(h.x, h.y-6, 26, ['#a0d8ff','#e8f4ff','#ffffff'], [60,200], [.3,.7], 0); ring(h.x, h.y-4, h.r, '#c8ecff', .3);
-      if(!P.dead && Math.hypot(P.x-h.x, P.y-h.y) < h.r){ damagePlayer(h.dmg, h.mon, 'frost'); P.slowT = 2.5; }
+      if(!P.dead && Math.hypot(P.x-h.x, P.y-h.y) < h.r){ damagePlayer(h.dmg, h.mon, 'frost'); P.slowT = 2.5; if(Math.random() < .5) freezeHero(1.3); }
       for(const p of G.pets) if(Math.hypot(p.x-h.x, p.y-h.y) < h.r) damagePet(p, h.dmg*.6, null);
     }
     if(h.type==='boom' && h.life <= 0){
@@ -2291,18 +2303,19 @@ function drawCage(c){
 }
 function drawPortal(p){
   const x = Math.round(p.x), y = Math.round(p.y), t = G.t;
-  pshadow(x, y, 18, 6, .4);
-  for(let i=0;i<36;i++){
-    const a = i/36*Math.PI*2 + t*1.5, r = 15 + Math.sin(t*3 + i)*1.5;
+  pshadow(x, y, 32, 10, .4);
+  for(let i=0;i<64;i++){
+    const a = i/64*Math.PI*2 + t*1.5, r = 28 + Math.sin(t*3 + i)*2.5;
     b.fillStyle = i%3===0 ? '#e0d8ff' : i%3===1 ? '#9a7aff' : '#4ad6ff';
-    b.fillRect(Math.round(x + Math.cos(a)*r), Math.round(y - 14 + Math.sin(a)*r*1.1), 2, 2);
+    b.fillRect(Math.round(x + Math.cos(a)*r), Math.round(y - 26 + Math.sin(a)*r*1.1), 3, 3);
   }
-  for(let i=0;i<14;i++){
-    const a = -t*3 + i*.7, r = (i/14)*12;
+  for(let i=0;i<30;i++){
+    const a = -t*3 + i*.7, r = (i/30)*22;
     b.fillStyle = i%2 ? '#6a4aff' : '#b9a8ff';
-    b.fillRect(Math.round(x + Math.cos(a)*r), Math.round(y - 14 + Math.sin(a)*r*1.1), 1, 1);
+    b.fillRect(Math.round(x + Math.cos(a)*r), Math.round(y - 26 + Math.sin(a)*r*1.1), 2, 2);
   }
-  if(Math.random() < .3) G.parts.push({x:x+rand(-14,14), y:y-rand(0,28), vx:0, vy:-20, life:.6, max:.6, size:1, col:pick(['#b9a8ff','#4ad6ff'])});
+  b.globalAlpha = .18; b.fillStyle = '#7a5aff'; b.beginPath(); b.ellipse(x, y - 26, 26, 29, 0, 0, Math.PI*2); b.fill(); b.globalAlpha = 1;
+  if(Math.random() < .5) G.parts.push({x:x+rand(-26,26), y:y-rand(0,52), vx:0, vy:-24, life:.7, max:.7, size:1.5, col:pick(['#b9a8ff','#4ad6ff'])});
 }
 
 // mueve a un monstruo rodeando los obstáculos si se queda atascado (esquinas, muros, props)

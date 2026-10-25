@@ -3,8 +3,8 @@
 //  Mapa de incursiones: mundo grande con cámara (arrastrar para mover, rueda para acercar/alejar),
 //  terreno detallado y nombres legibles sobre placas
 // =====================================================================
-const MAP_W = 3800, MAP_H = 2500, MAP_K = 5.5;   // mapa amplio: las expediciones están muy separadas y sus nombres no se solapan
-const mapU = (u, v) => [760 + u*2900, 420 + v*1800];            // coordenadas de las expediciones (0..1) → mundo del mapa
+const MAP_W = 3800, MAP_H = 2700, MAP_K = 5.5;   // mapa amplio: las expediciones están muy separadas y sus nombres no se solapan
+const mapU = (u, v) => [760 + u*2900, 700 + v*1800];            // coordenadas de las expediciones (0..1) → mundo del mapa
 const MAP_DEN = {mapX:.08, mapY:.84};
 UI.mapCam = null; UI._mapBase = null; UI._mapHits = []; UI._mapHover = null; UI._mapInit = false;
 
@@ -18,8 +18,8 @@ function buildMapBase(){
   for(let i=0;i<18*MAP_K;i++){ const x = H(i,1,2)*MAP_W, y = H(i,2,2)*MAP_H, r = 60 + H(i,3,2)*140, gr = g.createRadialGradient(x, y, 0, x, y, r); gr.addColorStop(0, 'rgba(110,80,40,.10)'); gr.addColorStop(1, 'rgba(110,80,40,0)'); g.fillStyle = gr; g.fillRect(x-r, y-r, r*2, r*2); }   // manchas
   // praderas, bosques y zonas áridas (grandes manchas suaves)
   const patch = (u, v, rx, ry, col) => { const [x, y] = mapU(u, v), gr = g.createRadialGradient(x, y, 0, x, y, Math.max(rx, ry)); gr.addColorStop(0, col); gr.addColorStop(1, 'rgba(0,0,0,0)'); g.save(); g.translate(x, y); g.scale(1, ry/rx); g.translate(-x, -y); g.fillStyle = gr; g.fillRect(x-rx, y-rx, rx*2, rx*2); g.restore(); };
-  const BIOME = {village:'rgba(120,180,70,.55)', cemetery:'rgba(60,72,72,.55)', crypt:'rgba(70,56,78,.55)', plains:'rgba(222,184,70,.55)', orccamp:'rgba(160,72,40,.55)', castle:'rgba(110,110,122,.5)', river:'rgba(80,150,115,.42)', forest:'rgba(28,92,46,.6)', mine:'rgba(120,86,52,.55)', temple:'rgba(230,220,150,.6)', icepeak:'rgba(238,248,255,.8)', floatcity:'rgba(100,170,205,.45)', timehall:'rgba(140,110,215,.5)'};
-  for(const e of EXPEDITIONS) if(BIOME[e.id]){ patch(e.mapX, e.mapY, 620, 430, BIOME[e.id]); patch(e.mapX, e.mapY, 380, 270, BIOME[e.id]); }
+  const BIOME = {village:'rgba(120,180,70,.55)', cemetery:'rgba(60,72,72,.55)', crypt:'rgba(70,56,78,.55)', plains:'rgba(222,184,70,.55)', orccamp:'rgba(160,72,40,.55)', castle:'rgba(110,110,122,.5)', river:'rgba(80,150,115,.42)', forest:'rgba(28,92,46,.6)', mine:'rgba(120,86,52,.55)', temple:'rgba(230,220,150,.6)', icepeak:'rgba(238,248,255,.8)', floatcity:'rgba(100,170,205,.45)', timehall:'rgba(140,110,215,.5)', northvillage:'rgba(225,238,250,.85)', jurassic:'rgba(60,170,90,.55)', camelot:'rgba(130,140,180,.5)', space:'rgba(40,30,90,.6)'};
+  for(const e of ALL_EXPS()) if(BIOME[e.id]){ patch(e.mapX, e.mapY, 620, 430, BIOME[e.id]); patch(e.mapX, e.mapY, 380, 270, BIOME[e.id]); }
   patch(.9, .05, 900, 520, 'rgba(90,80,70,.28)');
   // río (de oeste a sur, pasando por El río travieso) con afluente y orillas
   const riv = [[-.28,.37],[.0,.37],[.16,.37],[.26,.42],[.31,.52],[.32,.62],[.33,.76],[.31,.9],[.34,1.1],[.36,1.3]].map(p => mapU(p[0], p[1]));
@@ -29,7 +29,7 @@ function buildMapBase(){
   const trib = [[.16,.37],[.1,.3],[.06,.26],[.0,.22],[-.1,.2]].map(p => mapU(p[0], p[1])); curve(trib, 14, '#5f8ea8'); curve(trib, 6, '#86b4cc');
   const [lx, ly] = mapU(.52, .06); g.fillStyle = 'rgba(60,40,20,.3)'; g.beginPath(); g.ellipse(lx, ly, 250, 130, .1, 0, Math.PI*2); g.fill(); g.fillStyle = '#6a9ab4'; g.beginPath(); g.ellipse(lx, ly, 236, 118, .1, 0, Math.PI*2); g.fill(); g.fillStyle = '#92bdd2'; g.beginPath(); g.ellipse(lx-10, ly-8, 52, 22, .1, 0, Math.PI*2); g.fill();   // lago
   const riverDist = (x, y) => { let best = 1e9; for(let i=0;i<riv.length-1;i++){ const dx = riv[i+1][0]-riv[i][0], dy = riv[i+1][1]-riv[i][1], t = clamp(((x-riv[i][0])*dx + (y-riv[i][1])*dy)/(dx*dx + dy*dy), 0, 1); best = Math.min(best, Math.hypot(x - riv[i][0] - dx*t, y - riv[i][1] - dy*t)); } return best; };
-  const nodePts = EXPEDITIONS.map(e => mapU(e.mapX, e.mapY)).concat([mapU(MAP_DEN.mapX, MAP_DEN.mapY)]);
+  const nodePts = ALL_EXPS().map(e => mapU(e.mapX, e.mapY)).concat([mapU(MAP_DEN.mapX, MAP_DEN.mapY)]);
   const nearNode = (x, y, r) => nodePts.some(p => Math.hypot(x-p[0], y-p[1]) < r) || (x - 300 > 0 && false);
   const okSpot = (x, y, rn) => !nearNode(x, y, rn) && riverDist(x, y) > 16 && Math.hypot(x-lx, (y-ly)*1.9) > 250;
   // montañas con sombra y cumbre nevada
@@ -48,7 +48,7 @@ function buildMapBase(){
   const pine = (x, y, s) => { g.fillStyle = 'rgba(40,24,10,.25)'; g.fillRect(x-s*.5, y+s*.55, s, 2); g.fillStyle = '#3a5a32'; g.beginPath(); g.moveTo(x, y-s*1.2); g.lineTo(x-s*.62, y+s*.15); g.lineTo(x+s*.62, y+s*.15); g.fill(); g.fillStyle = '#4a7240'; g.beginPath(); g.moveTo(x, y-s*.7); g.lineTo(x-s*.78, y+s*.6); g.lineTo(x+s*.78, y+s*.6); g.fill(); g.fillStyle = '#5a3a1e'; g.fillRect(x-1, y+s*.6, 2, s*.4); };
   const oak = (x, y, s) => { g.fillStyle = 'rgba(40,24,10,.25)'; g.fillRect(x-s*.7, y+s*.6, s*1.4, 2); g.fillStyle = '#5a3a1e'; g.fillRect(x-1, y+s*.1, 2, s*.55); g.fillStyle = '#4a6a2a'; g.beginPath(); g.arc(x, y-s*.2, s*.65, 0, Math.PI*2); g.fill(); g.fillStyle = '#62882e'; g.beginPath(); g.arc(x-s*.2, y-s*.35, s*.35, 0, Math.PI*2); g.fill(); };
   const forest = (u0, u1, v0, v1, n, pines) => { n = n*MAP_K*.7|0; for(let i=0;i<n;i++){ const [x, y] = mapU(u0 + H(i,1,6+n)*(u1-u0), v0 + H(i,2,6+n)*(v1-v0)); if(!okSpot(x, y, 60)) continue; (pines || H(i,3,6) > .4 ? pine : oak)(x, y, 9 + H(i,4,6)*7); } };
-  const E = id => EXPEDITIONS.find(e => e.id === id);
+  const E = id => ALL_EXPS().find(e => e.id === id);
   const around = (id, rx, ry, n, fn, seed) => { const e = E(id); if(!e) return; const [px, py] = mapU(e.mapX, e.mapY); for(let i=0;i<n;i++){ const a = H(i,1,40+seed)*6.283, r = Math.sqrt(H(i,2,40+seed)), x = px + Math.cos(a)*rx*r, y = py + Math.sin(a)*ry*r; if(Math.hypot(x-px, (y-py)*1.2) < 80 || !okSpot(x, y, 60)) continue; fn(x, y, 8 + H(i,3,40+seed)*8, i); } };
   const dead = (x, y, s) => { g.strokeStyle = '#3a2e26'; g.lineWidth = 2; g.beginPath(); g.moveTo(x, y + s*.6); g.lineTo(x, y - s); g.moveTo(x, y - s*.2); g.lineTo(x - s*.6, y - s*.8); g.moveTo(x, y - s*.5); g.lineTo(x + s*.55, y - s*1.05); g.stroke(); };
   const grave = (x, y, s) => { g.fillStyle = 'rgba(40,24,10,.25)'; g.fillRect(x - s*.5, y + s*.5, s, 2); g.fillStyle = '#8a8a86'; g.fillRect(x - s*.35, y - s*.5, s*.7, s*.95); g.beginPath(); g.arc(x, y - s*.5, s*.35, Math.PI, 0); g.fill(); g.fillStyle = '#5a5a58'; g.fillRect(x - 1, y - s*.4, 2, s*.5); };
@@ -75,6 +75,10 @@ function buildMapBase(){
   around('icepeak', 620, 440, 90, (x, y, s, i) => i % 3 ? snowPine(x, y, s) : snowMount(x, y + 8, s*1.5), 11);
   around('floatcity', 700, 470, 50, (x, y, s) => snowPine(x, y, s), 12);
   around('timehall', 520, 380, 36, (x, y, s) => crystal(x, y, s*1.1), 13);
+  around('northvillage', 560, 400, 90, (x, y, s, i) => i % 3 ? snowPine(x, y, s) : hut(x, y, s*.9), 17);
+  around('jurassic', 520, 380, 60, (x, y, s, i) => i % 3 ? oak(x, y, s) : tuft(x, y, s), 14);
+  around('camelot', 520, 380, 50, (x, y, s, i) => i % 3 ? mound(x, y, s) : pillar(x, y, s), 15);
+  around('space', 520, 380, 40, (x, y, s) => crystal(x, y, s), 16);
   // pantano junto al cementerio, matas de hierba y rocas
   const [cx, cy] = mapU(.4, .6); for(let i=0;i<26;i++){ const x = cx - 130 + H(i,1,7)*260, y = cy + 30 + H(i,2,7)*90; if(!okSpot(x, y, 50)) continue; g.strokeStyle = 'rgba(70,90,50,.7)'; g.lineWidth = 1.5; g.beginPath(); g.moveTo(x, y); g.lineTo(x-3, y-7); g.moveTo(x, y); g.lineTo(x, y-9); g.moveTo(x, y); g.lineTo(x+3, y-7); g.stroke(); }
   for(let i=0;i<500*MAP_K;i++){ const x = H(i,1,8)*MAP_W, y = H(i,2,8)*MAP_H; if(!okSpot(x, y, 40)) continue; g.strokeStyle = 'rgba(80,100,50,.45)'; g.lineWidth = 1; g.beginPath(); g.moveTo(x, y); g.lineTo(x-2, y-4); g.moveTo(x, y); g.lineTo(x+2, y-4); g.stroke(); }
@@ -112,6 +116,11 @@ function mapIcon(g, e, lk){
   else if(e.id==='floatcity'){ g.fillStyle = lk ? 'rgba(80,100,120,.6)' : '#3a7a9a'; g.fillRect(-26, 8, 52, 7); g.fillStyle = lk ? 'rgba(90,70,50,.6)' : '#7a5232'; g.fillRect(-22, 0, 14, 10); g.fillRect(2, -4, 20, 14); g.fillStyle = lk ? 'rgba(60,90,100,.6)' : '#3a8a9a'; g.beginPath(); g.moveTo(-25, 0); g.lineTo(-15, -9); g.lineTo(-5, 0); g.fill(); g.beginPath(); g.moveTo(0, -4); g.lineTo(12, -16); g.lineTo(24, -4); g.fill(); g.fillStyle = f; g.fillRect(-4, 6, 8, 3); }
   else if(e.id==='timehall'){ g.strokeStyle = lk ? 'rgba(120,110,160,.6)' : '#8a7ad8'; g.lineWidth = 3; g.beginPath(); g.arc(0, 0, 16, 0, Math.PI*2); g.stroke(); g.fillStyle = lk ? 'rgba(60,50,90,.6)' : '#2a1a6a'; g.beginPath(); g.arc(0, 0, 13, 0, Math.PI*2); g.fill(); g.strokeStyle = lk ? 'rgba(160,150,200,.6)' : '#e8e0ff'; g.lineWidth = 2; g.beginPath(); g.moveTo(0, 0); g.lineTo(0, -10); g.moveTo(0, 0); g.lineTo(7, 3); g.stroke(); }
   else if(e.id==='icepeak'){ g.fillStyle = lk ? 'rgba(180,196,214,.6)' : '#dce8f4'; g.beginPath(); g.moveTo(-26, 14); g.lineTo(-8, -14); g.lineTo(2, -2); g.lineTo(12, -22); g.lineTo(28, 14); g.fill(); g.fillStyle = lk ? 'rgba(120,140,170,.6)' : '#7a9ac0'; g.beginPath(); g.moveTo(12, -22); g.lineTo(21, -2); g.lineTo(9, -5); g.fill(); g.beginPath(); g.moveTo(-8, -14); g.lineTo(-2, -3); g.lineTo(-14, -5); g.fill(); g.fillStyle = lk ? 'rgba(160,190,230,.6)' : '#8ad8ff'; for(const dx of [-12, 0, 8]){ g.fillRect(dx, 4, 1.5, 9); g.fillRect(dx + 4, 6, 1.5, 7); } }
+  else if(e.id==='northvillage'){ g.fillStyle = lk ? 'rgba(60,50,40,.6)' : '#5a3a22'; g.fillRect(-22, -2, 44, 15); g.fillStyle = lk ? 'rgba(180,196,214,.6)' : '#e8f0f8'; g.beginPath(); g.moveTo(-26, -2); g.lineTo(-14, -16); g.lineTo(14, -16); g.lineTo(26, -2); g.fill(); g.fillStyle = dk; g.fillRect(-4, 4, 8, 9); g.strokeStyle = lk ? 'rgba(120,120,120,.6)' : '#c8ccd4'; g.lineWidth = 3; g.beginPath(); g.moveTo(-16, -16); g.lineTo(-22, -24); g.moveTo(16, -16); g.lineTo(22, -24); g.stroke(); }
+  else if(e.id==='jurassic'){ g.fillStyle = lk ? 'rgba(80,70,60,.6)' : '#5a3a22'; g.beginPath(); g.moveTo(-24, 14); g.lineTo(-4, -16); g.lineTo(16, 14); g.fill(); g.fillStyle = lk ? 'rgba(160,80,50,.6)' : '#e8501a'; g.beginPath(); g.moveTo(-9, -10); g.lineTo(-4, -16); g.lineTo(1, -10); g.lineTo(-4, -6); g.fill();
+    g.strokeStyle = '#4a2e16'; g.lineWidth = 3; g.beginPath(); g.moveTo(20, 14); g.lineTo(22, -6); g.stroke(); g.fillStyle = lk ? 'rgba(70,90,60,.6)' : '#2f8a3a'; for(const [dx, dy] of [[-8, -4], [8, -6], [-5, 4], [10, 3]]){ g.beginPath(); g.ellipse(22 + dx, -8 + dy, 8, 3, dx*.05, 0, Math.PI*2); g.fill(); } }
+  else if(e.id==='camelot'){ g.fillRect(-22, -2, 44, 15); for(const dx of [-22, -6, 10]){ g.fillRect(dx, -16, 12, 16); for(let k = 0; k < 3; k++) g.fillRect(dx + k*5, -20, 3, 4); } g.fillStyle = dk; g.fillRect(-4, 4, 8, 9); g.fillStyle = lk ? 'rgba(70,90,150,.6)' : '#2a5ac8'; g.fillRect(-1, -30, 2, 12); g.fillRect(1, -30, 11, 7); g.fillStyle = lk ? 'rgba(160,140,60,.6)' : '#ffd84a'; g.fillRect(4, -28, 4, 3); }
+  else if(e.id==='space'){ g.fillStyle = lk ? 'rgba(80,80,100,.6)' : '#8a90a8'; g.beginPath(); g.ellipse(0, 2, 24, 8, 0, 0, Math.PI*2); g.fill(); g.fillStyle = lk ? 'rgba(50,50,70,.6)' : '#2a2e3a'; g.beginPath(); g.ellipse(0, 2, 18, 4.5, 0, 0, Math.PI*2); g.fill(); g.fillStyle = lk ? 'rgba(90,90,110,.6)' : '#c8cee0'; g.beginPath(); g.arc(0, -4, 9, 0, Math.PI*2); g.fill(); g.fillStyle = lk ? 'rgba(120,40,40,.6)' : '#ff3a2a'; g.beginPath(); g.arc(0, -4, 3.5, 0, Math.PI*2); g.fill(); g.fillStyle = '#05050a'; g.fillRect(14, -22, 5, 16); }
   else if(e.id==='river'){ g.strokeStyle = lk ? 'rgba(80,90,100,.6)' : '#3a6a88'; g.lineWidth = 4; for(const dy of [-8, 0, 8]){ g.beginPath(); g.moveTo(-22, dy); g.bezierCurveTo(-12, dy-6, -6, dy+6, 2, dy); g.bezierCurveTo(10, dy-6, 16, dy+6, 22, dy); g.stroke(); } g.fillStyle = f; g.fillRect(-18, -14, 4, 28); g.fillRect(14, -14, 4, 28); g.fillRect(-18, -14, 36, 3); }
   else if(e.id==='forest'){ for(const [dx,dy,s] of [[-14,4,.8],[0,-2,1.1],[14,5,.8]]){ g.fillStyle = lk ? 'rgba(70,80,60,.6)' : '#2e5a30'; g.beginPath(); g.moveTo(dx, dy-20*s); g.lineTo(dx-9*s, dy+2); g.lineTo(dx+9*s, dy+2); g.fill(); g.beginPath(); g.moveTo(dx, dy-12*s); g.lineTo(dx-12*s, dy+10*s); g.lineTo(dx+12*s, dy+10*s); g.fill(); g.fillStyle = f; g.fillRect(dx-1, dy+9*s, 2, 5); } g.fillStyle = lk ? 'rgba(150,140,110,.6)' : '#e8d070'; g.beginPath(); g.moveTo(0, -30); g.lineTo(2, -25); g.lineTo(7, -24); g.lineTo(3, -21); g.lineTo(4, -16); g.lineTo(0, -19); g.lineTo(-4, -16); g.lineTo(-3, -21); g.lineTo(-7, -24); g.lineTo(-2, -25); g.fill(); }
   else if(e.id==='mine'){ g.fillStyle = lk ? 'rgba(80,76,70,.6)' : '#6a5a48'; g.beginPath(); g.moveTo(-24, 14); g.lineTo(-10, -12); g.lineTo(0, -4); g.lineTo(12, -16); g.lineTo(26, 14); g.fill(); g.fillStyle = dk; g.fillRect(-9, 0, 18, 14); g.fillStyle = f; g.fillRect(-11, -2, 3, 16); g.fillRect(8, -2, 3, 16); g.fillRect(-11, -4, 22, 3);
@@ -138,8 +147,8 @@ UI.renderRaidMap = function(){
   g.imageSmoothingEnabled = true; g.drawImage(this._mapBase, sx(0), sy(0), MAP_W*cam.z, MAP_H*cam.z);
   // caminos punteados
   g.strokeStyle = 'rgba(90,45,20,.9)'; g.lineWidth = Math.max(2, 3.5*cam.z); g.setLineDash([8*cam.z + 3, 7*cam.z + 3]); g.lineCap = 'butt'; g.beginPath();
-  EXPEDITIONS.forEach((e, i) => {
-    const o = e.from ? EXPEDITIONS.find(q => q.id === e.from) : i === 0 ? MAP_DEN : EXPEDITIONS[i-1], [ax, ay] = mapU(o.mapX, o.mapY), [bx, by] = mapU(e.mapX, e.mapY);
+  ALL_EXPS().forEach((e, i) => {
+    const o = e.from ? ALL_EXPS().find(q => q.id === e.from) : i === 0 ? MAP_DEN : EXPEDITIONS[i-1], [ax, ay] = mapU(o.mapX, o.mapY), [bx, by] = mapU(e.mapX, e.mapY);
     g.moveTo(sx(ax), sy(ay)); g.quadraticCurveTo(sx((ax+bx)/2), sy(Math.min(ay, by) - 40 + (Math.abs(ax-bx) < 50 ? 40 : 0)), sx(bx), sy(by));
   });
   g.stroke(); g.setLineDash([]);
@@ -155,7 +164,7 @@ UI.renderRaidMap = function(){
   };
   plate('Guarida', sx(dx0), sy(dy0) + 24*ik, {sz:12, border:'#8a6a3a'});
   const taken = [];
-  for(const e of EXPEDITIONS){
+  for(const e of ALL_EXPS()){
     const [wx, wy] = mapU(e.mapX, e.mapY), x = sx(wx), y = sy(wy), sel = this.mapSel === e.id, hov = this._mapHover === e.id, lk = expLocked(e);
     if(x < -80 || y < -80 || x > Wm + 80 || y > Hm + 80) { hits.push({id:e.id, x, y, r:0}); continue; }
     if(sel || hov){ const gr = g.createRadialGradient(x, y, 6, x, y, 52*ik); gr.addColorStop(0, sel ? 'rgba(255,220,120,.55)' : 'rgba(255,240,200,.35)'); gr.addColorStop(1, 'rgba(255,220,120,0)'); g.fillStyle = gr; g.fillRect(x-60*ik, y-60*ik, 120*ik, 120*ik);
@@ -166,6 +175,7 @@ UI.renderRaidMap = function(){
     const label = e.locked ? '???' : e.hall ? e.name : `${e.lvl}. ${e.name}`, ex = 30; let ly = y + 24*ik; { g.font = `13px ${FONT}`; const w1 = g.measureText(label).width + 18; for(let k = 0; k < 3 && taken.some(r => Math.abs(r.x - x) < (r.w + w1)/2 + 6 && Math.abs(r.y - ly) < 32); k++) ly += 30; taken.push({x, y:ly, w:w1}); if(!e.locked && lk || e.needKey) taken.push({x, y:ly + 30, w:110}); }
     plate(label, x, ly, {sz:13, col: lk ? '#b0a690' : '#fff4d0', bg: lk ? 'rgba(46,38,30,.9)' : 'rgba(36,22,12,.95)', border: sel ? '#ffd870' : lk ? '#6a5a44' : '#c8a060'});
     if(e.needKey && !lk) plate('requiere llave', x, ly + ex, {sz:10, col:'#ffd8a0', border:'#8a6a3a'});
+    else if(e.hidden) plate('solo por el portal', x, ly + ex, {sz:10, col:'#d0c0ff', border:'#6a5aa8'});
     else if(!e.locked && lk) plate('bloqueada', x, ly + ex, {sz:10, col:'#b0a690', border:'#6a5a44'});
     hits.push({id:e.id, x, y, r:Math.max(40, 42*ik)});
   }

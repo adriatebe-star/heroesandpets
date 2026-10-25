@@ -3,7 +3,7 @@
 //  Expedición 12 (portal de Rolecs) · La ciudad orbital Odisea: una estación espacial perdida, simios del amanecer,
 //  astronautas poseídos, drones y ARGOS-9000, la mente de la estación (con su Monolito).
 // =====================================================================
-HIDDEN_EXPEDITIONS.push({id:'space', lvl:12, petExp:'12c', hidden:true, name:'La ciudad orbital Odisea', boss:'argos',
+HIDDEN_EXPEDITIONS.push({id:'space', lvl:12, petExp:'12c', hidden:true, viaPortal:true, from:'timehall', mapX:0.43, mapY:-0.2, name:'La ciudad orbital Odisea', boss:'argos',
   desc:'Una estación espacial que lleva siglos a la deriva. En su corazón hay un monolito negro y una máquina que ya no obedece a nadie.',
   monsters:'Simios del amanecer, astronautas poseídos, drones y robots de seguridad. Jefe: ARGOS-9000'});
 iconFrom([

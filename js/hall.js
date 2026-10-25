@@ -64,3 +64,13 @@ function drawFairy(f){
   b.globalAlpha = .7; b.fillStyle = '#ffffff'; b.fillRect(x-1-w, y-2, w, 2); b.fillRect(x+2, y-2, w, 2); b.globalAlpha = 1;
   if(Math.random() < .5) G.parts.push({x:x+rand(-2,2), y:y+2, vx:rand(-8,8), vy:rand(6,16), life:.7, max:.7, size:1, col});
 }
+
+// ---------- frasco de aceite superior (desde el nivel 8): recupera 100 de aceite ----------
+ICON_ROWS.oilflask2 = {pal:{w:'#e8e0c8', Y:'#c8f0ff', y:'#4ab0e8', o:'#2a78b8', d:'#7a5636'}, rows:ICON_ROWS.oilflask.rows}; ICONS.oilflask2 = bakeRows(ICON_ROWS.oilflask2.rows, Object.assign({k:OUT}, ICON_ROWS.oilflask2.pal));
+ITEMS.oil2 = {name:'Frasco de aceite superior', icon:'oilflask2', stack:100, use:'oil', value:14, rar:'pink', desc:'Tecla 3 (se usa cuando no quedan frascos normales). Recarga 100 de aceite de la linterna.'};
+for(const T of [LOOT.chestNormal, LOOT.chestRare]) T.table.push({w:T === LOOT.chestRare ? 6 : 4, id:'oil2', lvl:8});
+LOOT.monsterTable.push({w:4, id:'oil2', lvl:8});
+SHOP.push({id:'oil2', n:1, price:30, tier:8});
+Object.assign(LANG_EN, {'Frasco de aceite superior':'Greater oil flask', 'Tecla 3 (se usa cuando no quedan frascos normales). Recarga 100 de aceite de la linterna.':'Key 3 (used when no normal flasks are left). Refills 100 oil of the lantern.', 'No tienes frascos de aceite':'You have no oil flasks', '+100 aceite':'+100 oil',
+  'Botín exclusivo de esta expedición':'Exclusive loot of this expedition', 'tesoro':'treasure', '(pasa el ratón)':'(hover)', '[F] Tragaperras':'[F] Slot machine'});
+LANG.load(LANG_EN);
