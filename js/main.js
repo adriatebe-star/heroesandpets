@@ -44,6 +44,7 @@ function loadGame(slot){
   questMigrate(s, !!old && old.qs === undefined);   // partidas antiguas: lo ya superado cuenta como misión hecha
   // puntos de Gonzalo: 1 por cada nivel subido, menos los nodos ya aprendidos en el árbol.
   // Se recalculan siempre, así ninguna partida pierde puntos (p. ej. los del árbol antiguo).
+  if(s.treeV !== 2){ if(s.tree && s.tree.length > 1) setTimeout(() => toast('Gonzalo ha renovado su árbol de pasivas: tus puntos te han sido devueltos', 6), 2500); s.tree = ['start']; s.treeV = 2; }   // el árbol nuevo: reinicio gratis una sola vez
   if(!Array.isArray(s.tree) || !s.tree.includes('start')) s.tree = ['start'];
   s.tree = [...new Set(s.tree.filter(id => TREE.byId[id]))];
   s.skills = {agr:0, agi:0, car:0, agu:0, exp:0};    // árbol antiguo: ya no se usa
@@ -53,7 +54,6 @@ function loadGame(slot){
   if(!s.petsFreed) s.petsFreed = Object.keys(s.collection || {}).length;      // partidas antiguas: cuenta las mascotas ya conocidas
   s.fallen = (s.fallen || []).map(e => typeof e === 'string' ? {pet:e, shiny:false} : e);
   s.shinies ??= {}; s.bossGift ??= {};
-  if(s.treeV !== 2){ if(s.tree && s.tree.length > 1) setTimeout(() => toast('Gonzalo ha renovado su árbol de pasivas: tus puntos te han sido devueltos', 6), 2500); s.tree = ['start']; s.treeV = 2; }   // el árbol nuevo: reinicio gratis una sola vez
   { const fix = it => { if(it && it.rarity === 'unique') it.rarity = 'legendary'; };   // los únicos de jefe ahora son legendarios
     (s.stash || []).forEach(fix); (s.petCage || []).forEach(fix); (s.sold || []).forEach(x => fix(x && x.item));
     if(s.inv){ (s.inv.bag || []).forEach(fix); for(const k in (s.inv.equip || {})){ const v = s.inv.equip[k]; if(Array.isArray(v)) v.forEach(fix); else fix(v); } } }
