@@ -24,17 +24,47 @@ function bindSound(root){
 
 // ---------- menú principal ----------
 // ---------- configuración ----------
-const SETTINGS = {hpHero:false, hpPets:false, mapAlpha:.97, lootFilter:{normal:true, magic:true, rare:true, pink:true, cons:true, legend:true, gold:true, gems:true}, mapView:{dx:0, dy:0, z:1}};
-try { const v = JSON.parse(localStorage.getItem('heroes-pets-settings')); if(v){ if(typeof v.hpHero==='boolean') SETTINGS.hpHero = v.hpHero; if(typeof v.hpPets==='boolean') SETTINGS.hpPets = v.hpPets; if(typeof v.mapAlpha==='number') SETTINGS.mapAlpha = Math.max(.15, Math.min(1, v.mapAlpha)); if(v.lootFilter) for(const k in SETTINGS.lootFilter) if(typeof v.lootFilter[k]==='boolean') SETTINGS.lootFilter[k] = v.lootFilter[k]; if(v.mapView) for(const k of ['dx','dy','z']) if(typeof v.mapView[k]==='number') SETTINGS.mapView[k] = v.mapView[k]; } } catch(e){}
+if(ITEMS.minekey) ITEMS.minekey.key = true;   // la llave de la mina cuenta como llave en el filtro de objetos
+const SETTINGS = {hpHero:false, hpPets:false, mapAlpha:.97, lootFilter:{normal:true, magic:true, rare:true, legend:true, cons:true, key:true, treasure:true, talisman:true, gems:true, gold:true}, lootItems:{}, mapView:{dx:0, dy:0, z:1}};
+try { const v = JSON.parse(localStorage.getItem('heroes-pets-settings')); if(v){ if(typeof v.hpHero==='boolean') SETTINGS.hpHero = v.hpHero; if(typeof v.hpPets==='boolean') SETTINGS.hpPets = v.hpPets; if(typeof v.mapAlpha==='number') SETTINGS.mapAlpha = Math.max(.15, Math.min(1, v.mapAlpha)); if(v.lootFilter) for(const k in SETTINGS.lootFilter) if(typeof v.lootFilter[k]==='boolean') SETTINGS.lootFilter[k] = v.lootFilter[k]; if(v.lootItems && typeof v.lootItems === 'object') SETTINGS.lootItems = v.lootItems; if(v.mapView) for(const k of ['dx','dy','z']) if(typeof v.mapView[k]==='number') SETTINGS.mapView[k] = v.mapView[k]; } } catch(e){}
 const saveSettings = () => { try { localStorage.setItem('heroes-pets-settings', JSON.stringify(SETTINGS)); } catch(e){} };
 const configHTML = () => `<div class="vols">
   <label class="vrow"><span style="width:auto;flex:1">Mostrar la vida sobre el héroe</span><input type="checkbox" id="cfgHero" ${SETTINGS.hpHero ? 'checked' : ''}></label>
   <label class="vrow"><span style="width:auto;flex:1">Mostrar la vida sobre las mascotas</span><input type="checkbox" id="cfgPets" ${SETTINGS.hpPets ? 'checked' : ''}></label>
   <label class="vrow"><span style="width:150px">Opacidad del mapa [Tab]</span><input type="range" min="15" max="100" value="${Math.round(SETTINGS.mapAlpha*100)}" id="cfgMap"><b>${Math.round(SETTINGS.mapAlpha*100)}%</b></label></div>`;
-const LOOT_FILTER_ROWS = [['normal','Normales (blancos: objetos, flechas, lanzas, piedras, pociones)'], ['magic','Mágicos (azules: objetos, flechas de fuego, pociones superiores)'], ['rare','Raros (amarillos: objetos y flechas explosivas)'], ['pink','Consumibles rosas (aceite, setas, galletas, vendas)'], ['cons','Otros consumibles (poción élfica, tesoros, llaves…)'], ['legend','Objetos legendarios y únicos'], ['gold','Oro'], ['gems','Piedras preciosas']];
-const lootFilterHTML = () => '<div class="vols">' + LOOT_FILTER_ROWS.map(([k, t]) => `<label class="vrow"><span style="width:auto;flex:1">${t}</span><input type="checkbox" data-lf="${k}" ${SETTINGS.lootFilter[k] !== false ? 'checked' : ''}></label>`).join('') + '</div><p class="lfnote">Lo que desmarques no se verá en el suelo ni se podrá coger. El oro desmarcado se sigue recogiendo solo al pasar cerca. Las mascotas siempre se ven.</p>';
+// tipos del filtro: [clave, nombre, ¿tiene lista de objetos?]
+const LOOT_FILTER_ROWS = [['normal', 'Normales', 1], ['magic', 'Mágicos', 1], ['rare', 'Raros', 1], ['legend', 'Legendarios (incluye los únicos de jefe)', 1], ['cons', 'Consumibles (pociones, vendas, aceite, galletas, setas, munición…)', 1], ['quest', 'Misión (siempre visibles)', 0], ['key', 'Llaves', 1], ['treasure', 'Tesoros', 1], ['talisman', 'Talismanes', 1], ['gems', 'Piedras preciosas', 1], ['gold', 'Oro (monedas)', 0]];
+const lootFilterHTML = () => '<div class="vols lfvols">' + LOOT_FILTER_ROWS.map(([k, t, sub]) => `<div class="lfrow"><span class="lfsw" style="background:${LOOT_COL[k]}"></span><label class="vrow"><span style="width:auto;flex:1;color:${LOOT_COL[k]}">${tr(t)}</span><input type="checkbox" data-lf="${k}" ${k === 'quest' ? 'checked disabled' : SETTINGS.lootFilter[k] !== false ? 'checked' : ''}></label>${sub ? `<button class="small" data-act="lootclass" data-c="${k}">${tr('Ver lista')} ›</button>` : '<span class="lfno"></span>'}</div>`).join('') + '</div><p class="lfnote">' + tr('Lo que desmarques no se verá en el suelo ni se podrá coger (el color de cada tipo es el que ves aquí). El oro desmarcado se sigue recogiendo solo. Las mascotas y los objetos de misión siempre se ven. Pulsa «Ver lista» para activar o desactivar objetos concretos.') + '</p>';
+// expedición más baja en la que cae un objeto (botín y tienda)
+let _firstLvl = null;
+function lootFirstLvl(id){
+  if(!_firstLvl){ _firstLvl = {}; const put = (i, l) => { if(i && l && (!_firstLvl[i] || l < _firstLvl[i])) _firstLvl[i] = l; };
+    for(const k in LOOT){ const L = LOOT[k], tb = Array.isArray(L) ? L : (L && L.table) || []; for(const e of tb) put(e.id, e.lvl); }
+    for(const o of SHOP) put(o.id, o.tier); }
+  return _firstLvl[id] || 0;
+}
+// objetos que existen de cada tipo (para la subpantalla del filtro)
+function lootClassIds(c){
+  const out = [];
+  for(const id in ITEMS){ const d = ITEMS[id]; let ok = false;
+    if(c === 'cons') ok = isConsumable(d);
+    else if(c === 'legend') ok = !!(d.legend || d.unique) && !d.quest;
+    else if(c === 'gems') ok = !!d.gem; else if(c === 'treasure') ok = !!d.treasure; else if(c === 'key') ok = !!d.key && !d.quest;
+    else if(c === 'talisman') ok = d.slot === 'talisman' && !d.legend && !d.quest;
+    else if(c === 'normal') ok = (!!d.gear || d.slot === 'lantern') && !d.unique && !d.legend;
+    else if(c === 'magic' || c === 'rare') ok = !!d.gear && !d.unique && !d.legend;
+    if(ok) out.push(id); }
+  return out.sort((a, b) => tr(ITEMS[a].name).localeCompare(tr(ITEMS[b].name)));
+}
+const lootClassHTML = c => {
+  const ids = lootClassIds(c), on = id => SETTINGS.lootItems[c + ':' + id] !== false;
+  return `<div class="lfhead"><span class="lfsw" style="background:${LOOT_COL[c]}"></span><span style="color:${LOOT_COL[c]}">${tr(LOOT_FILTER_ROWS.find(r => r[0] === c)[1])}</span></div>
+    <div class="mbtns lfall"><button class="mbtn" data-act="lfall">${tr('Activar todos')}</button><button class="mbtn" data-act="lfnone">${tr('Desactivar todos')}</button></div>
+    <div class="lflist">${ids.map(id => { const lv = c === 'cons' ? lootFirstLvl(id) : 0; return `<label class="lfitem"><img src="${itemIconURL({id})}"><span style="color:${LOOT_COL[c]}">${tr(ITEMS[id].name)}</span>${lv ? `<small>${tr('Desde exp.')} ${lv}</small>` : ''}<input type="checkbox" data-li="${c}:${id}" ${on(id) ? 'checked' : ''}></label>`; }).join('')}</div>`;
+};
 function bindConfig(root){
   root.querySelectorAll('[data-lf]').forEach(c => c.onchange = () => { SETTINGS.lootFilter[c.dataset.lf] = c.checked; saveSettings(); sfx('ui'); });
+  root.querySelectorAll('[data-li]').forEach(c => c.onchange = () => { if(c.checked) delete SETTINGS.lootItems[c.dataset.li]; else SETTINGS.lootItems[c.dataset.li] = false; saveSettings(); sfx('ui'); });
   const ch = root.querySelector('#cfgHero'), cp = root.querySelector('#cfgPets'), cm = root.querySelector('#cfgMap');
   if(ch) ch.onchange = () => { SETTINGS.hpHero = ch.checked; saveSettings(); sfx('ui'); };
   if(cp) cp.onchange = () => { SETTINGS.hpPets = cp.checked; saveSettings(); sfx('ui'); };
@@ -144,6 +174,8 @@ function renderPause(){
     h = `<h2>Idioma</h2>${langHTML()}<button data-act="back">Volver</button>`;
   } else if(v === 'lootfilter'){
     h = `<h2>Filtro de objetos</h2>${lootFilterHTML()}<button data-act="back">Volver</button>`;
+  } else if(v === 'lootclass'){
+    h = `<h2>${tr('Filtro de objetos')}</h2>${lootClassHTML(PAUSE.cls)}<button data-act="back">Volver</button>`;
   } else if(v === 'config'){
     h = `<h2>Configuración</h2>${configHTML()}<button data-act="back">Volver</button>`;
   } else if(v === 'controls'){
@@ -161,9 +193,11 @@ $('pauseBox').addEventListener('click', e => {
   else if(act === 'sound') PAUSE.view = 'sound';
   else if(act === 'config') PAUSE.view = 'config';
   else if(act === 'lootfilter') PAUSE.view = 'lootfilter';
+  else if(act === 'lootclass'){ PAUSE.view = 'lootclass'; PAUSE.cls = t.dataset.c; }
+  else if(act === 'lfall' || act === 'lfnone'){ for(const id of lootClassIds(PAUSE.cls)){ if(act === 'lfall') delete SETTINGS.lootItems[PAUSE.cls + ':' + id]; else SETTINGS.lootItems[PAUSE.cls + ':' + id] = false; } saveSettings(); }
   else if(act === 'lang') PAUSE.view = 'lang';
   else if(act === 'setlang') LANG.set(t.dataset.l);
-  else if(act === 'back') PAUSE.view = 'main';
+  else if(act === 'back') PAUSE.view = PAUSE.view === 'lootclass' ? 'lootfilter' : 'main';
   else if(act === 'exit'){ if(G.sc.kind === 'raid') PAUSE.view = 'confirm'; else { exitToMenu(); return; } }
   else if(act === 'exityes'){ dropRaidLoss(); exitToMenu(); return; }
   renderPause();
@@ -172,3 +206,8 @@ function exitToMenu(){
   G.save.inRaid = false; saveGame();
   closePause(); openMainMenu();
 }
+
+Object.assign(LANG_EN, {'Normales':'Normal', 'Mágicos':'Magic', 'Raros':'Rare', 'Legendarios (incluye los únicos de jefe)':'Legendary (includes boss uniques)', 'Consumibles (pociones, vendas, aceite, galletas, setas, munición…)':'Consumables (potions, bandages, oil, cookies, mushrooms, ammo…)', 'Misión (siempre visibles)':'Quest (always visible)', 'Llaves':'Keys', 'Tesoros':'Treasures', 'Talismanes':'Talismans', 'Piedras preciosas':'Gems', 'Oro (monedas)':'Gold (coins)',
+  'Ver lista':'View list', 'Activar todos':'Enable all', 'Desactivar todos':'Disable all', 'Desde exp.':'From exp.',
+  'Lo que desmarques no se verá en el suelo ni se podrá coger (el color de cada tipo es el que ves aquí). El oro desmarcado se sigue recogiendo solo. Las mascotas y los objetos de misión siempre se ven. Pulsa «Ver lista» para activar o desactivar objetos concretos.':'What you untick will not be shown on the ground nor can be picked up (each type shows here the color it has). Unticked gold is still picked up automatically. Pets and quest items are always visible. Press "View list" to enable or disable specific items.'});
+LANG.load(LANG_EN);

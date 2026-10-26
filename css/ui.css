@@ -182,7 +182,7 @@ body.isDragging,body.isDragging *{cursor:grabbing !important}
 .offers{grid-template-columns:repeat(4,100px);gap:10px}
 /* ---------- árbol de pasivas estilo PoE ---------- */
 #skillCols{display:flex;gap:16px;align-items:flex-start;flex-wrap:wrap}
-#treeCanvas{width:min(78vh,calc(100vw - 380px),720px);aspect-ratio:1;display:block}
+#treeCanvas{width:min(82vh,calc(100vw - 380px),820px);aspect-ratio:1;display:block}
 #treeInfo{width:280px;font-size:11px;display:flex;flex-direction:column;gap:8px}
 .trow{background:var(--panel2);padding:6px 8px;box-shadow:inset 0 0 0 2px #3a3028}
 .trow b{font-weight:normal;font-size:13px}
@@ -281,7 +281,7 @@ kbd{background:var(--ink);border:2px solid var(--frame);padding:1px 7px;color:va
 #trRevive{display:flex;flex-direction:column;gap:8px}
 #trRevive .empty{color:var(--muted);padding:30px 10px;text-align:center;line-height:1.7}
 #ptWrap{display:flex;gap:16px;align-items:flex-start}
-#ptCanvas{width:min(calc(100vh - 210px),520px);aspect-ratio:1;flex:none;display:block}
+#ptCanvas{width:min(calc(100vh - 210px),600px);aspect-ratio:1;flex:none;display:block}
 #ptInfo{flex:1;min-width:230px;display:flex;flex-direction:column;gap:7px;font-size:12px}
 .ptpts{color:var(--text);font-size:13px}.ptpts b{color:#ffe08a;font-weight:normal}.ptpts span{color:var(--muted);font-size:11px}
 .trow b{font-weight:normal}.trow span{color:var(--muted)}.tper{color:var(--muted);font-size:11px}
@@ -473,3 +473,8 @@ kbd{background:var(--ink);border:2px solid var(--frame);padding:1px 7px;color:va
 .rlbtns{display:flex;gap:8px;flex-wrap:wrap}.rlbtns button{padding:8px 16px}.rlhelp{margin-top:10px;font-size:12px;color:#9a8e78}
 
 .labrev{display:block;margin:6px 0;padding:6px 12px;background:#4a3a24;color:#ffe8b0;border:1px solid #c8a868;border-radius:4px;cursor:pointer}.labrev:disabled{opacity:.5;cursor:default}
+
+.lfrow{display:flex;align-items:center;gap:8px}.lfrow .vrow{flex:1}.lfsw{width:12px;height:12px;border:1px solid #000;flex:none;display:inline-block}.lfrow button.small{min-width:92px}.lfno{min-width:92px}
+.lfhead{display:flex;align-items:center;gap:8px;margin:2px 0 8px;font-size:15px}.lfall{margin-bottom:6px}.lfall .mbtn{padding:6px 12px;font-size:13px}
+.lflist{max-height:48vh;overflow:auto;border:1px solid #3a3028;padding:4px 8px;background:rgba(0,0,0,.25)}.lfitem{display:flex;align-items:center;gap:8px;padding:3px 0;font-size:13px;cursor:pointer}
+.lfitem img{width:24px;height:24px;image-rendering:pixelated;flex:none}.lfitem span{flex:1}.lfitem small{color:#9a8e78;font-size:11px}

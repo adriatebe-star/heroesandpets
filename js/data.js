@@ -78,17 +78,18 @@ const ITEM_AFFIX = {
   flamearea:{sfx:'del Dragón',    roll:[15,40], stat:'flameArea', minLvl:5, kinds:['flamethrower'], slots:['weapon'], desc:v=>`+${v} % de área y distancia de la llamarada`},
   flameoil: {sfx:'del Ahorro',    roll:[15,40], stat:'flameOil',  minLvl:5, kinds:['flamethrower'], slots:['weapon'], desc:v=>`-${v} % de aceite consumido por disparo`},
   // ---- afijos de armadura (casco, pechera, guantes y botas) desde la expedición 5
-  eleres:   {sfx:'del Aislante',      roll:[5,15],  stat:'eleRes',   minLvl:5, slots:['chest','head','hands','feet'], desc:v=>`-${v} % de daño recibido de frío, fuego y rayo`},
-  armorplus:{sfx:'del Bastión',       roll:[3,6],   stat:'armor',    minLvl:5, slots:['chest','head','hands','feet'], desc:v=>`+${v} de armadura adicional`},
-  poisres:  {sfx:'del Antídoto',      roll:[10,30], stat:'poisRes',  minLvl:5, slots:['chest','head','hands','feet'], desc:v=>`-${v} % de daño por veneno`},
-  bleedres: {sfx:'del Coagulante',    roll:[10,30], stat:'bleedRes', minLvl:5, slots:['chest','head','hands','feet'], desc:v=>`-${v} % de daño por sangrado`},
-  hpregen:  {sfx:'de la Regeneración',roll:[1,3],   stat:'hpreg',    minLvl:5, slots:['chest','head','hands','feet'], desc:v=>`+${v} de vida por segundo`},
+  eleres:   {sfx:'del Aislante',      roll:[5,15],  stat:'eleRes',   minLvl:5, slots:['chest','head','hands','feet','shield'], desc:v=>`-${v} % de daño recibido de frío, fuego y rayo`},
+  armorplus:{sfx:'del Bastión',       roll:[3,6],   stat:'armor',    minLvl:5, slots:['chest','head','hands','feet','shield'], desc:v=>`+${v} de armadura adicional`},
+  poisres:  {sfx:'del Antídoto',      roll:[10,30], stat:'poisRes',  minLvl:5, slots:['chest','head','hands','feet','shield'], desc:v=>`-${v} % de daño por veneno`},
+  bleedres: {sfx:'del Coagulante',    roll:[10,30], stat:'bleedRes', minLvl:5, slots:['chest','head','hands','feet','shield'], desc:v=>`-${v} % de daño por sangrado`},
+  hpregen:  {sfx:'de la Regeneración',roll:[1,3],   stat:'hpreg',    minLvl:5, slots:['chest','head','hands','feet','shield'], desc:v=>`+${v} de vida por segundo`},
 };
 const RARE_ITEM_NAMES = ['Muerdehuesos','Sombraluz','Rompenoches','Ojo de Cuervo','Lágrima Gris','Colmillo Viejo','Susurro Helado',
                          'Paso Ligero','Canto Fúnebre','Raíz Antigua','Velo de Ceniza','Hueso de Luna','Ascua Fría','Último Aliento'];
 // tirada de rareza del equipo según el nivel de la expedición y el origen del botín
 function rollRarity(lvl=1, bonus=0){
-  const r = Math.random(), rare = .04 + lvl*.02 + bonus*.06, magic = .22 + lvl*.05 + bonus*.15;
+  if(typeof MS === 'function' && MS('exp', 26)) bonus += .33;   // Suerte del buscador: +5 % de objetos mágicos o raros   // más mágicos y raros según el nivel de la expedición, con tope (siempre queda un 15 % de normales)
+  const r = Math.random(), rare = Math.min(.22, .04 + lvl*.012 + bonus*.06), magic = Math.min(.85 - rare, .22 + lvl*.03 + bonus*.15);
   return r < rare ? 'rare' : r < rare + magic ? 'magic' : 'normal';
 }
 // tirada de un afijo; con `skew` los valores altos son muy raros (p. ej. 35 % de movimiento en botas ≈ 0,4 %)
@@ -98,7 +99,8 @@ const affixPool = (it, d, lvl) => Object.keys(ITEM_AFFIX).filter(k => { const a 
 const mkAffix = k => { const a = ITEM_AFFIX[k], o = {k, v:rollAffix(a)}; if(a.roll2) o.w = randi(a.roll2[0], a.roll2[1]); return o; };
 function mkGear(id, rarity='normal', lvl=1){
   const d = ITEMS[id], it = {id, rarity, affixes:[]};
-  if(d.unique){ it.rarity = d.legend ? 'legendary' : 'unique'; it.affixes = (d.fixed || []).map(a => ({...a})); }
+  if(d.unique){ it.rarity = 'legendary';   // los únicos de jefe son legendarios (solo cambia quién los suelta)
+    it.affixes = (d.fixed || []).map(a => ({...a})); }
   else if(rarity !== 'normal'){
     const n = rarity==='magic' ? randi(1,2) : randi(3,4);
     const pool = shuffle(affixPool(it, d, lvl).filter(k => Math.random() < (ITEM_AFFIX[k].chance ?? 1)));
@@ -113,7 +115,8 @@ function mkGear(id, rarity='normal', lvl=1){
   return it;
 }
 // instancia de objeto
-function mkItem(id, n=1, lvl=1, bonus=0){
+function mkItem(id, n=1, lvl, bonus=0){
+  if(!lvl) lvl = (typeof G !== 'undefined' && G.sc && G.sc.lvl) || 1;   // sin nivel explícito, el de la expedición en curso
   if(id==='treasure') id = rollTreasure();   // los tesoros especiales de orcos y elfos salen en sus zonas (treasure.js)
   const d = ITEMS[id];
   if(d.gear) return mkGear(id, d.unique ? 'unique' : rollRarity(lvl, bonus), lvl);
@@ -136,10 +139,13 @@ function mkPetItem(petId, homed=false, shiny=false){ const it = {id:'pet', pet:p
 const weaponDmg = it => { const d = ITEMS[it.id] && ITEMS[it.id].dmg; if(!d) return null; const s = it.sharp || 0; return [d[0] + s, d[1] + s]; };
 function itemName(it){ return it.id==='pet' ? (it.shiny ? '★ ' : '') + PETS[it.pet].name : (it.name || ITEMS[it.id].name); }
 const RAR_COL = {normal:'#f4f0e8', magic:'#6aa8ff', rare:'#f2d14b', pink:'#ff8ac8'};
+// consumible: todo lo que no es equipo, gema, tesoro, llave, objeto de misión, legendario ni talismán (incluye la munición)
+const isConsumable = d => !!d && !d.gear && (!d.slot || d.ammo) && !d.gem && !d.treasure && !d.key && !d.quest && !d.legend && !d.unique && d.slot !== 'talisman';
 function itemColor(it){
   if(it.id==='pet') return RARITY[PETS[it.pet].rarity].col;
   if(ITEMS[it.id].treasure) return '#e8c070';
-  if(ITEMS[it.id].rar) return RAR_COL[ITEMS[it.id].rar];   // consumibles y munición por color (blanco, azul, amarillo, rosa)
+  if(ITEMS[it.id].quest) return RAR_COL.quest;
+  if(isConsumable(ITEMS[it.id])) return RAR_COL.pink;   // todos los consumibles son rosas (ya no hay colores por tipo)
   if(it.rarity && it.rarity!=='normal') return RARITY[it.rarity].col;
   return '#e8e2d4';
 }
@@ -352,7 +358,7 @@ const PET_AFFIX = {
   rastreador:  {name:'Rastreador', desc:'Detecta las jaulas desde mucho más lejos (también en el mapa)'},
   olfato:      {name:'Olfato',       desc:'Marca los cofres cercanos'},
   buscatesoros:{name:'Buscatesoros', desc:'+15 % de oro y +5 % de probabilidad de tesoro'},
-  avariciosa:  {name:'Avariciosa',   desc:'Recoge sola las monedas y los consumibles rosas cercanos'},
+  avariciosa:  {name:'Avariciosa',   desc:'Recoge sola las monedas cercanas'},
   luciernaga:  {name:'Luciérnaga',   desc:'Desprende luz y la linterna gasta un 20 % menos'},
   valiente:    {name:'Valiente',     desc:'+40 % de daño contra mágicos y raros'},
   espinosa:    {name:'Espinosa',     desc:'Devuelve el 20 % del daño que recibe'},
@@ -658,24 +664,7 @@ const petSlots = lvl => 1 + (lvl>=10?1:0) + (lvl>=20?1:0);
 const CAGE_CHANCE = {normal:.8, magic:.5, rare:.25, legendary:.08};
 
 // ---------- Gonzalo el profesor: árbol de pasivas (5 ramas × 20 puntos) ----------
-const SKILLS = {
-  agr: {name:'Agresividad', col:'#ff7a5a', desc:'Daño cuerpo a cuerpo y en área',
-        per:'+2 % daño cuerpo a cuerpo · +1 % alcance de los golpes',
-        miles:{5:'+5 % de crítico', 10:'Los golpes cuerpo a cuerpo barren un 15 % más de arco', 15:'+5 % de crítico', 20:'Los críticos cuerpo a cuerpo provocan una onda expansiva'}},
-  agi: {name:'Agilidad', col:'#7ae0a0', desc:'Movimiento, esquiva y proyectiles',
-        per:'+1 % velocidad de movimiento · +1 % de esquivar golpes · +2 % daño de proyectiles',
-        miles:{5:'La esquiva (espacio) recarga un 20 % más rápido', 10:'+5 % de esquivar golpes', 15:'La esquiva recarga un 20 % más rápido', 20:'Tus flechas y piedras atraviesan a un enemigo más'}},
-  car: {name:'Cardio', col:'#c8f070', desc:'Estamina',
-        per:'+3 de estamina máxima · +2 % regeneración de estamina',
-        miles:{5:'Correr gasta un 15 % menos', 10:'Atacar gasta un 15 % menos', 15:'Cubrirse gasta un 25 % menos', 20:'Todas las acciones gastan un 10 % menos de estamina'}},
-  agu: {name:'Aguante', col:'#ff9aa8', desc:'Vida, regeneración, armadura y mochila',
-        per:'+4 de vida máxima · +0,1 de vida por segundo · +0,5 de armadura',
-        miles:{4:'+1 hueco de mochila', 8:'+1 hueco de mochila', 12:'+1 hueco de mochila', 16:'+1 hueco de mochila', 20:'+1 hueco de mochila'}},
-  exp: {name:'Explorador', col:'#ffd870', desc:'Cofres, jaulas, botín y aceite',
-        per:'+3 % rapidez al abrir cofres y jaulas · +2 % de botín · −1,5 % de consumo de aceite',
-        miles:{5:'Ves los cofres cercanos marcados', 10:'+10 % de oro', 15:'+10 % de oro', 20:'Los cofres raros dan un objeto extra'}},
-};
-const SKILL_MAX = 20;
+// (SKILLS, SKILL_MAX y el árbol de Gonzalo están ahora en js/tree.js)
 
 // ---------- equipo de la Expedición 3 y objetos únicos de la Condesa fantasma ----------
 RARITY.unique = {name:'Única', col:'#ff8a3a'};
@@ -723,40 +712,4 @@ const UNIQUES = ['countessveil','spectralclaw','nightaegis','countesslament'];
 const UNIQUE_CHANCE = .3;   // probabilidad de que la Condesa suelte uno de sus objetos únicos
 // Trapis no vende únicos, pero sí los compra (valor fijo)
 
-// ---------- árbol de pasivas estilo PoE: 5 ramas de 20 nodos que se van abriendo ----------
-// cada nodo cuenta como 1 punto de su rama; los notables dan las recompensas especiales
-const NOTABLE_NAMES = {
-  agr:{5:'Instinto asesino', 10:'Barrido', 15:'Ojo del verdugo', 20:'Onda sísmica'},
-  agi:{5:'Paso rápido', 10:'Reflejos felinos', 15:'Viento', 20:'Disparo perforante'},
-  car:{5:'Zancada larga', 10:'Ritmo de combate', 15:'Guardia firme', 20:'No fumador'},
-  agu:{4:'Mochila reforzada I', 8:'Mochila reforzada II', 12:'Mochila reforzada III', 16:'Mochila reforzada IV', 20:'Mochila reforzada V'},
-  exp:{5:'Ojo de buscador', 10:'Olfato para el oro', 15:'Codicia', 20:'Cerrajero maestro'},
-};
-// posición de cada notable: [nivel 1-10, carril 0/1]
-const NOTABLE_POS = {
-  agr:{5:[3,0], 10:[5,1], 15:[8,0], 20:[10,1]}, agi:{5:[3,1], 10:[5,0], 15:[8,1], 20:[10,0]},
-  car:{5:[3,0], 10:[5,1], 15:[8,0], 20:[10,1]}, agu:{4:[2,1], 8:[4,0], 12:[6,1], 16:[8,0], 20:[10,1]},
-  exp:{5:[3,1], 10:[5,0], 15:[8,1], 20:[10,0]},
-};
-const TREE = {nodes:[], byId:{}, adj:{}};
-(function buildTree(){
-  const add = n => { TREE.nodes.push(n); TREE.byId[n.id] = n; TREE.adj[n.id] = []; };
-  const link = (a,c) => { TREE.adj[a].push(c); TREE.adj[c].push(a); };
-  add({id:'start', b:null, x:0, y:0, start:true, name:'Inicio'});
-  const keys = Object.keys(SKILLS);
-  keys.forEach((k, bi) => {
-    const th = -Math.PI/2 + bi*2*Math.PI/keys.length;
-    for(let L=1; L<=10; L++) for(let lane=0; lane<2; lane++){
-      const r = 62 + L*38, ang = th + (lane ? 1 : -1)*(.24 - L*.009);
-      add({id:k+L+'_'+lane, b:k, L, lane, x:Math.cos(ang)*r, y:Math.sin(ang)*r});
-    }
-    for(const [m,[L,lane]] of Object.entries(NOTABLE_POS[k])){ const n = TREE.byId[k+L+'_'+lane]; n.notable = +m; n.name = NOTABLE_NAMES[k][m]; }
-    link('start', k+'1_0'); link('start', k+'1_1');
-    for(let L=1; L<=10; L++){
-      if(L%2===1) link(k+L+'_0', k+L+'_1');                 // travesaños: permiten cambiar de carril
-      if(L<10){ link(k+L+'_0', k+(L+1)+'_0'); link(k+L+'_1', k+(L+1)+'_1'); }
-    }
-  });
-  // puentes entre ramas vecinas
-  keys.forEach((k, bi) => { const k2 = keys[(bi+1)%keys.length]; for(const L of [4, 8]) link(k+L+'_1', k2+L+'_0'); });
-})();
+

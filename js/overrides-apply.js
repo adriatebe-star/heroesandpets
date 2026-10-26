@@ -4,7 +4,7 @@
 // =====================================================================
 const ORIG = {};   // copia de los datos originales (el editor la usa para «restaurar valor original»)
 (function(){
-  const roots = {PETS, ITEMS, MONSTERS, ITEM_AFFIX, PET_AFFIX, MON_AFFIX, EXPEDITIONS, SHOP, LOOT};
+  const roots = {PETS, ITEMS, MONSTERS, ITEM_AFFIX, PET_AFFIX, MON_AFFIX, EXPEDITIONS, HIDDEN_EXPEDITIONS, SHOP, LOOT, TREE_DEF};
   const clone = o => Array.isArray(o) ? o.map(clone) : (o && typeof o === 'object') ? Object.fromEntries(Object.entries(o).map(([k, v]) => [k, clone(v)])) : o;   // las funciones se copian por referencia
   for(const k in roots) ORIG[k] = clone(roots[k]);
   const O = (typeof OVERRIDES !== 'undefined' && OVERRIDES) || {}, na = O.newAffixes || {};
@@ -19,6 +19,7 @@ const ORIG = {};   // copia de los datos originales (el editor la usa para «res
     for(let i = 1; i < p.length - 1 && o != null; i++) o = o[p[i]];
     if(o != null) o[p[p.length - 1]] = val;
   }
+  if(typeof rebuildTree === 'function') rebuildTree();   // el árbol de Gonzalo sale de TREE_DEF (editable)
   for(const k in ITEM_AFFIX){ const a = ITEM_AFFIX[k]; if(typeof a.descTpl === 'string' && !(a.desc && a.custom)) a.desc = tplFn(a.descTpl); }
   for(const id in PETS) PETS[id].affixes = [...new Set(PETS[id].affixes)];   // los afijos no se repiten
   // la vida de las mascotas sale de su rareza salvo que se haya fijado a mano

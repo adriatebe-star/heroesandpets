@@ -19,7 +19,9 @@ function gearRefs(){
   G.inv.bag.forEach((it, i) => { if(it && it.id !== 'pet' && ITEMS[it.id].gear) out.push({ref:{area:'bag', key:i}, it}); });
   return out;
 }
-const repairCost = it => Math.max(1, Math.ceil((maxDur(it) - it.dur) * .35 * (1 + (it.affixes || []).length*.25) * (it.rarity === 'unique' ? 1.6 : 1)));
+const repairCost = it => Math.max(1, Math.ceil((maxDur(it) - it.dur) * .35 * (1 + (it.affixes || []).length*.25) * ((ITEMS[it.id].unique && !ITEMS[it.id].legend) ? 1.6 : 1)));
+const isLegend = it => !!(ITEMS[it.id].legend || it.rarity === 'legendary');
+const breakChance = it => isLegend(it) ? .125 : .25;   // los legendarios se rompen la mitad de veces
 const isUnique = it => !!(ITEMS[it.id].unique || it.rarity === 'unique');
 const forgeCost = (it, sharp) => (sharp ? SHARPEN_COST : FORGE_COST) * (isUnique(it) ? 2 : 1);   // los únicos cuestan el doble
 const canForge = it => { const d = ITEMS[it.id]; return !!d.gear && !d.stack && FORGE_SLOTS.includes(d.slot) && (it.affixes || []).length < MAX_AFFIX && affixPool(it, d, Math.max(1, G.save.maxExp||1)).length > 0; };
@@ -68,11 +70,11 @@ UI.doSharpen = function(sel){
   const it = sel.it, cost = forgeCost(it, true);
   if(G.save.wallet < cost){ toast('No tienes suficiente oro', 1.6); return; }
   G.save.wallet -= cost; this.smHit = true; sfx('stoneHit');
-  const roll = Math.random(), name = itemName(it);
-  if(roll < .25){
+  const roll = Math.random(), name = itemName(it), brk = breakChance(it);
+  if(roll < brk){
     setRef(sel.ref, null); this.smItem = null; sfx('breakItem'); G.shake = Math.max(G.shake, 4);
     this.smMsg = {t:'bad', text:`¡${name} se ha roto en el yunque!`};
-  } else if(roll < .5){
+  } else if(roll < brk + .25){
     this.smMsg = {t:'none', text:'El metal no ha cambiado... no ha pasado nada.'};
   } else {
     it.sharp = (it.sharp || 0) + 1; sfx('levelup'); burst(P.x, P.y-20, 14, ['#3ad8ff', '#a8f0ff', '#ffffff'], [30,100], [.4,.8], -60);
@@ -106,7 +108,7 @@ UI.renderForge = function(body){
   body.innerHTML = `<div class="smforge"><div><div class="smmode"><button class="${sharp ? '' : 'on'}" data-m="forge">Forjar afijos</button><button class="${sharp ? 'on' : ''}" data-m="sharp">Afilar (daño)</button></div><div class="smodds">${sharp ? 'Elige un arma de tu equipo o mochila para afilarla (solo armas; los únicos cuestan el doble):' : 'Elige un arma o una armadura de tu equipo (los objetos con 8 afijos no se pueden mejorar; los únicos cuestan el doble):'}</div><div class="smgrid" id="smGrid"></div></div>
     <div class="smanvil"><img class="anvilimg" id="anvilImg" src="${ICONS.anvil.toDataURL()}">
       <div class="smitem ${sel ? 'has' : ''}" id="smItemBox">${sel ? '' : 'Haz clic en un objeto de la izquierda para ponerlo sobre el yunque'}</div>
-      <div class="smodds">Cada tirada cuesta <b style="color:#ffe08a">${cost} de oro</b>:<br>${sharp ? '25 % se rompe · 25 % no pasa nada · 50 % sube +1 el daño base' : '25 % se rompe · 25 % no pasa nada · 50 % se mejora (+1 afijo)'}</div>
+      <div class="smodds">Cada tirada cuesta <b style="color:#ffe08a">${cost} de oro</b>:<br>${sel && isLegend(sel.it) ? (sharp ? '12,5 % se rompe · 25 % no pasa nada · 62,5 % sube +1 el daño base' : '12,5 % se rompe · 25 % no pasa nada · 62,5 % se mejora (+1 afijo)') : (sharp ? '25 % se rompe · 25 % no pasa nada · 50 % sube +1 el daño base' : '25 % se rompe · 25 % no pasa nada · 50 % se mejora (+1 afijo)')}</div>
       <div class="smmsg ${msg ? msg.t : ''}" id="smMsg">${msg ? msg.text : ''}</div>
       <button id="smForge" ${sel && G.save.wallet >= cost ? '' : 'disabled'}>${sharp ? 'Afilar' : 'Forjar'} · ${cost} oro</button></div></div>`;
   const grid = $('smGrid');
@@ -131,11 +133,11 @@ UI.doForge = function(){
   const cost = forgeCost(sel.it);
   if(G.save.wallet < cost){ toast('No tienes suficiente oro', 1.6); return; }
   G.save.wallet -= cost; this.smHit = true; sfx('stoneHit');
-  const roll = Math.random(), it = sel.it, name = itemName(it);
-  if(roll < .25){
+  const roll = Math.random(), it = sel.it, name = itemName(it), brk = breakChance(it);
+  if(roll < brk){
     setRef(sel.ref, null); this.smItem = null; sfx('breakItem'); G.shake = Math.max(G.shake, 4);
     this.smMsg = {t:'bad', text:`¡${name} se ha roto en el yunque!`};
-  } else if(roll < .5){
+  } else if(roll < brk + .25){
     this.smMsg = {t:'none', text:'El metal no ha cambiado... no ha pasado nada.'};
   } else {
     const added = forgeUpgrade(it); sfx('levelup'); burst(P.x, P.y-20, 14, ['#ff5a1a','#ffb040','#fff0a0'], [30,100], [.4,.8], -60);

@@ -22,6 +22,11 @@ const PBRANCH = {
         notes:{1:{name:'Lazo profundo', fx:{petAll:6}, txt:'+6 % a todas las estadísticas de las mascotas'},
                2:{name:'Alma gemela', fx:{pjRegen:.4, pjSreg:10}, txt:'+0,4 de vida por segundo y +10 % de regeneración de estamina del héroe'}}},
 };
+// nodo final de cada rama (el 3.er notable, al final del camino)
+PBRANCH.find.notes[3] = {name:'Instinto del domador', fx:{findPct:15, cageSpd:15}, txt:'+15 % de probabilidad de mascotas mágicas, raras y legendarias y +15 % de velocidad al abrir jaulas'};
+PBRANCH.rage.notes[3] = {name:'Furia salvaje', fx:{petDmg:15, petAspd:10, petCrit:.05}, txt:'+15 % de daño, +10 % de velocidad de ataque y +5 % de crítico de las mascotas'};
+PBRANCH.care.notes[3] = {name:'Espíritu protector', fx:{petHp:15, petArmor:10, petRegen:.5}, txt:'+15 % de vida máxima, +10 % de armadura y +0,5 de vida por segundo de las mascotas'};
+PBRANCH.comm.notes[3] = {name:'Unión eterna', fx:{petAll:10, pjRegen:.5, pjSreg:10}, txt:'+10 % a todas las estadísticas de las mascotas, +0,5 de vida por segundo y +10 % de regeneración de estamina del héroe'};
 const PSTAT_NAMES = {findPct:['Prob. de mascotas especiales', '%'], cageSpd:['Velocidad al abrir jaulas', '%'], petDmg:['Daño de las mascotas', '%'], petAspd:['Velocidad de ataque', '%'],
   aggro:['Alcance de agresividad', '%'], petCrit:['Crítico de las mascotas', 'crit'], petHp:['Vida máxima de las mascotas', '%'], petRegen:['Regeneración de las mascotas', '/s'],
   petArmor:['Armadura de las mascotas', '%'], petAll:['Estadísticas de las mascotas', '%'], pjRegen:['Regeneración de vida del héroe', '/s'], pjSreg:['Regeneración de estamina del héroe', '%']};
@@ -33,18 +38,22 @@ const PTREE = {nodes:[], byId:{}, adj:{}};
   const keys = Object.keys(PBRANCH);
   keys.forEach((k, bi) => {
     const B = PBRANCH[k], th = -Math.PI/2 + bi*Math.PI/2;
-    for(let L = 1; L <= 5; L++) for(let lane = 0; lane < 2; lane++){
+    for(let L = 1; L <= 7; L++) for(let lane = 0; lane < 2; lane++){
       const r = 60 + L*52, ang = th + (lane ? 1 : -1)*(.34 - L*.04);
       const n = {id:k+L+'_'+lane, b:k, L, lane, x:Math.cos(ang)*r, y:Math.sin(ang)*r, fx:Object.assign({}, B.node)};
       const note = L===3 && lane===0 ? 1 : L===5 && lane===1 ? 2 : 0;
       if(note){ n.notable = note; n.name = B.notes[note].name; n.txt = B.notes[note].txt; for(const s in B.notes[note].fx) n.fx[s] = (n.fx[s]||0) + B.notes[note].fx[s]; }
       add(n);
     }
+    // nodo final (nuevo): cierra la rama, enlazado a los dos lados del nivel 7
+    { const th2 = th, r = 60 + 8*52, n = {id:k+'8_f', b:k, L:8, lane:-1, x:Math.cos(th2)*r, y:Math.sin(th2)*r, fx:Object.assign({}, B.node), final:true, notable:3, name:B.notes[3].name, txt:B.notes[3].txt};
+      for(const s in B.notes[3].fx) n.fx[s] = (n.fx[s]||0) + B.notes[3].fx[s]; add(n); }
     link('start', k+'1_0'); link('start', k+'1_1');
-    for(let L = 1; L <= 5; L++){
+    for(let L = 1; L <= 7; L++){
       if(L%2 === 1) link(k+L+'_0', k+L+'_1');
-      if(L < 5){ link(k+L+'_0', k+(L+1)+'_0'); link(k+L+'_1', k+(L+1)+'_1'); }
+      if(L < 7){ link(k+L+'_0', k+(L+1)+'_0'); link(k+L+'_1', k+(L+1)+'_1'); }
     }
+    link(k+'7_0', k+'8_f'); link(k+'7_1', k+'8_f');
   });
   keys.forEach((k, bi) => link(k+'3_1', keys[(bi+1)%keys.length]+'3_0'));   // puentes entre ramas vecinas
 })();
@@ -100,11 +109,11 @@ UI.reviveAt = function(i){
 };
 
 // --- adiestrador ---
-UI.ptPos = n => [350 + n.x*.78, 350 + n.y*.78];
+UI.ptPos = n => [380 + n.x*.7, 380 + n.y*.7];
 UI.ptState = n => { const t = G.save.petTree; return t.includes(n.id) ? 'on' : PTREE.adj[n.id].some(id => t.includes(id)) ? 'open' : 'locked'; };
 UI.renderTrain = function(body){
   const s = G.save, pts = petPoints(), spent = s.petTree.length - 1;
-  body.innerHTML = `<div id="ptWrap"><canvas id="ptCanvas" width="700" height="700"></canvas><div id="ptInfo"></div></div>`;
+  body.innerHTML = `<div id="ptWrap"><canvas id="ptCanvas" width="760" height="760"></canvas><div id="ptInfo"></div></div>`;
   const c = $('ptCanvas');
   const nodeAt = e => {
     const r = c.getBoundingClientRect(), k = c.width/r.width, mx = (e.clientX - r.left)*k, my = (e.clientY - r.top)*k;
@@ -119,7 +128,7 @@ UI.renderTrain = function(body){
     if(!n){ t.classList.add('hidden'); c.style.cursor = 'default'; return; }
     const B = n.b && PBRANCH[n.b];
     let h = n.start ? '<b style="color:#ffe08a">Inicio</b><div class="sub">Tu punto de partida</div>'
-      : n.notable ? `<b style="color:${B.col}">${n.name}</b><div class="sub">Notable de ${B.name}</div><div class="aff">◆ ${n.txt}</div><div class="desc">Además: ${B.per}</div>`
+      : n.notable ? `<b style="color:${B.col}">${n.name}</b><div class="sub">${n.final ? 'Nodo final' : 'Notable'} de ${B.name}</div><div class="aff">◆ ${n.txt}</div><div class="desc">Además: ${B.per}</div>`
       : `<b style="color:${B.col}">${B.name}</b><div class="desc">${B.per}</div>`;
     const st = this.ptState(n);
     h += `<div class="sub">${st === 'on' ? 'Aprendido' : st === 'open' ? (petPoints() > 0 ? 'Haz clic para aprenderlo (1 punto)' : 'Necesitas un punto') : 'Bloqueado: aprende un nodo conectado'}</div>`;
@@ -137,7 +146,7 @@ UI.renderTrain = function(body){
   const left = 5 - ((s.petsFreed || 0) % 5), cost = spent*20;
   const rows = Object.entries(PBRANCH).map(([k, B]) => {
     const got = s.petTree.filter(id => PTREE.byId[id].b === k).length;
-    return `<div class="trow"><b style="color:${B.col}">${B.name}</b> <span>${got} / 10</span><div class="tper">${B.per}</div></div>`;
+    return `<div class="trow"><b style="color:${B.col}">${B.name}</b> <span>${got} / 15</span><div class="tper">${B.per}</div></div>`;
   }).join('');
   const tot = Object.entries(G.pt).filter(([k, v]) => v && PSTAT_NAMES[k] && PSTAT_NAMES[k][1] !== undefined).map(([k, v]) => {
     const [nm, u] = PSTAT_NAMES[k]; const val = k==='petCrit' ? Math.round(v*100) : (Math.round(v*100)/100); return `<div><span>${nm}</span><b>+${String(val).replace('.', ',')}${u==='/s' ? ' /s' : ' %'}</b></div>`;
@@ -156,11 +165,11 @@ UI.drawPetTree = function(){
   const c = $('ptCanvas'); if(!c) return;
   const g = c.getContext('2d'), s = G.save, tset = new Set(s.petTree), pts = petPoints();
   g.clearRect(0, 0, c.width, c.height);
-  const bg = g.createRadialGradient(350, 350, 30, 350, 350, 350); bg.addColorStop(0, '#221a24'); bg.addColorStop(1, '#0c0a0e');
-  g.fillStyle = bg; g.beginPath(); g.arc(350, 350, 346, 0, Math.PI*2); g.fill();
+  const bg = g.createRadialGradient(380, 380, 30, 380, 380, 380); bg.addColorStop(0, '#221a24'); bg.addColorStop(1, '#0c0a0e');
+  g.fillStyle = bg; g.beginPath(); g.arc(380, 380, 376, 0, Math.PI*2); g.fill();
   Object.keys(PBRANCH).forEach((k, bi) => {
-    const th = -Math.PI/2 + bi*Math.PI/2, x = 350 + Math.cos(th)*325, y = 350 + Math.sin(th)*325;
-    g.font = `13px ${FONT}`; g.textAlign = 'center'; g.fillStyle = PBRANCH[k].col; g.fillText(PBRANCH[k].name, clamp(x, 60, 640), clamp(y + 5, 18, 690));
+    const th = -Math.PI/2 + bi*Math.PI/2, x = 380 + Math.cos(th)*362, y = 380 + Math.sin(th)*362;
+    g.font = `13px ${FONT}`; g.textAlign = 'center'; g.fillStyle = PBRANCH[k].col; g.fillText(PBRANCH[k].name, clamp(x, 70, 690), clamp(y + 5 - (Math.abs(Math.sin(th)) < .5 ? 26 : 0), 18, 750));
   });
   for(const n of PTREE.nodes) for(const id of PTREE.adj[n.id]){
     if(id < n.id) continue;
@@ -171,12 +180,13 @@ UI.drawPetTree = function(){
   const pulse = (Math.sin(performance.now()/250) + 1)/2;
   for(const n of PTREE.nodes){
     const [x, y] = this.ptPos(n), st = n.start ? 'on' : this.ptState(n), col = n.b ? PBRANCH[n.b].col : '#ffe08a';
-    const r = n.start ? 13 : n.notable ? 11 : 7, hov = this.ptHover === n;
+    const r = n.start ? 13 : n.final ? 15 : n.notable ? 11 : 7, hov = this.ptHover === n;
+    if(n.final && st !== 'locked'){ g.shadowColor = '#ffd84a'; g.shadowBlur = 14; }
     g.beginPath();
     if(n.notable){ g.moveTo(x, y-r); g.lineTo(x+r, y); g.lineTo(x, y+r); g.lineTo(x-r, y); g.closePath(); } else g.arc(x, y, r, 0, Math.PI*2);
-    g.fillStyle = st === 'on' ? col : st === 'open' ? '#2a2228' : '#141016'; g.fill();
+    g.fillStyle = st === 'on' ? col : st === 'open' ? '#2a2228' : '#141016'; g.fill(); g.shadowBlur = 0;
     g.lineWidth = hov ? 3.5 : 2;
-    g.strokeStyle = st === 'on' ? '#fff3d0' : st === 'open' ? (pts > 0 ? `rgba(255,224,138,${.5 + pulse*.5})` : '#8a7a5a') : '#3a3238'; g.stroke();
+    g.strokeStyle = st === 'on' ? (n.final ? '#ffd84a' : '#fff3d0') : st === 'open' ? (pts > 0 ? `rgba(255,224,138,${.5 + pulse*.5})` : '#8a7a5a') : '#3a3238'; g.stroke();
   }
   if(this.trainerOpen && this.trainerTab === 'train' && pts > 0) requestAnimationFrame(() => { if(this.trainerOpen && this.trainerTab === 'train') this.drawPetTree(); });
 };
@@ -225,3 +235,10 @@ UI.showColPop = function(el, id){
   let x = r.left + r.width/2 - pw/2, y = r.bottom - 2; if(y + ph > innerHeight - 6) y = r.top - ph + 2;
   pop.style.left = Math.max(6, Math.min(innerWidth - pw - 6, x)) + 'px'; pop.style.top = Math.max(6, y) + 'px';
 };
+
+Object.assign(LANG_EN, {'Instinto del domador':'Tamer\'s instinct', 'Furia salvaje':'Wild fury', 'Espíritu protector':'Guardian spirit', 'Unión eterna':'Eternal bond', 'Nodo final':'Final node',
+  '+15 % de probabilidad de mascotas mágicas, raras y legendarias y +15 % de velocidad al abrir jaulas':'+15% chance of magic, rare and legendary pets and +15% cage opening speed',
+  '+15 % de daño, +10 % de velocidad de ataque y +5 % de crítico de las mascotas':'+15% damage, +10% attack speed and +5% critical chance for pets',
+  '+15 % de vida máxima, +10 % de armadura y +0,5 de vida por segundo de las mascotas':'+15% maximum health, +10% armor and +0.5 health per second for pets',
+  '+10 % a todas las estadísticas de las mascotas, +0,5 de vida por segundo y +10 % de regeneración de estamina del héroe':'+10% to all pet stats, +0.5 health per second and +10% stamina regeneration for the hero'});
+LANG.load(LANG_EN);

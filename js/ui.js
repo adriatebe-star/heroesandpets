@@ -425,7 +425,7 @@ const UI = {
       st.gold && ['Oro encontrado', `+${st.gold} %`], st.oil && ['Consumo de aceite', `−${st.oil} %`],
       st.petdmg && ['Daño de mascotas', `+${st.petdmg} %`], st.thorns && ['Espinas', st.thorns],
       st.eleRes && ['Resist. elemental', `${st.eleRes} %`], st.poisRes && ['Resist. veneno', `${st.poisRes} %`], st.bleedRes && ['Resist. sangrado', `${st.bleedRes} %`], st.hpreg && ['Reg. de vida (equipo)', `${st.hpreg}/s`],
-      SK('agi') && ['Esquivar golpes', `${SK('agi') + (MS('agi',10) ? 5 : 0)} %`], SK('agu') && ['Reg. de vida', `${(SK('agu')*.1).toFixed(1)}/s`],
+      (TT('es') || MS('agi',10)) && ['Esquivar golpes', `${Math.round((TT('es') + (MS('agi',10) ? 5 : 0))*10)/10} %`], TT('hr') && ['Reg. de vida', `${TT('hr').toFixed(1)}/s`],
       (G.save.skillPts||0) && ['Puntos de Gonzalo', `${G.save.skillPts} sin gastar`],
     ].filter(Boolean);
     $('charStats').innerHTML = rows.map(([k,v]) => `<div><span>${k}</span><b>${v}</b></div>`).join('');
@@ -808,7 +808,7 @@ function drawMapView(x, y, size, view, big, layer){
     else ctx.fillRect(px-r, py-r, r*2, r*2);
   };
   for(const c of sc.chests) if(!c.open && mmSeen(c.x, c.y)) dot(c.x, c.y, c.legend ? '#ff9a3c' : c.rare ? '#c8a0ff' : '#e8c070', (c.legend ? 5.5 : 3.5)*ms);
-  for(const c of sc.cages) if(!c.open && (mmSeen(c.x, c.y) || (hasPetAffix('rastreador') && Math.hypot(c.x-P.x, c.y-P.y) < 640))) dot(c.x, c.y, '#7ae09a', 5*ms, 'diamond');
+  for(const c of sc.cages) if(!c.open && (mmSeen(c.x, c.y) || ((hasPetAffix('rastreador') || MS('exp',25)) && Math.hypot(c.x-P.x, c.y-P.y) < 640))) dot(c.x, c.y, '#7ae09a', 5*ms, 'diamond');
   for(const n of sc.npcs) dot(n.x, n.y, '#9ad0ff', 3*ms);
   if(sc.stash) dot(sc.stash.x, sc.stash.y, '#c8a0ff', 3*ms);
   const pulse = 1 + Math.sin(G.t*4)*.25;
@@ -904,7 +904,7 @@ function drawWorldOverlay(){
     ctx.fillStyle = c.legend ? '#ff9a3c' : c.rare ? '#c8a0ff' : '#ffe08a';
     ctx.beginPath(); ctx.moveTo(sx, sy+bob+8); ctx.lineTo(sx-6, sy+bob); ctx.lineTo(sx+6, sy+bob); ctx.fill();
   }
-  if(hasPetAffix('rastreador')) for(const c of G.sc.cages){
+  if(hasPetAffix('rastreador') || MS('exp',25)) for(const c of G.sc.cages){
     if(c.open || Math.hypot(c.x-P.x, c.y-P.y) > 640) continue;
     const [sx, sy] = toScreen(c.x, c.y-30), bob = Math.sin(G.t*4)*3;
     ctx.fillStyle = '#7ae09a'; ctx.beginPath(); ctx.moveTo(sx, sy+bob+9); ctx.lineTo(sx-7, sy+bob); ctx.lineTo(sx+7, sy+bob); ctx.fill();
@@ -946,8 +946,9 @@ function drawWorldOverlay(){
   for(const o of labs){
     const l = o.l, [rx, ry, rw, rh] = l.labelRect;
     ctx.fillStyle = hover===l ? 'rgba(60,40,20,.9)' : 'rgba(0,0,0,.65)'; ctx.fillRect(rx, ry, rw, rh);
-    if(hover===l){ ctx.strokeStyle = itemColor(l.item); ctx.lineWidth = 2; ctx.strokeRect(rx, ry, rw, rh); }
-    ctx.fillStyle = itemColor(l.item); ctx.fillText(o.t, o.sx, o.ty);
+    const lc = lootColor(l);   // color del tipo de objeto (normal, mágico, raro, legendario, consumible, misión, llave, tesoro…)
+    if(hover===l){ ctx.strokeStyle = lc; ctx.lineWidth = 2; ctx.strokeRect(rx, ry, rw, rh); }
+    ctx.fillStyle = lc; ctx.fillText(o.t, o.sx, o.ty);
   }
   // vista previa del objeto bajo el cursor
   if(hover && hover.item){
@@ -1003,7 +1004,7 @@ const ITEM_CATS = ['Legendarios','Armas','Armaduras','Farolillos','Munición','C
 function itemCat(it){
   if(it.id==='pet') return 'Mascotas';
   const d = ITEMS[it.id];
-  if(it.rarity === 'legendary' || d.legend) return 'Legendarios';
+  if(it.rarity === 'legendary' || it.rarity === 'unique' || d.legend || d.unique) return 'Legendarios';   // los únicos de jefe también son legendarios
   if(d.gem) return 'Piedras preciosas';
   if(d.slot==='talisman') return 'Talismanes';
   if(it.id==='minekey' || d.key) return 'Llaves';
@@ -1147,7 +1148,7 @@ UI.treeHover = null;
 UI.renderSkills = function(){
   const s = G.save, box = $('skillCols');
   if(!$('treeCanvas')){
-    box.innerHTML = '<canvas id="treeCanvas" width="920" height="920"></canvas><div id="treeInfo"></div>';
+    box.innerHTML = '<canvas id="treeCanvas" width="1080" height="1080"></canvas><div id="treeInfo"></div>';
     const c = $('treeCanvas');
     const nodeAt = e => {
       const r = c.getBoundingClientRect(), k = c.width / r.width;
@@ -1161,10 +1162,7 @@ UI.renderSkills = function(){
       if(n !== this.treeHover){ this.treeHover = n; this.drawTree(); }
       const t = $('tip');
       if(!n){ t.classList.add('hidden'); c.style.cursor = 'default'; return; }
-      const d = n.b && SKILLS[n.b];
-      let h = n.start ? '<b style="color:#ffe08a">Inicio</b><div class="sub">Tu punto de partida</div>'
-        : n.notable ? `<b style="color:${d.col}">${n.name}</b><div class="sub">Notable de ${d.name}</div><div class="aff">◆ ${d.miles[n.notable]}</div><div class="desc">Además: ${d.per}</div>`
-        : `<b style="color:${d.col}">${d.name}</b><div class="desc">${d.per}</div>`;
+      let h = n.start ? '<b style="color:#ffe08a">Inicio</b><div class="sub">Tu punto de partida</div>' : treeNodeTip(n);
       const st = this.nodeState(n);
       h += `<div class="sub">${st==='on' ? 'Aprendido' : st==='open' ? (s.skillPts ? 'Haz clic para aprenderlo (1 punto)' : 'Necesitas un punto') : 'Bloqueado: aprende un nodo conectado'}</div>`;
       t.innerHTML = h; t.classList.remove('hidden'); this.moveTip(e);
@@ -1197,7 +1195,7 @@ UI.renderSkills = function(){
   $('skillClose').onclick = () => this.closeSkills();
   this.drawTree();
 };
-UI.treePos = function(n){ return [460 + n.x*.92, 460 + n.y*.92]; };
+UI.treePos = function(n){ return [540 + n.x*.8, 540 + n.y*.8]; };
 UI.nodeState = function(n){
   const t = G.save.tree;
   if(t.includes(n.id)) return 'on';
@@ -1205,15 +1203,17 @@ UI.nodeState = function(n){
 };
 UI.drawTree = function(){
   const c = $('treeCanvas'); if(!c) return;
-  const g = c.getContext('2d'), s = G.save, tset = new Set(s.tree);
+  const g = c.getContext('2d'), s = G.save, tset = new Set(s.tree), C0 = 540;
   g.clearRect(0, 0, c.width, c.height);
-  const bg = g.createRadialGradient(460, 460, 40, 460, 460, 460); bg.addColorStop(0, '#221a24'); bg.addColorStop(1, '#0c0a0e');
-  g.fillStyle = bg; g.beginPath(); g.arc(460, 460, 458, 0, Math.PI*2); g.fill();
+  const bg = g.createRadialGradient(C0, C0, 40, C0, C0, C0); bg.addColorStop(0, '#221a24'); bg.addColorStop(1, '#0c0a0e');
+  g.fillStyle = bg; g.beginPath(); g.arc(C0, C0, C0 - 2, 0, Math.PI*2); g.fill();
+  // halo de los niveles nuevos (11 a 15)
+  g.strokeStyle = 'rgba(255,216,74,.16)'; g.setLineDash([6, 8]); g.lineWidth = 1.5; g.beginPath(); g.arc(C0, C0, (62 + 10.5*38)*.8, 0, Math.PI*2); g.stroke(); g.setLineDash([]);
   // nombre de cada rama
   Object.keys(SKILLS).forEach((k, bi) => {
-    const th = -Math.PI/2 + bi*2*Math.PI/5, x = 460 + Math.cos(th)*440, y = 460 + Math.sin(th)*440;
-    g.font = `14px ${FONT}`; g.textAlign = 'center'; g.fillStyle = SKILLS[k].col;
-    g.fillText(SKILLS[k].name, clamp(x, 70, 850), clamp(y + 5, 20, 905));
+    const th = -Math.PI/2 + bi*2*Math.PI/5, x = C0 + Math.cos(th)*528, y = C0 + Math.sin(th)*528;
+    g.font = `15px ${FONT}`; g.textAlign = 'center'; g.fillStyle = SKILLS[k].col;
+    g.fillText(SKILLS[k].name, clamp(x, 80, 1000), clamp(y + 5, 22, 1065));
   });
   // conexiones
   for(const n of TREE.nodes) for(const id of TREE.adj[n.id]){
@@ -1224,18 +1224,21 @@ UI.drawTree = function(){
     g.lineWidth = a && c2 ? 4 : 2.5;
     g.beginPath(); g.moveTo(x0,y0); g.lineTo(x1,y1); g.stroke();
   }
-  // nodos
+  // nodos: círculo (lado A), cuadrado (lado B), rombo (notable) y rombo dorado grande (nodo final)
   const pulse = (Math.sin(performance.now()/250)+1)/2;
   for(const n of TREE.nodes){
     const [x,y] = this.treePos(n), st = n.start ? 'on' : this.nodeState(n), col = n.b ? SKILLS[n.b].col : '#ffe08a';
-    const r = n.start ? 13 : n.notable ? 11 : 6.5, hov = this.treeHover === n;
+    const r = n.start ? 14 : n.fin ? 17 : n.notable ? 12.5 : 7.5, hov = this.treeHover === n;
+    if(n.fin && st !== 'locked'){ g.shadowColor = '#ffd84a'; g.shadowBlur = 16; }
     g.beginPath();
     if(n.notable){ g.moveTo(x, y-r); g.lineTo(x+r, y); g.lineTo(x, y+r); g.lineTo(x-r, y); g.closePath(); }
+    else if(n.side === 'B') g.rect(x - r*.85, y - r*.85, r*1.7, r*1.7);
     else g.arc(x, y, r, 0, Math.PI*2);
-    g.fillStyle = st==='on' ? col : st==='open' ? '#2a2228' : '#141016'; g.fill();
+    g.fillStyle = st==='on' ? col : st==='open' ? '#2a2228' : '#141016'; g.fill(); g.shadowBlur = 0;
     g.lineWidth = hov ? 3.5 : 2;
-    g.strokeStyle = st==='on' ? '#fff3d0' : st==='open' ? (s.skillPts ? `rgba(255,224,138,${.5+pulse*.5})` : '#8a7a5a') : '#3a3238';
+    g.strokeStyle = st==='on' ? (n.fin ? '#ffd84a' : '#fff3d0') : st==='open' ? `rgba(255,224,138,${.5+pulse*.5})` : (n.fin ? '#6a5a20' : '#3a3238');
     g.stroke();
+    if(n.fin && st !== 'on'){ g.beginPath(); g.moveTo(x, y-r-5); g.lineTo(x+r+5, y); g.lineTo(x, y+r+5); g.lineTo(x-r-5, y); g.closePath(); g.strokeStyle = 'rgba(255,216,74,.45)'; g.lineWidth = 1.2; g.stroke(); }
   }
   if(this.skillOpen && s.skillPts) requestAnimationFrame(() => { if(this.skillOpen) this.drawTree(); });
 };
@@ -1333,3 +1336,5 @@ const nameMatch = (it, q) => !q || itemName(it).toLowerCase().includes(q) || (ty
 for(const [id, fn] of [['stashSearch', v => { UI.stashQ = v; UI.renderStash(); }], ['shopSearch', () => UI.renderShop()]]){
   const inp = $(id); inp.addEventListener('input', e => fn(e.target.value)); inp.addEventListener('keydown', e => { if(e.key === 'Escape') e.target.blur(); });
 }
+
+Object.assign(LANG_EN, {'Legendarios y únicos':'Legendary and unique'}); LANG.load(LANG_EN);

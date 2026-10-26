@@ -53,6 +53,10 @@ function loadGame(slot){
   if(!s.petsFreed) s.petsFreed = Object.keys(s.collection || {}).length;      // partidas antiguas: cuenta las mascotas ya conocidas
   s.fallen = (s.fallen || []).map(e => typeof e === 'string' ? {pet:e, shiny:false} : e);
   s.shinies ??= {}; s.bossGift ??= {};
+  if(s.treeV !== 2){ if(s.tree && s.tree.length > 1) setTimeout(() => toast('Gonzalo ha renovado su árbol de pasivas: tus puntos te han sido devueltos', 6), 2500); s.tree = ['start']; s.treeV = 2; }   // el árbol nuevo: reinicio gratis una sola vez
+  { const fix = it => { if(it && it.rarity === 'unique') it.rarity = 'legendary'; };   // los únicos de jefe ahora son legendarios
+    (s.stash || []).forEach(fix); (s.petCage || []).forEach(fix); (s.sold || []).forEach(x => fix(x && x.item));
+    if(s.inv){ (s.inv.bag || []).forEach(fix); for(const k in (s.inv.equip || {})){ const v = s.inv.equip[k]; if(Array.isArray(v)) v.forEach(fix); else fix(v); } } }
   if(!Array.isArray(s.petTree) || !s.petTree.includes('start')) s.petTree = ['start'];
   s.petTree = [...new Set(s.petTree.filter(id => PTREE.byId[id]))];
   return s;
@@ -65,6 +69,7 @@ function clearGear(){
 
 // ---------- cambio de escena ----------
 function resetWorld(sc){
+  for(const ch of sc.chests) if(ch.col) ch.col.low = true;   // los cofres se pueden saltar con el salto
   G.sc = sc; G.mons = []; G.projs = []; G.hazards = []; G.loot = []; G.parts = []; G.texts = [];
   G.channel = null; G.prompt = null; G.flash = null; G.deathT = 0; G.bossFight = null;
   P = newPlayer(sc.spawn.x, sc.spawn.y);
@@ -158,8 +163,9 @@ function extract(how){
   const carried = G.raidGold; G.raidGold = 0;
   // al volver a casa la mochila entera pasa al alijo (lo equipado se queda puesto)
   let moved = 0;
-  G.inv.bag = G.inv.bag.map(it => { if(it && addTo(G.save.stash, it)){ moved++; return null; } return it; });
-  (G.inv.equip.pbag || []).forEach((it, i) => { if(it && (addTo(G.save.petCage || [], it) || addTo(G.save.stash, it))){ moved++; G.inv.equip.pbag[i] = null; } });   // las mascotas de la mochila mágica pasan a la jaula grande (o al alijo)
+  const goHome = it => (it.id === 'pet' && G.save.petCage && addTo(G.save.petCage, it)) || addTo(G.save.stash, it);   // las mascotas van a la jaula grande si la tienes (y hay sitio); lo demás, al alijo
+  G.inv.bag = G.inv.bag.map(it => { if(it && goHome(it)){ moved++; return null; } return it; });
+  (G.inv.equip.pbag || []).forEach((it, i) => { if(it && goHome(it)){ moved++; G.inv.equip.pbag[i] = null; } });   // las mascotas de la mochila mágica pasan a la jaula grande (o al alijo)
   const newTrapis = false;
   sfx('extract');
   enterDen();
@@ -356,8 +362,8 @@ function interactables(){
   if(sc.slotProp) add(sc.slotProp.x, sc.slotProp.y, 34, '[F] Tragaperras', () => UI.openSlots(), sc.slotProp.y - 52);
   if(sc.stash) add(sc.stash.x, sc.stash.y, 30, '[F] Alijo', () => UI.toggleInv('stash'), sc.stash.y-26);
   if(sc.portalProp) add(0, -150, 60, '[F] Portal del tiempo', useTimePortal, -190);
-  for(const c of sc.chests) if(!c.open) add(c.x, c.y, 26, c.legend ? '[F] Abrir cofre legendario' : c.rare ? '[F] Abrir cofre raro' : '[F] Abrir cofre', () => startChannel((c.legend ? 1.8 : c.rare ? 1.2 : .7)*(1 - SK('exp')*.03), 'Abriendo...', () => openChest(c)), c.y-24);
-  for(const c of sc.cages) if(!c.open) add(c.x, c.y, 28, c.gift ? '[F] Abrir la jaula brillante' : '[F] Abrir jaula', () => startChannel(1.5*(1 - SK('exp')*.03)*Math.max(.3, 1 - (G.pt.cageSpd||0)/100), 'Forzando la jaula...', () => openCage(c), '#7ae09a'), c.y-36);
+  for(const c of sc.chests) if(!c.open) add(c.x, c.y, 26, c.legend ? '[F] Abrir cofre legendario' : c.rare ? '[F] Abrir cofre raro' : '[F] Abrir cofre', () => startChannel((c.legend ? 1.8 : c.rare ? 1.2 : .7)*(1 - TT('ra')/100), 'Abriendo...', () => openChest(c)), c.y-24);
+  for(const c of sc.cages) if(!c.open) add(c.x, c.y, 28, c.gift ? '[F] Abrir la jaula brillante' : '[F] Abrir jaula', () => startChannel(1.5*(1 - TT('ra')/100)*Math.max(.3, 1 - (G.pt.cageSpd||0)/100), 'Forzando la jaula...', () => openCage(c), '#7ae09a'), c.y-36);
   for(const l of G.loot) if(l.item && l.z===0 && lootVisible(l)) add(l.x, l.y, 20, '[F] Coger ' + itemName(l.item), () => pickLoot(l), l.y-18);
   list.sort((a,c) => a.d-c.d);
   return list[0] || null;
@@ -381,7 +387,8 @@ function openChest(c){
   };
   if(T.always) give({id:T.always});
   if(c.rare && MS('exp',20)) give(wpick(table));                  // Explorador 20
-  if(Math.random() < SK('exp')*.02) give(wpick(table));               // +2 % de botín por punto
+  if(Math.random() < TT('bo')/100) give(wpick(table));               // botín extra según el árbol
+  if(!c.rare && MS('exp',30) && Math.random() < .2) give(wpick(table));   // Cazador de tesoros
   for(let i=0;i<n;i++) give(wpick(table));
   if(hasPetAffix('buscatesoros') && Math.random() < .05) give({id:'treasure'});
   legendChest(c, lvl); legendExclChest(c);
