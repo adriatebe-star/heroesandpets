@@ -235,6 +235,7 @@ function sellValue(it){
   if(!it) return 0;
   if(it.id==='pet') return Math.round(PET_SELL[PETS[it.pet].rarity] * (it.shiny ? 3 : 1));
   const d = ITEMS[it.id];
+  if(d.quest) return 0;   // los objetos de misión no se pueden vender
   if(d.treasure) return d.value;
   let v = (d.value || 1) * (it.n || 1);
   if(d.gear) v *= RARITY_PRICE[it.rarity || 'normal'] * (1 + (it.affixes||[]).length*.15);
@@ -658,7 +659,7 @@ const petsOfExp = lvl => PET_IDS.filter(id => PETS[id].exp === lvl);
 
 // ---------- Progresión ----------
 const xpFor = lvl => Math.round(60*Math.pow(lvl,1.65));
-const petSlots = lvl => 1 + (lvl>=10?1:0) + (lvl>=20?1:0);
+const petSlots = lvl => 1 + (lvl>=10?1:0) + (lvl>=20?1:0) + (lvl>=40?1:0);   // 4.º hueco a nivel 40
 
 // ---------- probabilidad de que una mascota aparezca enjaulada en una expedición ----------
 const CAGE_CHANCE = {normal:.8, magic:.5, rare:.25, legendary:.08};

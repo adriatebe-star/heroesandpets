@@ -397,7 +397,7 @@ function useConsumable(id){
   let ref = stackRefs([id])[0];
   if(!ref && id==='potion'){ id = 'superpotion'; ref = stackRefs([id])[0]; }
   if(!ref && id==='oil'){ id = 'oil2'; ref = stackRefs([id])[0]; }
-  if(!ref){ toast({potion:'No tienes pociones de vida', superpotion:'No tienes pociones de vida', bandage:'No tienes vendas', oil2:'No tienes frascos de aceite', cookie:'No tienes galletas', oil:'No tienes frascos de aceite', mushroom:'No tienes setas', elfpotion:'No tienes pociones élficas', petbone:'No tienes huesos para mascota', hallshroom:'No tienes setas alucinógenas', elfbread:'No tienes pan élfico'}[id]); return; }
+  if(!ref){ toast({potion:'No tienes pociones de vida', superpotion:'No tienes pociones de vida', bandage:'No tienes vendas', repairkit:'No tienes kits de reparación', oil2:'No tienes frascos de aceite', cookie:'No tienes galletas', oil:'No tienes frascos de aceite', mushroom:'No tienes setas', elfpotion:'No tienes pociones élficas', petbone:'No tienes huesos para mascota', hallshroom:'No tienes setas alucinógenas', elfbread:'No tienes pan élfico'}[id]); return; }
   const it = ref.it;
   if(id==='oil' || id==='oil2'){
     if(G.sc.kind!=='raid'){ toast('En la guarida la linterna no gasta aceite', 1.5); return; }
@@ -430,6 +430,8 @@ function useConsumable(id){
     eatHallShroom();
   } else if(id==='elfbread'){
     eatElfBread();
+  } else if(id==='repairkit'){
+    if(!useRepairKit()) return;
   } else if(id==='petbone'){
     if(!G.pets.length){ toast('No llevas ninguna mascota', 1.4); return; }
     eatBone();
@@ -473,7 +475,7 @@ function damagePlayer(dmg, m, elem){
     const rawDmg = dmg; dmg *= 1 - blockPct;
     addText(P.x, P.y-50, 'Bloqueo', '#c8d0e0', 7); sfx('block');
     if(sh && sh.id === 'lastwall' && !m.dying) legendReflect(m, rawDmg, -dx/d, -dy/d);
-    if(sh && sh.id === 'valhallashield' && !m.dying && !MONSTERS[m.type].boss && Math.random() < .35 && !(m.freezeImmT > 0)){ m.freezeT = Math.max(m.freezeT || 0, 1.5); addText(m.x, m.y - m.r*2 - 18, '¡Congelado!', '#c8f0ff', 7); }
+    if(sh && (sh.id === 'valhallashield' || sh.id === 'glaciusshield') && !m.dying && !MONSTERS[m.type].boss && Math.random() < .35 && !(m.freezeImmT > 0)){ m.freezeT = Math.max(m.freezeT || 0, 1.5); addText(m.x, m.y - m.r*2 - 18, '¡Congelado!', '#c8f0ff', 7); }
     burst(P.x+Math.cos(P.face)*10, P.y-18, 6, ['#c8ccd4','#96704a'], [40,120], [.15,.3], 0);
     if(sh && sh.dur !== undefined && wearDur(sh)){ G.inv.equip.shield = null; P.blocking = false; toast(`¡${itemName(sh)} se ha roto!`); sfx('breakItem'); refreshStats(); }
     if(P.st <= 0){ P.st = 0; P.blocking = false; P.noStamT = .8; }
@@ -578,6 +580,7 @@ function monTargets(){
 function updateMonster(m, dt){
   const sc = G.sc;
   if(m.dying){ m.dying += dt; return; }
+  if(m.dummy){ dummyTick(m, dt); return; }
   m.spawnIn = Math.min(1, m.spawnIn + dt*2.5);
   m.flash -= dt; m.atkCd -= dt*(m.freezeT>0 ? .4 : 1); m.lastHit += dt; m.tauntT -= dt; m.exposedT -= dt; m.auraT -= dt; m.stunT -= dt; m.slowT -= dt; if(m.slowT > 0) m._slowed = true; else if(m._slowed){ m._slowed = false; m.slowImmT = 10; } m.slowImmT -= dt; m.freezeT -= dt; m.freezeImmT = (m.freezeImmT||0) - dt; m.weakT -= dt; m.revealT -= dt; m.fleeT -= dt; m.fearT -= dt; if(m.markT > 0) m.markT -= dt; if(m.confuseT > 0) m.confuseT -= dt;
   // daño en el tiempo
@@ -1588,7 +1591,7 @@ function updatePet(p, dt){
       case 'cone': {
         // aliento en cono (Ámbar: fuego · Nocturna: fuego espectral)
         const flying = PET_ART[p.def.id].fly; if(flying){ p.z = 14 + Math.sin(G.t*5)*2; ignoreWalls = true; }
-        const fc = p.def.fire === '#fff0a0' ? ['#fff0a0','#ffffff','#ffd070'] : p.def.fire === '#ff5a1a' ? ['#ff5a1a','#ffc04a','#a01808'] : p.def.fire === '#b070ff' ? ['#b070ff','#e0c0ff','#7a3aff'] : p.def.fire === '#5ac8ff' ? ['#5ac8ff','#e8faff','#2a8ab8'] : ['#ff8a2a','#ffd040','#ff5a1a'];
+        const fc = (typeof FIRE_PAL !== 'undefined' && FIRE_PAL[p.def.fire]) || (p.def.fire === '#fff0a0' ? ['#fff0a0','#ffffff','#ffd070'] : p.def.fire === '#ff5a1a' ? ['#ff5a1a','#ffc04a','#a01808'] : p.def.fire === '#b070ff' ? ['#b070ff','#e0c0ff','#7a3aff'] : p.def.fire === '#5ac8ff' ? ['#5ac8ff','#e8faff','#2a8ab8'] : ['#ff8a2a','#ffd040','#ff5a1a']);
         if(p.phase==='breath'){
           p.breathT -= dt; p.moving = false; p.dir = p.bdx > 0 ? 1 : -1; p.tickT -= dt;
           for(let i=0;i<4;i++){ const sp = rand(-.35,.35), a = Math.atan2(p.bdy, p.bdx) + sp, v = rand(110,190);
@@ -1596,7 +1599,7 @@ function updatePet(p, dt){
           if(p.tickT <= 0){
             p.tickT = .2; const base = Math.atan2(p.bdy, p.bdx);
             for(const o of G.mons){ if(o.dying) continue; const ox = o.x-p.x, oy = o.y-p.y, od = Math.hypot(ox,oy);
-              if(od < 82 + o.r && Math.abs(angDiff(Math.atan2(oy,ox), base)) < .55) petStrike(p, o, .5, {k:50}); }
+              if(od < 82 + o.r && Math.abs(angDiff(Math.atan2(oy,ox), base)) < .55) petStrike(p, o, .5, {k:p.def.gust ? 240 : 50}); }
           }
           if(p.breathT <= 0){ p.phase = null; p.state = 'follow'; p.target = null; p.cd = petCd(p); }
           return;
@@ -1682,6 +1685,7 @@ function updateProjs(dt){
     for(const m of G.mons){
       if(m.dying || pr.hit.has(m) || Math.hypot(m.x-pr.x, m.y-8-pr.y) > m.r+pr.r+2) continue;
       const l = Math.hypot(pr.vx,pr.vy) || 1;
+      if(pr.from==='player' && pr.kind==='arrow' && typeof voltusChain === 'function' && curWeapon() && curWeapon().id === 'voltusbow') voltusChain(pr, m, pr.dmg);
       if(pr.from==='player') hitMonster(m, pr.dmg, {src:'player', nx:pr.vx/l, ny:pr.vy/l, k: pr.kind==='arrow' ? 140 : 180, crit:pr.crit, ...projFx(pr), mark: pr.markHit ? 1 : 0, markT: 5});
       else petStrike(pr.pet, m, 1, {k:90, slow: (pr.kind==='web' || pr.kind==='splash') ? 2.5 : 0, poison: pr.kind==='acid'});
       pr.hit.add(m);
@@ -2095,6 +2099,7 @@ function statusFx(m, src, x, y, w, h, vis){
 function drawMonster(m){
   const vis = monVisible(m); m.vis = vis;
   if(vis <= .02) return;
+  if(m.dummy) return drawDummy(m);
   if(m.ai !== 'hop') return drawUndead(m, vis);
   const dying = m.dying ? 1-m.dying/.25 : 1, k = m.spawnIn*dying;
   if(k <= 0) return;

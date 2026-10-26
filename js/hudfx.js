@@ -30,6 +30,9 @@ function fxIcon(g, kind, x, y, s, col){
   else if(kind === 'star'){ g.beginPath(); for(let i=0;i<10;i++){ const r = i%2 ? 4.2 : 10, a = -Math.PI/2 + i*Math.PI/5; g.lineTo(Math.cos(a)*r, Math.sin(a)*r); } g.closePath(); g.fill(); }
   else if(kind === 'arrow'){ g.beginPath(); g.moveTo(-9, 9); g.lineTo(6, -6); g.stroke(); g.beginPath(); g.moveTo(9, -9); g.lineTo(1, -8); g.lineTo(8, -1); g.closePath(); g.fill(); }
   else if(kind === 'eye'){ g.beginPath(); g.moveTo(-10, 0); g.quadraticCurveTo(0, -10, 10, 0); g.quadraticCurveTo(0, 10, -10, 0); g.fill(); g.fillStyle = '#10141a'; g.beginPath(); g.arc(0, 0, 3.6, 0, Math.PI*2); g.fill(); }
+  else if(kind === 'snow'){ for(let i=0;i<3;i++){ const a = i*Math.PI/3; g.beginPath(); g.moveTo(Math.cos(a)*10, Math.sin(a)*10); g.lineTo(-Math.cos(a)*10, -Math.sin(a)*10); g.stroke(); } }
+  else if(kind === 'slow'){ g.beginPath(); g.moveTo(-7, -9); g.lineTo(0, -2); g.lineTo(7, -9); g.stroke(); g.beginPath(); g.moveTo(-7, 0); g.lineTo(0, 7); g.lineTo(7, 0); g.stroke(); }
+  else if(kind === 'chain'){ g.beginPath(); g.arc(-4.5, 0, 5, 0, Math.PI*2); g.stroke(); g.beginPath(); g.arc(4.5, 0, 5, 0, Math.PI*2); g.stroke(); }
   g.restore();
 }
 function fxWrap(g, text, maxW){
@@ -56,7 +59,7 @@ function drawWearAlert(){
 const heroFxOf = a => HERO_AFFIX_FX[a] || (PET_AFFIX[a] && PET_AFFIX[a].fx && (PET_AFFIX[a].fx.heal || PET_AFFIX[a].fx.leech) ? {ic:'heart', col:'#9affb0'} : null);   // afijos nuevos que curan al héroe
 function drawPetBuffs(HS){
   drawWearAlert();
-  const list = [...timedBuffs()];
+  const list = [];   // los bufos de consumibles y los debufos están ahora junto al aceite (drawStatusRow)
   const lt = G.inv.equip.lantern;
   if(lt && lt.gem && GEMS[lt.gem]) list.push({img:ICONS['gem_' + lt.gem], name:GEMS[lt.gem].name, col:GEMS[lt.gem].col, desc:GEMS[lt.gem].desc, from:'Gema del farolillo'});
   for(const t of (G.inv.equip.tal || [])) if(t){ const d = ITEMS[t.id]; list.push({img:ICONS[d.icon], name:d.name, col:'#b8f0a0', desc:d.fx || d.desc, from:'Talismán equipado'}); }

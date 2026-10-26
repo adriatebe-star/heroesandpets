@@ -116,7 +116,7 @@ UI.renderTrain = function(body){
   body.innerHTML = `<div id="ptWrap"><canvas id="ptCanvas" width="760" height="760"></canvas><div id="ptInfo"></div></div>`;
   const c = $('ptCanvas');
   const nodeAt = e => {
-    const r = c.getBoundingClientRect(), k = c.width/r.width, mx = (e.clientX - r.left)*k, my = (e.clientY - r.top)*k;
+    const r = c.getBoundingClientRect(), mx = (e.clientX - r.left)*c.width/r.width, my = (e.clientY - r.top)*c.height/r.height;
     let best = null, bd = 18;
     for(const n of PTREE.nodes){ const [x, y] = this.ptPos(n), d = Math.hypot(mx-x, my-y); if(d < bd){ bd = d; best = n; } }
     return best;

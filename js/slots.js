@@ -77,10 +77,13 @@ function slSpin(fast){
   SL.spinning = true; SL.msg = ''; saveGame(); sfx('coin');
   const target = [0, 1, 2].map(() => Math.floor(Math.random()*32)), t0 = performance.now(), stopAt = fast === true ? [.45, .7, .95] : [1.1, 1.8, 2.5], from = SL.pos.slice(), fin = [], speed = 22;
   for(let i = 0; i < 3; i++){ const p = from[i] + speed*stopAt[i] - 8; let f = Math.ceil((p - target[i])/32)*32 + target[i]; if(f < p) f += 32; fin.push(f); }
+  const tok = SL.tok = (SL.tok || 0) + 1; SL.pending = target.slice(); clearTimeout(SL.wd); SL.wd = setTimeout(slForceFinish, fast === true ? 3500 : 7000);
+  if(fast === true && document.hidden){ setTimeout(slForceFinish, 40); return; }   // en segundo plano no se anima: se resuelve al instante
   const startStop = stopAt.map((t, i) => t - (fast === true ? .4 : 1.0));   // desde ese instante frena hasta fin[i]
   const posAtStop = [0, 1, 2].map(i => from[i] + speed*startStop[i]);
   const stopped = [false, false, false];
   const tick = now => {
+    if(tok !== SL.tok || !SL.spinning) return;
     const t = (now - t0)/1000;
     for(let i = 0; i < 3; i++){
       if(t < startStop[i]) SL.pos[i] = from[i] + speed*t;
@@ -89,18 +92,28 @@ function slSpin(fast){
     }
     slDraw();
     if(t < stopAt[2] + .05){ SL.raf = requestAnimationFrame(tick); return; }
-    SL.pos = SL.pos.map(p => ((p % 32) + 32) % 32); SL.spinning = false; slResolve(target.map(i => SLOT_STRIP[i]));
+    SL.pos = SL.pos.map(p => ((p % 32) + 32) % 32); SL.spinning = false; SL.pending = null; clearTimeout(SL.wd); slResolve(target.map(i => SLOT_STRIP[i]));
   };
   UI.renderSlots(); SL.raf = requestAnimationFrame(tick);
+}
+// entrega un premio: mochila → alijo → suelo (antes se podía perder si no había sitio)
+function slotGive(it){
+  if(addToBagOrStash(it)) return true;
+  dropItem(P.x + rand(-16, 16), P.y + rand(2, 16), it); toast('Mochila y alijo llenos: el premio ha caído al suelo', 3.2); return false;
+}
+function slForceFinish(){   // por si la animación no termina (pestaña en segundo plano): se resuelve la tirada pendiente
+  if(!SL.spinning || !SL.pending) return;
+  cancelAnimationFrame(SL.raf); const tg = SL.pending; SL.pending = null; clearTimeout(SL.wd);
+  SL.pos = tg.slice(); SL.spinning = false; slResolve(tg.map(i => SLOT_STRIP[i]));
 }
 function slResolve(r){
   const ev = slotEval(r), win = SLOT_BET*ev.m, s = G.save; let extra = '';
   s.wallet += win;
   if(ev.kind === 'triple'){
-    if(ev.s === 6){ const id = pick(LEGEND_IDS); addToBagOrStash(mkItem(id, 1, 12)); extra = ` + ${tr('¡Objeto legendario!')} ${tr(ITEMS[id].name)}`; }
-    else if(ev.s === 5){ const id = pick(Object.keys(GEMS).filter(g => ITEMS[g])); addToBagOrStash(mkItem(id)); extra = ` + ${tr(ITEMS[id].name)}`; }
-    else if(ev.s === 4){ addToBagOrStash(mkItem('superpotion', 5)); extra = ' + 5 ' + tr('pociones superiores'); }
-    else if(ev.s === 3){ addToBagOrStash(mkItem('cookie', 10)); extra = ' + 10 ' + tr('galletas'); }
+    if(ev.s === 6){ const id = pick(LEGEND_IDS); extra = ` + ${tr('¡Objeto legendario!')} ${tr(ITEMS[id].name)}`; if(!slotGive(mkItem(id, 1, 12))) extra += ' (' + tr('al suelo') + ')'; }
+    else if(ev.s === 5){ const id = pick(Object.keys(GEMS).filter(g => ITEMS[g])); extra = ` + ${tr(ITEMS[id].name)}`; if(!slotGive(mkItem(id))) extra += ' (' + tr('al suelo') + ')'; }
+    else if(ev.s === 4){ extra = ' + 5 ' + tr('pociones superiores'); if(!slotGive(mkItem('superpotion', 5))) extra += ' (' + tr('al suelo') + ')'; }
+    else if(ev.s === 3){ extra = ' + 10 ' + tr('galletas'); if(!slotGive(mkItem('cookie', 10))) extra += ' (' + tr('al suelo') + ')'; }
   }
   if(win > SLOT_BET){ SL.msg = `<b style="color:#7aff9a">¡${tr('Has ganado')} ${win} ${tr('oro')}!</b>${extra}`; sfx(ev.kind === 'triple' && ev.s >= 4 ? 'levelup' : 'alba'); if(ev.kind === 'triple' && ev.s >= 5) G.flash = {x:P.x, y:P.y - 20, t:.5}; }
   else if(win === SLOT_BET) SL.msg = tr('Recuperas la tirada.');
@@ -189,7 +202,7 @@ function slAutoFinish(reason){
   UI.renderSlots(); saveGame();
 }
 $('slAuto').onclick = () => { if(!SL.spinning && !SL.auto) slAutoSetup(); };
-Object.assign(LANG_EN, {'Automático':'Auto', '¿Cuánto oro quieres gastar como máximo?':'How much gold do you want to spend at most?', 'Todo':'All', 'Cada tirada cuesta':'Each spin costs', 'Se detiene al llegar al máximo o si te quedas sin oro.':'It stops when it reaches the maximum or if you run out of gold.', 'Empezar':'Start', 'Cancelar':'Cancel', 'en pausa':'paused', 'Tiradas':'Spins', 'Gastado':'Spent', 'Ganado':'Won', 'Continuar':'Resume', 'Pausar':'Pause', 'Detener y ver resumen':'Stop and see summary', 'Detenido por ti':'Stopped by you', 'Has llegado al máximo de oro que querías gastar':'You reached the maximum gold you wanted to spend', 'Te has quedado sin oro':'You ran out of gold', 'Resumen del modo automático':'Auto mode summary', 'Balance':'Balance', 'Premios':'Prizes', 'Recuperadas':'Refunded', 'Sin premio':'No prize', 'Mejor premio':'Best prize', 'Objetos':'Items', 'Objetos conseguidos':'Items obtained', 'Resultado':'Result', 'Apuesta':'Bet', 'Ganancia':'Profit', 'Recompensa':'Reward', 'Sin tiradas.':'No spins.', 'Cerrar resumen':'Close summary', 'Pausa o detén el modo automático primero':'Pause or stop auto mode first', 'El máximo debe cubrir al menos una tirada':'The maximum must cover at least one spin', 'Recuperas':'You get it back','La tragaperras de Alexandra':'Alexandra\'s slot machine', 'Tirada':'Spin', 'GRATIS':'FREE', 'oro':'gold', 'Girar':'Spin', 'Girar gratis':'Spin for free', 'Salir':'Leave', 'legendario':'legendary', 'gema':'gem', 'pociones superiores':'greater potions', 'galletas':'cookies',
+Object.assign(LANG_EN, {'al suelo':'on the ground', 'Mochila y alijo llenos: el premio ha caído al suelo':'Backpack and stash full: the prize fell on the ground','Automático':'Auto', '¿Cuánto oro quieres gastar como máximo?':'How much gold do you want to spend at most?', 'Todo':'All', 'Cada tirada cuesta':'Each spin costs', 'Se detiene al llegar al máximo o si te quedas sin oro.':'It stops when it reaches the maximum or if you run out of gold.', 'Empezar':'Start', 'Cancelar':'Cancel', 'en pausa':'paused', 'Tiradas':'Spins', 'Gastado':'Spent', 'Ganado':'Won', 'Continuar':'Resume', 'Pausar':'Pause', 'Detener y ver resumen':'Stop and see summary', 'Detenido por ti':'Stopped by you', 'Has llegado al máximo de oro que querías gastar':'You reached the maximum gold you wanted to spend', 'Te has quedado sin oro':'You ran out of gold', 'Resumen del modo automático':'Auto mode summary', 'Balance':'Balance', 'Premios':'Prizes', 'Recuperadas':'Refunded', 'Sin premio':'No prize', 'Mejor premio':'Best prize', 'Objetos':'Items', 'Objetos conseguidos':'Items obtained', 'Resultado':'Result', 'Apuesta':'Bet', 'Ganancia':'Profit', 'Recompensa':'Reward', 'Sin tiradas.':'No spins.', 'Cerrar resumen':'Close summary', 'Pausa o detén el modo automático primero':'Pause or stop auto mode first', 'El máximo debe cubrir al menos una tirada':'The maximum must cover at least one spin', 'Recuperas':'You get it back','La tragaperras de Alexandra':'Alexandra\'s slot machine', 'Tirada':'Spin', 'GRATIS':'FREE', 'oro':'gold', 'Girar':'Spin', 'Girar gratis':'Spin for free', 'Salir':'Leave', 'legendario':'legendary', 'gema':'gem', 'pociones superiores':'greater potions', 'galletas':'cookies',
   'pareja en los 2 primeros':'pair in the first 2', 'suelta':'anywhere', 'en cualquier orden':'in any order', '¡Objeto legendario!':'Legendary item!', 'Has ganado':'You won', 'Recuperas la tirada.':'You get your bet back.', 'Sin premio. ¡Otra vez!':'No prize. Try again!',
   '¿A qué quieres jugar?':'What would you like to play?', 'La ruleta':'The roulette', 'Las tragaperras':'The slots', 'Nada, gracias':'Nothing, thanks'});
 LANG.load(LANG_EN);

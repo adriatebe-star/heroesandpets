@@ -37,7 +37,7 @@ UI.closeSmith = function(){ this.smithOpen = false; $('smith').classList.add('hi
 UI.renderSmith = function(){
   document.querySelectorAll('#smTabs button').forEach(b => b.classList.toggle('on', b.dataset.tab === this.smithTab));
   $('smGold').textContent = `Oro en la guarida: ${G.save.wallet}`; $('tip').classList.add('hidden');
-  if(this.smithTab === 'repair') this.renderRepair($('smBody')); else this.renderForge($('smBody'));
+  if(this.smithTab === 'repair') this.renderRepair($('smBody')); else if(this.smithTab === 'shop') this.renderSmithShop($('smBody')); else this.renderForge($('smBody'));
 };
 const tipOn = (el, it) => { el.onmouseenter = e => UI.showTip(it, e); el.onmousemove = e => UI.moveTip(e); el.onmouseleave = () => $('tip').classList.add('hidden'); };
 

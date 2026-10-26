@@ -16,7 +16,7 @@ function itemIconURL(it){
 
 // ---------- referencias a huecos del inventario ----------
 // {area:'bag'|'stash'|'eq', key: índice | 'w1' | 'w2' | 'shield' | 'pet0'..'pet2'}
-const PET_LVL = [1, 10, 20];
+const PET_LVL = [1, 10, 20, 40];
 function getRef(r){
   if(r.area==='cage') return G.save.petCage && G.save.petCage[r.key];
   if(r.area==='pbag') return G.inv.equip.pbag[r.key];
@@ -248,6 +248,7 @@ const UI = {
     const it = getRef(ref);
     if(!it) return;
     if(ref.area==='eq'){ toast('Quítatelo antes de venderlo', 1.6); sfx('ui'); return; }
+    if(it.id !== 'pet' && ITEMS[it.id] && ITEMS[it.id].quest){ toast('Los objetos de misión no se pueden vender', 1.8); sfx('ui'); return; }
     const v = sellValue(it);
     if(it.id==='pet' && (it.shiny || ['rare','legendary'].includes(PETS[it.pet].rarity)) && !confirm(`¿Vender a ${itemName(it)} por ${v} oro? Podrás recomprarla en la pestaña Recomprar.`)) return;
     G.save.wallet += v; setRef(ref, null); noteSold(it, v);
@@ -373,7 +374,7 @@ const UI = {
       const H = {w1:'arma 1', w2:'arma 2', shield:'escudo', head:'casco', chest:'pechera', hands:'guantes', feet:'botas', lantern:'farol'};
       for(const k in H) row.append(this.slotEl({area:'eq', key:k}, '', {hint:H[k]}));
       for(const k in QUICK_SLOTS) row.append(this.slotEl({area:'eq', key:k}, '', {hint:QUICK_HINT[k], cls:'qk'}));
-      for(let i=0;i<3;i++) row.append(this.slotEl({area:'eq', key:'pet'+i}, '', lvl < PET_LVL[i] ? {locked:PET_LVL[i]} : {hint:'mascota', cls:'petslot'}));
+      for(let i=0;i<4;i++) row.append(this.slotEl({area:'eq', key:'pet'+i}, '', lvl < PET_LVL[i] ? {locked:PET_LVL[i]} : {hint:'mascota', cls:'petslot'}));
     }
     const bag = $('bagSlots'); bag.innerHTML = '';
     G.inv.bag.forEach((it, i) => bag.append(this.slotEl({area:'bag', key:i})));
@@ -409,7 +410,7 @@ const UI = {
     put(this.slotEl({area:'eq', key:'hands'},  'Guantes',  {hint:'guantes'}),  224, 160);
     put(this.slotEl({area:'eq', key:'lantern'}, 'Farolillo', {hint:'farol'}), 224, 238);
     [[12, 8], [60, 8], [248, 8]].forEach(([tx, ty], i) => put(this.slotEl({area:'eq', key:'tal'+i}, '', {hint:'talismán', cls:'qk'}), tx, ty));   // 3 huecos pequeños de talismán
-    for(let i=0;i<3;i++) put(this.slotEl({area:'eq', key:'pet'+i}, 'Mascota '+(i+1), lvl < PET_LVL[i] ? {locked:PET_LVL[i]} : {hint:'mascota', cls:'petslot'}), 12 + i*106, 322);
+    for(let i=0;i<4;i++) put(this.slotEl({area:'eq', key:'pet'+i}, 'Mascota '+(i+1), lvl < PET_LVL[i] ? {locked:PET_LVL[i]} : {hint:'mascota', cls:'petslot'}), 12 + i*74, 322);
     // cinturón de uso rápido: pociones, vendas, aceite, galletas, setas, poción élfica y munición
     const bh = document.createElement('div'); bh.className = 'qkh'; bh.textContent = 'Cinturón de uso rápido'; put(bh, 12, 392);
     Object.keys(QUICK_SLOTS).forEach((k, i) => put(this.slotEl({area:'eq', key:k}, '', {hint:QUICK_HINT[k], cls:'qk'}), 12 + (i%7)*41, 412 + Math.floor(i/7)*44));   // 7 por fila
@@ -667,8 +668,8 @@ function drawHUD(){
   const hpR = Math.round(84*HS), hpX = 30 + hpR, hpY = base - hpR - Math.round(14*HS);
   drawOrb(hpX, hpY, hpR, P.hp/P.maxHp, ORB.hp, {value:`${Math.ceil(P.hp)}/${P.maxHp}`, label:'VIDA', hs:HS, flash: P.inv>0 && !P.dashT ? P.inv*.35 : 0});
   // mascotas
-  const slots = petSlots(G.save.level), pr = Math.round(34*HS), gap = Math.round(16*HS);
-  for(let i=0;i<3;i++){
+  const slots = petSlots(G.save.level), pr = Math.round(31*HS), gap = Math.round(14*HS);
+  for(let i=0;i<4;i++){
     const x = hpX + hpR + Math.round(30*HS) + pr + i*(pr*2+gap), y = base - pr - Math.round(14*HS);
     const it = G.inv.equip.pet[i];
     if(i >= slots){
@@ -685,17 +686,17 @@ function drawHUD(){
     ctx.drawImage(art.c, Math.round(x - art.c.width*sc/2), Math.round(y - pr - 8 - art.c.height*sc), Math.round(art.c.width*sc), Math.round(art.c.height*sc));
   }
   // estamina (verde) y aceite (amarillo)
-  const sr = Math.round(52*HS), sX = hpX + hpR + Math.round(30*HS) + 3*(pr*2+gap) + Math.round(8*HS) + sr, sY = base - sr - Math.round(14*HS);
+  const sr = Math.round(52*HS), sX = hpX + hpR + Math.round(30*HS) + 4*(pr*2+gap) + Math.round(8*HS) + sr, sY = base - sr - Math.round(14*HS);
   drawOrb(sX, sY, sr, P.st/P.stMax, ORB.st, {value: Math.ceil(P.st), label:'ESTAMINA', speed:3, hs:HS, flash: P.noStamT>0 && Math.floor(G.t*10)%2 ? .4 : 0});
   const oX = sX + sr*2 + Math.round(26*HS);
   if(raid) drawOrb(oX, sY, sr, P.oil/Math.max(1, oilMax()), P.lantern ? ORB.oil : ORB.off, {value: Math.ceil(P.oil), label: P.lantern ? 'ACEITE' : 'APAGADA', speed:1.4, hs:HS});
   else drawOrb(oX, sY, sr, 1, ORB.oil, {value:oilMax(), label:'ACEITE', speed:1.4, hs:HS});
   drawPetBuffs(HS);   // columna izquierda de bufos: farolillo, talismanes y afijos de mascota que afectan al héroe
+  drawStatusRow(HS, oX, sY, sr, sX);   // bufos de consumibles y debufos, junto al contador de aceite
+  drawDpsPanel(HS);   // ventana de DPS del dummy de pruebas
 
   // ---- barra de acciones (abajo a la derecha): clic derecho sobre un hueco para elegir su acción ----
   const fs = Math.round(7*S*HS), ls = Math.round(6*S*HS), y0 = drawActionBar(HS, fs, ls);
-  if(P.bleedT > 0){ ctx.font = `${fs}px ${FONT}`; ctx.textAlign = 'right'; textO(`Sangrando ${Math.ceil(P.bleedT)}s`, W-24, y0-Math.round(60*HS), '#ff6a6a'); ctx.textAlign = 'left'; }
-  if(P.speedT > 0){ ctx.font = `${fs}px ${FONT}`; ctx.textAlign = 'right'; textO(`Velocidad ${Math.ceil(P.speedT)}s`, W-24, y0-Math.round(40*HS), '#ffb0a0'); ctx.textAlign = 'left'; }
   // ---- nivel, experiencia y oro (arriba a la izquierda) ----
   const s = G.save;
   ctx.font = `${9*S}px ${FONT}`; textO('Nv ' + s.level, 20, 26);
@@ -727,6 +728,16 @@ function drawHUD(){
   ctx.globalAlpha = 1; ctx.textAlign = 'left';
   // barra de vida del jefe
   const bf = G.bossFight;
+  if(bf && MONSTERS[bf.type].trio){   // los tres hermanos drakonianos: una barra por cada uno
+    const tr = G.mons.filter(o => MONSTERS[o.type].trio && !o.dying), n = tr.length, tw = Math.min(260, (W*.9 - 10*(n - 1))/Math.max(1, n)), x0 = W/2 - (tw*n + 10*(n - 1))/2;
+    tr.forEach((o, i) => {
+      const bx = x0 + i*(tw + 10), by = 40, col = /Ignis/.test(o.name) ? ['#4a1208', '#e8501a', '#ffb070'] : /Glacius/.test(o.name) ? ['#0a2a4a', '#4a9ae0', '#bfeaff'] : ['#241a4a', '#e8c820', '#fff0a0'];
+      hudFrame(bx, by, tw, 16); ctx.fillStyle = col[0]; ctx.fillRect(bx, by, tw, 16);
+      ctx.fillStyle = col[1]; ctx.fillRect(bx, by, Math.round(tw*Math.max(0, o.hp/o.maxHp)), 16);
+      ctx.fillStyle = 'rgba(255,255,255,.25)'; ctx.fillRect(bx, by, Math.round(tw*Math.max(0, o.hp/o.maxHp)), 5);
+      ctx.textAlign = 'center'; ctx.font = `${6*S}px ${FONT}`; textO(o.name, bx + tw/2, by - 10, col[2]); textO(`${Math.ceil(o.hp)} / ${Math.round(o.maxHp)}`, bx + tw/2, by + 9); ctx.textAlign = 'left';
+    });
+  } else
   if(bf && bf.awake && !bf.dying && G.mons.includes(bf)){
     const bw = Math.min(560, W*.5), bx = W/2 - bw/2, by = 40;
     hudFrame(bx, by, bw, 18);
@@ -1151,8 +1162,8 @@ UI.renderSkills = function(){
     box.innerHTML = '<canvas id="treeCanvas" width="1080" height="1080"></canvas><div id="treeInfo"></div>';
     const c = $('treeCanvas');
     const nodeAt = e => {
-      const r = c.getBoundingClientRect(), k = c.width / r.width;
-      const mx = (e.clientX - r.left)*k, my = (e.clientY - r.top)*k;
+      const r = c.getBoundingClientRect();
+      const mx = (e.clientX - r.left)*c.width / r.width, my = (e.clientY - r.top)*c.height / r.height;   // cada eje con su escala (el lienzo puede no ser cuadrado en pantalla)
       let best = null, bd = 18;
       for(const n of TREE.nodes){ const [x,y] = this.treePos(n); const d = Math.hypot(mx-x, my-y); if(d < bd){ bd = d; best = n; } }
       return best;

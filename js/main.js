@@ -3,7 +3,7 @@
 //  Juego: estado, guarida ↔ expedición, interacciones, luz y bucle
 // =====================================================================
 // el farolillo de cobre es de serie: tras morir se te devuelve uno nuevo
-function emptyEquip(){ return {w1:null, w2:null, shield:null, head:null, chest:null, hands:null, feet:null, lantern:{id:'copperlantern'}, pet:[null,null,null], tal:[null,null,null], pbag:[null,null,null,null,null], potion:null, bandage:null, oil:null, cookie:null, mushroom:null, elfpotion:null, hallshroom:null, elfbread:null, bone:null, ammo:null}; }
+function emptyEquip(){ return {w1:null, w2:null, shield:null, head:null, chest:null, hands:null, feet:null, lantern:{id:'copperlantern'}, pet:[null,null,null,null], tal:[null,null,null], pbag:[null,null,null,null,null], potion:null, bandage:null, oil:null, cookie:null, mushroom:null, elfpotion:null, hallshroom:null, elfbread:null, bone:null, ammo:null}; }
 const G = {
   t:0, sc:null, mons:[], pets:[], projs:[], hazards:[], loot:[], parts:[], texts:[],
   allies:[], shake:0, hitstop:0, kills:0, flash:null, deathT:0,
@@ -85,6 +85,7 @@ function enterDen(){
   G.save.inRaid = false; saveGame();
   UI.refresh();
   mmBuild(G.sc);
+  if(typeof spawnDummy === 'function') spawnDummy();   // dummy de pruebas de Uakala
   playMusic('den');
 }
 // 2 portales de vuelta a la guarida en sitios aleatorios y alcanzables (separados entre sí y de la entrada)
@@ -143,7 +144,7 @@ function startRaid(expId='village'){
       if(!blocked(G.sc, x, y, 12)){ G.mons.push(mkMonster(e.type, e.rarity, x, y)); break; }
     }
   }
-  if(sc.bossSpawn){ const bo = mkMonster(exp.boss || 'countess', 'boss', sc.bossSpawn.x, sc.bossSpawn.y, {affixes:[]}); bo.spawnIn = 1; G.mons.push(bo); }
+  if(sc.bossSpawn){ const bo = mkMonster(exp.boss || 'countess', 'boss', sc.bossSpawn.x, sc.bossSpawn.y, {affixes:[]}); bo.spawnIn = 1; G.mons.push(bo); for(const eb of (sc.extraBosses || [])){ const b2 = mkMonster(eb.type, 'boss', eb.x, eb.y, {affixes:[]}); b2.spawnIn = 1; G.mons.push(b2); } }
   placeQuestStuff(G.sc, expId);
   P.oil = oilMax(); P.lantern = !!G.inv.equip.lantern; G.raidGold = 0; G.rescued = 0; G.rescuedNames = []; G.rescuedIds = []; G.kills = 0;
   G.save.inRaid = true; G.save.runs++; if(G.save.quest !== 'done'){ G.save.quest = 'done'; toast('Misión cumplida: ¡la primera expedición comienza!', 3.4); } saveGame();
@@ -633,7 +634,7 @@ function startGame(slot, fresh){
   G.save = loadGame(slot);
   refreshPetBonus();
   G.inv.equip = emptyEquip(); G.inv.bag = Array(20).fill(null);
-  if(G.save.inv){ G.inv.equip = Object.assign(emptyEquip(), G.save.inv.equip); G.inv.bag = G.save.inv.bag; while(G.inv.bag.length < 20) G.inv.bag.push(null); }
+  if(G.save.inv){ G.inv.equip = Object.assign(emptyEquip(), G.save.inv.equip); while(G.inv.equip.pet.length < 4) G.inv.equip.pet.push(null); G.inv.bag = G.save.inv.bag; while(G.inv.bag.length < 20) G.inv.bag.push(null); }
   let lostOnLoad = false;
   if(G.save.inRaid){ dropRaidLoss(); lostOnLoad = true; }   // abandonar o desconectarse en una expedición: se pierde todo, pero las mascotas que ya conocían la guarida quedan como caídas (Chemma las puede resucitar)
   if(!G.save.petRecover){   // una sola vez: devuelve como caídas las mascotas ya conocidas que se perdieron por desconexión
