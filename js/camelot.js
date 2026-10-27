@@ -126,7 +126,7 @@ regPets(['corcelito', 'cuervoreal', 'gatomerlin', 'halcon', 'armadillo', 'lobopi
   unicornio: {exp:'12b', name:'Unicornio de Avalón', rarity:'magic', look:'Unicornio joven', beh:'cone', dmg:[15, 20], cd:2.4, fire:'#ffd0ff', affixes:['curandera', 'sanadora'], attack:'Destello del cuerno en cono'},
   hadalago:  {exp:'12b', name:'Hada del Lago', rarity:'magic', look:'Hada luminosa', beh:'flock', dmg:[15, 20], cd:2.6, dust:true, affixes:['luciernaga', 'sanadora'], attack:'Polvo de hada que ralentiza a los enemigos en área'},
   grifo:     {exp:'12b', name:'Grifo Real', rarity:'rare', look:'Grifo dorado', beh:'flyer', dmg:[26, 34], cd:.85, bleed:1, affixes:['feroz', 'veloz', 'presa', 'valiente'], attack:'Picadas con sangrado desde el aire'},
-  cisne:     {exp:'12b', name:'Cisne de Avalón', rarity:'rare', look:'Cisne blanco', beh:'flyer', dmg:[26, 34], cd:.9, affixes:['curandera', 'inspiradora', 'sanadora', 'luna'], attack:'Picotazos desde el aire'},
+  cisne:     {exp:'12b', name:'Cisne de Avalón', rarity:'rare', look:'Cisne blanco', beh:'flyer', dmg:[26, 34], cd:.9, affixes:['curandera', 'inspiradora', 'sanadora', 'avariciosa'], attack:'Picotazos desde el aire'},
   pendragon: {exp:'12b', name:'Pendragón', rarity:'legendary', look:'Dragón rojo bebé', beh:'cone', dmg:[28, 36], cd:2.2, fire:'#ff7a3a', legendary:true, bloom:true, skillName:'¡Bendición de Avalón!', affixes:['ignea', 'presa', 'curandera', 'indomable'],
              attack:'Aliento de fuego en cono. Bendición de Avalón cada 24 s: cura el 20 % al héroe y a todas las mascotas'},
 }, PET_SHAPES);

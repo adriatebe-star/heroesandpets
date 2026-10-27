@@ -26,6 +26,7 @@ UI.renderDruidShop = function(body){
   const s = G.save, gold = s.wallet;
   const offers = [
     {name:'Jaula grande para mascotas', price:10000, icon:ICONS.bigcage, owned:!!s.petCage, desc:'Un alijo para guardar hasta 100 mascotas. Aparece en la guarida, a la izquierda del alijo, y se abre con F.', buy:() => { s.petCage = Array(100).fill(null); const sc = G.sc; if(sc.kind === 'den' && !sc.bigCage){ sc.bigCage = {x:-242, y:40}; propSprite(sc, ART.bigcage, -242, 40, {t:'r', x:-256, y:33, w:28, h:8}, [16,3]); sc.lights.push({x:-242, y:20, r:70, a:.5, warm:true, flick:.08}); } return true; }},
+    {name:'Jaula gigante para mascotas', price:30000, icon:ICONS.bigcage, owned:!!(s.petCage && s.petCage.length >= 200), desc:'Amplía la jaula grande a 200 huecos para mascotas (necesitas tener ya la jaula grande).', buy:() => { if(!s.petCage){ toast('Necesitas antes la jaula grande', 2); return null; } while(s.petCage.length < 200) s.petCage.push(null); return true; }},
     {name:'Mochila mágica', price:5000, icon:ICONS.magicbag, owned:!!s.magicBag, desc:'Añade 5 huecos a tu mochila que solo admiten mascotas. Al volver con vida, esas mascotas pasan a la jaula grande (o al alijo).', buy:() => { s.magicBag = true; return true; }},
     {name:'Pata de conejo', price:1500, icon:ICONS.rabbitfoot, owned:false, desc:ITEMS.rabbitfoot.desc + ' Talismán: se lleva en uno de los 3 huecos de talismán del equipo.', buy:() => addToBagOrStash(mkItem('rabbitfoot'))},
     {name:'Trébol de la suerte', price:1000, icon:ICONS.clover, owned:false, desc:ITEMS.luckclover.desc + ' Talismán: se lleva en uno de los 3 huecos de talismán del equipo.', buy:() => addToBagOrStash(mkItem('luckclover'))},
@@ -36,7 +37,8 @@ UI.renderDruidShop = function(body){
     row.innerHTML = `<img src="${o.icon.toDataURL()}" draggable="false"><div class="smi"><b>${o.name}</b><small>${o.desc}</small></div><button ${o.owned || gold < o.price ? 'disabled' : ''}>${o.owned ? 'Comprada' : o.price + ' oro'}</button>`;
     row.querySelector('button').onclick = () => {
       if(s.wallet < o.price){ toast('No tienes suficiente oro', 1.6); return; }
-      if(!o.buy()){ toast('No tienes sitio ni en la mochila ni en el alijo', 2); return; }
+      const ok = o.buy(); if(ok === null) return;
+      if(!ok){ toast('No tienes sitio ni en la mochila ni en el alijo', 2); return; }
       s.wallet -= o.price; sfx('coin'); toast(`Compras ${o.name} por ${o.price} oro`, 2.2); saveGame(); refreshStats(); UI.refresh(); UI.renderTrainer();
     };
     body.append(row);

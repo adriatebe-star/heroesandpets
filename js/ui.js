@@ -18,6 +18,7 @@ function itemIconURL(it){
 // {area:'bag'|'stash'|'eq', key: índice | 'w1' | 'w2' | 'shield' | 'pet0'..'pet2'}
 const PET_LVL = [1, 10, 20, 40];
 function getRef(r){
+  if(r.area==='safe') return G.save.safeBox && G.save.safeBox[r.key];
   if(r.area==='cage') return G.save.petCage && G.save.petCage[r.key];
   if(r.area==='pbag') return G.inv.equip.pbag[r.key];
   if(r.area==='eq' && String(r.key).startsWith('tal')) return G.inv.equip.tal[+r.key[3]];
@@ -27,7 +28,8 @@ function getRef(r){
   return G.inv.equip[r.key];
 }
 function setRef(r, it){
-  if(r.area==='cage'){ if(G.save.petCage) G.save.petCage[r.key] = it; }
+  if(r.area==='safe'){ if(G.save.safeBox) G.save.safeBox[r.key] = it; }
+  else if(r.area==='cage'){ if(G.save.petCage) G.save.petCage[r.key] = it; }
   else if(r.area==='pbag') G.inv.equip.pbag[r.key] = it;
   else if(r.area==='eq' && String(r.key).startsWith('tal')) G.inv.equip.tal[+r.key[3]] = it;
   else if(r.area==='bag') G.inv.bag[r.key] = it;
@@ -40,6 +42,7 @@ function refRejects(r, it, skipKey){
   if(!it) return null;
   if(r.area==='stash') return UI.stashOpen ? null : 'El alijo solo está en la guarida';
   if(r.area==='bag') return null;
+  if(r.area==='safe') return it.id === 'pet' ? 'La caja fuerte no guarda mascotas' : (UI.stashOpen ? null : 'La caja fuerte solo está en la guarida');
   if(r.area==='cage') return it.id !== 'pet' ? 'La jaula grande solo guarda mascotas' : (UI.stashOpen ? null : 'La jaula grande solo está en la guarida');
   if(r.area==='pbag') return it.id === 'pet' ? null : 'La mochila mágica solo guarda mascotas';
   if(String(r.key).startsWith('tal')) return it.id !== 'pet' && ITEMS[it.id].slot === 'talisman' ? null : 'Ahí solo van talismanes';
@@ -84,7 +87,7 @@ function afterInvChange(){
 }
 function dropRef(r){
   const it = getRef(r); if(!it) return;
-  if(G.sc.kind==='raid'){ dropItem(P.x, P.y, it); setRef(r, null); toast('Has tirado ' + itemName(it), 1.4); }
+  if(G.sc.kind==='raid'){ it.noDup = true; dropItem(P.x, P.y, it); setRef(r, null); toast('Has tirado ' + itemName(it), 1.4); }
   else { if(!confirm('¿Tirar ' + itemName(it) + '? Se perderá.')) return; setRef(r, null); }
   afterInvChange();
 }
@@ -296,9 +299,13 @@ const UI = {
       for(const i of idx) grid.append(this.slotEl({area:'stash', key:i}));
       st.append(grid);
     }
-    if(G.save.petCage){   // jaula grande: alijo de hasta 100 mascotas
+    if(G.save.petCage){   // jaula grande: alijo de hasta 100-200 mascotas
       const {cg, idx, free} = cageIdx();
       if(!q || idx.length){ shown += idx.length; st.append(div('cathead', `Jaula grande (${cg.filter(Boolean).length} / ${cg.length} mascotas)`)); petGroups(cg, 'cage', idx, q ? [] : free); }
+    }
+    if(G.save.safeBox){   // caja fuerte: 40 huecos para el mejor equipo
+      const sb = G.save.safeBox, idx = []; sb.forEach((it, i) => { if(!it || nameMatch(it, q)) idx.push(i); });
+      if(!q || idx.some(i => sb[i])){ st.append(div('cathead', `Caja fuerte (${sb.filter(Boolean).length} / ${sb.length})`)); const g = div('slots grid10'); for(const i of idx) if(!q || sb[i]) g.append(this.slotEl({area:'safe', key:i})); st.append(g); shown += idx.filter(i => sb[i]).length; }
     }
     const used = G.save.stash.filter(Boolean).length;
     if(!used && !q){ st.append(div('empty', 'El alijo está vacío. Arrastra aquí lo que quieras guardar.')); }
@@ -441,7 +448,7 @@ const UI = {
       if(!addTo(dest, it)){ toast(this.stashOpen ? 'El alijo está lleno' : 'La mochila está llena'); return; }
       setRef(ref, null); afterInvChange(); return;
     }
-    if(ref.area==='stash' || ref.area==='cage'){
+    if(ref.area==='stash' || ref.area==='cage' || ref.area==='safe'){
       if(this.mode==='shop'){ this.sell(ref); return; }
       if(autoEquip(it)){ setRef(ref, null); afterInvChange(); toast('Equipas ' + itemName(it), 1.4); return; }
       if(!addTo(G.inv.bag, it)){ toast('La mochila está llena'); return; }
@@ -631,6 +638,14 @@ function drawOrb(cx, cy, r, frac, pal, o={}){
     ctx.lineTo(cx+r, cy+r); ctx.closePath();
     const lg = ctx.createLinearGradient(0, lvl, 0, cy+r); lg.addColorStop(0, pal[0]); lg.addColorStop(.35, pal[1]); lg.addColorStop(1, pal[2]);
     ctx.fillStyle = lg; ctx.fill();
+    if(o.shield > 0){   // escudo (azul) sobre el nivel de vida
+      const l2 = cy + r - 2*r*Math.min(1, frac + o.shield);
+      ctx.beginPath(); ctx.moveTo(cx-r, lvl + 2);
+      for(let i=0;i<=24;i++){ const x = cx-r + i/24*2*r; ctx.lineTo(x, l2 + Math.sin(t*1.3 + i*.6)*amp*.7); }
+      ctx.lineTo(cx+r, lvl + 2); ctx.closePath();
+      const sg = ctx.createLinearGradient(0, l2, 0, lvl); sg.addColorStop(0, 'rgba(190,225,255,.85)'); sg.addColorStop(1, 'rgba(70,130,230,.75)');
+      ctx.fillStyle = sg; ctx.fill();
+    }
     // superficie brillante
     ctx.beginPath();
     for(let i=0;i<=24;i++){ const x = cx-r + i/24*2*r, y = lvl + Math.sin(t + i*.55)*amp + Math.sin(t*1.7 + i*.9)*amp*.5; i ? ctx.lineTo(x,y) : ctx.moveTo(x,y); }
@@ -666,7 +681,7 @@ function drawHUD(){
   // ---- bombonas (abajo a la izquierda) ----
   const base = H - Math.round(34*HS);
   const hpR = Math.round(84*HS), hpX = 30 + hpR, hpY = base - hpR - Math.round(14*HS);
-  drawOrb(hpX, hpY, hpR, P.hp/P.maxHp, ORB.hp, {value:`${Math.ceil(P.hp)}/${P.maxHp}`, label:'VIDA', hs:HS, flash: P.inv>0 && !P.dashT ? P.inv*.35 : 0});
+  drawOrb(hpX, hpY, hpR, P.hp/P.maxHp, ORB.hp, {value:`${Math.ceil(P.hp)}/${P.maxHp}`, label:'VIDA', hs:HS, flash: P.inv>0 && !P.dashT ? P.inv*.35 : 0, shield:(P.petShield || 0)/P.maxHp});
   // mascotas
   const slots = petSlots(G.save.level), pr = Math.round(31*HS), gap = Math.round(14*HS);
   for(let i=0;i<4;i++){
@@ -1137,9 +1152,10 @@ UI.renderMapInfo = function(id){
      ${exclLootHTML(e)}
      ${legendInfoHTML(e)}
      ${e.boss ? bossInfoHTML(e) : ''}
-     ${e.hidden ? '<button disabled>Solo se puede acceder a través del portal del tiempo de Rolecs</button>' : lk ? `<button disabled>${blockQuest(e) && (G.save.maxExp||0) >= e.lvl - 1 ? 'Completa la misión «' + blockQuest(e).title + '» para desbloquearla' : blockBoss(e) && (G.save.maxExp||0) >= e.lvl - 1 ? 'Derrota a ' + MONSTERS[blockBoss(e).boss].name + ' para desbloquearla' : 'Supera la Expedición ' + (e.lvl-1) + ' para desbloquearla'}</button>` : e.needKey && !G.inv.bag.some(o => o && o.id==='minekey') ? '<button disabled>Necesitas una llave de la mina en la mochila</button>' : sel ? '<button id="mapGo">Viajar' + (e.needKey ? ' (gasta 1 llave de la mina)' : '') + '</button>' : '<p class="sub">Haz clic para seleccionarla</p>'}`;
+     ${e.hidden ? '<button disabled>Solo se puede acceder a través del portal del tiempo de Rolecs</button>' : lk ? `<button disabled>${blockQuest(e) && (G.save.maxExp||0) >= e.lvl - 1 ? 'Completa la misión «' + blockQuest(e).title + '» para desbloquearla' : blockBoss(e) && (G.save.maxExp||0) >= e.lvl - 1 ? 'Derrota a ' + MONSTERS[blockBoss(e).boss].name + ' para desbloquearla' : 'Supera la Expedición ' + (e.lvl-1) + ' para desbloquearla'}</button>` : e.needKey && !G.inv.bag.some(o => o && o.id==='minekey') ? '<button disabled>Necesitas una llave de la mina en la mochila</button>' : e.id==='dragonbridge' && !G.save.bridgeOpen && !G.inv.bag.some(o => o && o.id==='dragonkey') ? '<button disabled>Necesitas la llave mágica del puente de los dragones (solo la primera vez)</button>' : sel ? '<button id="mapGo">Viajar' + (e.needKey ? ' (gasta 1 llave de la mina)' : e.id==='dragonbridge' && !G.save.bridgeOpen ? ' (gasta la llave, abre el puente para siempre)' : '') + '</button>' : '<p class="sub">Haz clic para seleccionarla</p>'}`;
   const go = $('mapGo'); if(go) go.onclick = () => {
     if(e.needKey){ const ix = G.inv.bag.findIndex(o => o && o.id==='minekey'); if(ix < 0){ toast('Necesitas una llave de la mina'); return; } if(--G.inv.bag[ix].n <= 0) G.inv.bag[ix] = null; }
+    if(e.id==='dragonbridge' && !G.save.bridgeOpen){ const ix = G.inv.bag.findIndex(o => o && o.id==='dragonkey'); if(ix < 0){ toast('Necesitas la llave mágica del puente de los dragones'); return; } G.inv.bag[ix] = null; G.save.bridgeOpen = true; toast('La llave se consume: el puente queda abierto para siempre', 4); }
     this.closeRaidMap(); startRaid(e.id);
   };
   bindMapTips();

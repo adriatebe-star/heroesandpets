@@ -927,6 +927,25 @@ function orcCanvas(f, cfg){
     g.fillStyle = '#0e0a08'; g.fillRect(AX-6, AY-31, 2, 12); g.fillStyle = '#2a2018'; g.fillRect(AX-5, AY-30, 1, 10); oPx(g, [[AX-6,AY-26,'#c8962e'],[AX-5,AY-26,'#ffd040'],[AX-6,AY-21,'#c8962e'],[AX-5,AY-21,'#c8962e']]);
     oPoly(g, [[AX+4,AY-28],[AX+9,AY-28],[AX+8,AY-24],[AX+6,AY-23]], '#121015'); oPx(g, [[AX+6,AY-27,'#241812'],[AX+7,AY-26,'#241812']]);
   }
+  if(cfg.dragon){   // caballeros del dragón: casco de caballero con cuernos y cara de dragón (hocico, colmillos y ojo rasgado) sobre la cabeza del héroe
+    const D = cfg.dragon;
+    oPoly(g, [[AX-3,AY-40],[AX-9,AY-44],[AX-13,AY-43],[AX-14,AY-39],[AX-9,AY-40],[AX-6,AY-37]], '#121015'); oPoly(g, [[AX-3,AY-40],[AX-9,AY-43],[AX-12,AY-42],[AX-9,AY-40]], D.horn[0]); oPx(g, [[AX-10,AY-42,D.horn[1]],[AX-12,AY-42,D.horn[1]]]);
+    oPoly(g, [[AX-10,AY-34],[AX-10,AY-40],[AX-5,AY-44],[AX+5,AY-44],[AX+11,AY-40],[AX+11,AY-33]], '#121015');
+    oPoly(g, [[AX-9,AY-34],[AX-9,AY-39],[AX-5,AY-43],[AX+5,AY-43],[AX+10,AY-39],[AX+10,AY-34]], D.helm[0]);
+    oPoly(g, [[AX-9,AY-34],[AX-9,AY-39],[AX-5,AY-43],[AX-1,AY-43],[AX-1,AY-34]], D.helm[2]);
+    oCl(g, AX-3, AY-42, AX+5, AY-42, 1, D.helm[1]); oCl(g, AX+7, AY-40, AX+9, AY-38, 1, D.helm[1]);
+    oCl(g, AX+1, AY-43, AX+1, AY-37, 2, D.helm[1]);   // cresta central
+    oPoly(g, [[AX-1,AY-44],[AX+1,AY-49],[AX+3,AY-44]], D.crest); oPx(g, [[AX+1,AY-47,'#ffffff']]);
+    oPoly(g, [[AX-9,AY-34],[AX+10,AY-34],[AX+10,AY-33],[AX-9,AY-33]], '#121015');   // borde inferior del casco
+    // hocico de dragón saliendo por debajo del casco, mirando al frente
+    oPoly(g, [[AX+5,AY-34],[AX+18,AY-33],[AX+19,AY-28],[AX+16,AY-26],[AX+6,AY-27]], '#121015');
+    oPoly(g, [[AX+6,AY-33],[AX+17,AY-32],[AX+18,AY-29],[AX+7,AY-28]], D.scale[0]);
+    oPoly(g, [[AX+6,AY-33],[AX+17,AY-32],[AX+17,AY-31],[AX+6,AY-31]], D.scale[1]);
+    oPoly(g, [[AX+7,AY-28],[AX+18,AY-29],[AX+16,AY-27],[AX+8,AY-27]], D.scale[2]);
+    oPx(g, [[AX+16,AY-31,'#121015'],[AX+17,AY-31,'#121015'],[AX+9,AY-30,D.scale[2]],[AX+12,AY-30,D.scale[2]],[AX+14,AY-29,D.scale[2]]]);   // fosa nasal y escamas
+    oPx(g, [[AX+10,AY-27,'#ffffff'],[AX+14,AY-27,'#ffffff'],[AX+17,AY-28,'#ffffff']]);   // colmillos
+    oPx(g, [[AX+6,AY-32,D.eye],[AX+7,AY-32,D.eye],[AX+6,AY-31,'#121015'],[AX+5,AY-33,'#121015'],[AX+7,AY-33,'#121015']]);   // ojo de reptil con párpado
+  }
   // orejas puntiagudas, colmillos y pintura de guerra: siempre por encima de cintas y cascos
   if(cfg.human){ /* personas: sin orejas puntiagudas ni colmillos */ }
   else if(cfg.elf){   // orejas largas y finas hacia atrás; ojos violeta brillantes

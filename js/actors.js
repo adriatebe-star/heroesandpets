@@ -55,6 +55,7 @@ function gearStats(){
   if(typeof lanternGem === 'function'){ const gm = lanternGem(); s.move += gm.move || 0; s.dmg += gm.dmg || 0; s.sreg += gm.sreg || 0; }   // zafiro (velocidad) y obsidiana (daño y estamina)
   s.gold += (MS('exp',10) ? 10 : 0) + (MS('exp',15) ? 10 : 0) + (MS('exp',30) ? 15 : 0) + TT('or');
   s.leech = (s.leech || 0) + (MS('agr',25) ? 5 : 0);
+  if(typeof petHeroBonus === 'function') petHeroBonus(s);   // bufos de las mascotas de nivel 14+
   return s;
 }
 // recalcula vida y estamina máximas al cambiar de equipo o de nivel
@@ -84,8 +85,8 @@ const SK = k => treeCache().n[k] || 0;                 // nodos asignados en la 
 const MS = (k, m) => treeCache().notables.has(k + m);  // ¿tiene el notable de esa rama?
 const TT = s => treeCache().t[s] || 0;                  // suma de una estadística del árbol (dm, cr, hp…)
 const furyMul = () => MS('agr',26) && P.hp < P.maxHp*.5 ? 1.25 : 1;   // Furia
-const treeMMul = () => (1 + TT('dm')/100) * (MS('agr',30) ? 1.15 : 1) * furyMul();                                   // daño cuerpo a cuerpo del árbol
-const treeRMul = () => (1 + TT('pd')/100) * (MS('agi',30) ? 1.15 : 1) * (MS('agr',30) ? 1.15 : 1) * furyMul();    // daño de proyectiles del árbol
+const treeMMul = () => (1 + TT('dm')/100) * (MS('agr',30) ? 1.15 : 1) * furyMul() * (P.rastroT > 0 ? 1.1 : 1);                                   // daño cuerpo a cuerpo del árbol
+const treeRMul = () => (1 + TT('pd')/100) * (MS('agi',30) ? 1.15 : 1) * (MS('agr',30) ? 1.15 : 1) * furyMul() * (P.rastroT > 0 ? 1.1 : 1);    // daño de proyectiles del árbol
 const bagSize = () => 20 + [4,8,12,16,20,30].filter(m => MS('agu', m)).length + ((G.save && G.save.bagUp) || 0)*5;   // + mejoras de mochila de Trapis (5 huecos cada una)
 // cinturón de uso rápido: huecos del equipo para consumibles y munición (se gastan antes que lo de la mochila)
 const QUICK_SLOTS = {potion:['potion','superpotion'], bandage:['bandage'], oil:['oil', 'oil2'], cookie:['cookie'], mushroom:['mushroom'], elfpotion:['elfpotion'], ammo:['arrows','firearrows','explosivearrows']};
@@ -340,7 +341,7 @@ function resolveAttack(){
   if(isRanged(kind)){
     const arrow = w && useArrow(); if(!arrow) return;
     let dmg = (rollR((w && weaponDmg(w)) || ITEMS[kind].dmg) + S2.dmg + eleFlat(S2)) * treeRMul();
-    const crit = Math.random() < .12 + S2.crit/100 + TT('pc')/100 + (MS('agi',30) ? .1 : 0); if(crit) dmg *= 2;
+    const crit = Math.random() < .12 + S2.crit/100 + TT('pc')/100 + (MS('agi',30) ? .1 : 0); if(crit) dmg *= critMulP();
     const sx = P.x + Math.cos(P.face)*10, sy = P.y - 18 + Math.sin(P.face)*6;
     const la = legendArrow(w);
     G.projs.push({x:sx, y:sy, vx:Math.cos(P.face)*(kind==='crossbow' ? 640 : 560), vy:Math.sin(P.face)*(kind==='crossbow' ? 640 : 560), life:.75, kind:'arrow', from:'player', dmg, crit, r:3, ang:P.face, pierce:(MS('agi',20) ? 1 : 0) + la.pierce + (Math.random()*100 < (S2.pierceCh||0) ? 3 : 0), homing:la.homing, markHit:la.mark, fire: arrow==='fire', explode: arrow==='explosive', wfx: w ? {fearChance:ITEMS[w.id].fearChance, freezeChance:ITEMS[w.id].freezeChance, bleedChance:ITEMS[w.id].bleedChance} : null, fxS:{fireCh:S2.fireCh, litCh:S2.litCh, iceCh:S2.iceCh, bleedCh:S2.bleedCh, bleedDur:S2.bleedDur, poisonCh:S2.poisonCh, poisonDur:S2.poisonDur}, bounce: Math.random()*100 < (S2.bounceCh||0) ? 1 : 0});
@@ -368,12 +369,12 @@ function resolveAttack(){
     hits++;
     let dmg = legendDmgMult() * (kind==='fist' ? (big ? rand(12,16) : rand(4,7)) + S2.fist : rollR((w && weaponDmg(w)) || ITEMS[kind].dmg) + S2.dmg + eleFlat(S2)) * treeMMul();
     if(albaActive()) dmg *= 1.1;
-    let crit = Math.random() < critC; if(crit) dmg *= 2;
+    let crit = Math.random() < critC; if(crit) dmg *= critMulP();
     const WD = w && ITEMS[w.id] || {};
     const fx2 = {stun: WD.stunChance && Math.random() < WD.stunChance ? 1 : 0, bleed: WD.bleedChance && Math.random() < WD.bleedChance ? 4 : 0, poison: WD.poisonChance && Math.random() < WD.poisonChance ? 4 : 0,
       burn: WD.burnChance && Math.random() < WD.burnChance ? 4 : 0, freeze: WD.freezeChance && Math.random() < WD.freezeChance ? 2.5 : 0, weaken: WD.weakChance && Math.random() < WD.weakChance ? 5 : 0, fear: WD.fearChance && Math.random() < WD.fearChance ? 3 : 0};
     { const ar = affixRoll(S2); for(const k in ar) if(ar[k] > (fx2[k]||0)) fx2[k] = ar[k]; }   // afijos de fuego, rayo, hielo, sangrado y veneno
-    const lg = legendMelee(w, m, crit, fx2); if(lg.addCrit){ dmg *= 2; crit = true; }
+    const lg = legendMelee(w, m, crit, fx2); if(lg.addCrit){ dmg *= critMulP(); crit = true; }
     hitMonster(m, dmg, {src:'player', nx:dx/(d||1), ny:dy/(d||1), k: (big ? 520 : W2.k)*(lg.kMul || 1), crit, melee:true, ...fx2});
     legendAfterHit(m, dmg, crit, lg);
     if(fx2.bleed) addText(m.x, m.y-m.r*2-18, 'Sangrado', '#ff5a5a', 6, -20);
@@ -483,9 +484,11 @@ function damagePlayer(dmg, m, elem){
   }
   dmg *= 1 - armorReduction(S2.armor);
   if(elem) dmg *= 1 - Math.min(.8, (S2.eleRes||0)/100);   // resistencia elemental: frío, fuego y rayo
+  if(P.petShield > 0){ const ab = Math.min(P.petShield, dmg); P.petShield -= ab; dmg -= ab; addText(P.x, P.y-62, 'Escudo', '#8ab8ff', 6); }
   if(P.gelShield > 0){ const ab = Math.min(P.gelShield, dmg); P.gelShield -= ab; dmg -= ab; addText(P.x, P.y-62, 'Gelatina', '#9affb0', 6); }
   if(legendOn('ashcrown') && !m.dying){ m.weakT = Math.max(m.weakT || 0, 3); }
   if(legendOn('blizzardcloak')) iceCloak(m);
+  dmg *= petDrMul();   // Coraza viva
   if(P.infernoT > 0) dmg *= .8;                               // llamarada infernal de Cerbero                          // armadura
   const push = m.affixes.includes('pesado') ? 520 : 260;
   P.vx += dx/d*push; P.vy += dy/d*push;
@@ -521,7 +524,7 @@ function damagePlayer(dmg, m, elem){
 }
 function killPlayer(){
   if(P.dead) return;
-  if(legendVigil()) return;
+  if(legendVigil() || petSecondWind()) return;
   if(MS('agu',26) && !P.willUsed){ P.willUsed = true; P.hp = 1; addText(P.x, P.y-60, '¡Voluntad inquebrantable!', '#ffe08a', 8); ring(P.x, P.y-10, 40, '#ffe08a', .5); sfx('alba'); return; }   // una vez por expedición
   P.dead = true; P.hp = 0; sfx('death');
   burst(P.x, P.y-18, 30, ['#2b2b32','#5a3d26','#ff5a5a'], [60,200], [.5,1]);
@@ -1400,7 +1403,7 @@ function updatePet(p, dt){
   }
   // Curandera: cura 1 de vida al héroe cada 4 s
   { const hf = petFx(p, 'heal'); if(hf && canFight && P.hp < P.maxHp){ p.fhealT = (p.fhealT ?? 4) - dt; if(p.fhealT <= 0){ p.fhealT = 4; P.hp = Math.min(P.maxHp, P.hp + hf); addText(P.x, P.y-46, '+' + hf, '#7ad86a', 7); } } }
-  if(petHas(p,'escudera') && canFight){ p.shT = (p.shT ?? 6) - dt; if(p.shT <= 0){ p.shT = 12; P.gelShield = Math.max(P.gelShield || 0, 25); addText(P.x, P.y-62, 'Escudo', '#8ab8ff', 7); ring(P.x, P.y-10, 30, '#8ab8ff', .3); } }
+  if(petHas(p,'escudera') && canFight){ p.shT = (p.shT ?? 6) - dt; if(p.shT <= 0){ p.shT = 12; const sh = Math.min(80, 20 + 4*(petTier(PETS[p.item.pet]) - 1)); P.petShield = Math.max(P.petShield || 0, sh); addText(P.x, P.y-62, 'Escudo +' + sh, '#8ab8ff', 7); ring(P.x, P.y-10, 30, '#8ab8ff', .3); } }
   if(petHas(p,'sanadora') && canFight){ p.sanT = (p.sanT ?? 4) - dt; if(p.sanT <= 0){ p.sanT = 8; for(const o of G.pets) if(o !== p && o.hp > 0 && o.hp < o.maxHp){ o.hp = Math.min(o.maxHp, o.hp + o.maxHp*.08); if(o.item) o.item.hp = o.hp; addText(o.x, o.y-30, '+' + Math.round(o.maxHp*.08), '#7ad86a', 6); } } }
   if(petHas(p,'curandera') && canFight && P.hp < P.maxHp){ p.healT = (p.healT ?? 4) - dt; if(p.healT <= 0){ p.healT = 4; P.hp = Math.min(P.maxHp, P.hp+5); addText(P.x, P.y-46, '+5', '#7ad86a', 7); } }
   // Chiflo: cada 12 s silba y revela los cofres cercanos
@@ -1802,6 +1805,7 @@ function updateLoot(dt){
   const AMMO_IDS = ['stone','arrows','firearrows','explosivearrows','spear'];
   for(const l of G.loot){
     l.t += dt;
+    if(l.item && l.z === 0 && !P.dead && !l.taken && l.t > .6 && hasPetAffix('avariciosa') && l.item.id !== 'pet' && isConsumable(ITEMS[l.item.id]) && lootVisible(l) && Math.hypot(P.x-l.x, P.y-l.y) < 70) pickLoot(l);   // la avariciosa también recoge los consumibles que pasan el filtro
     if(l.item && l.z === 0 && !P.dead && hasPetAffix('recolectora') && AMMO_IDS.includes(l.item.id) && Math.hypot(P.x-l.x, P.y-l.y) < 56 && !l.taken) pickLoot(l);
     if(l.vz !== 0 || l.z > 0){
       l.z += l.vz*dt; l.vz -= 400*dt;
@@ -2399,7 +2403,7 @@ function drawAlly(al){
 }
 
 // «No fumador» (Cardio 20): todas las acciones gastan un 10 % menos de estamina
-function stamMul(){ return (MS('car',20) ? .9 : 1) * (1 - TT('ga')/100); }
+function stamMul(){ return (MS('car',20) ? .9 : 1) * (1 - TT('ga')/100) * petStamMul(); }
 
 // ---- afijos de armas (expedición 5+): daño plano elemental y efectos con probabilidad
 const eleFlat = s => (s.fireDmg||0) + (s.litDmg||0) + (s.iceDmg||0);

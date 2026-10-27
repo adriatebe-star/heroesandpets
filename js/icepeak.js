@@ -267,7 +267,7 @@ Object.assign(PETS, {
   nivea:    {exp:10, name:'Nívea', rarity:'normal', look:'Búho nival', beh:'flyer', dmg:[5, 8], cd:.9, affixes:['voladora'], attack:'Picotazos desde el aire'},
   pelucon:  {exp:10, name:'Pelusón', rarity:'magic', look:'Cría de mamut', beh:'charge', dmg:[10, 14], cd:2.6, miniStun:true, affixes:['robusta', 'dura'], attack:'Embestida que aturde 0,5 s'},
   reno:     {exp:10, name:'Reno Boreal', rarity:'magic', look:'Reno de cuernos de hielo', beh:'cone', dmg:[10, 14], cd:2.4, fire:'#c8f0ff', affixes:['helada', 'veloz'], attack:'Aliento helado en cono (triple golpe) que ralentiza'},
-  lince:    {exp:10, name:'Lince Albino', rarity:'magic', look:'Lince de las nieves', beh:'pounce', dmg:[10, 14], cd:1.7, bites:2, slowBite:true, affixes:['feroz', 'luciernaga'], attack:'Doble zarpazo que ralentiza'},
+  lince:    {exp:10, name:'Lince Albino', rarity:'magic', look:'Lince de las nieves', beh:'pounce', dmg:[10, 14], cd:1.7, bites:2, slowBite:true, affixes:['feroz', 'avariciosa'], attack:'Doble zarpazo que ralentiza'},
   osopolar: {exp:10, name:'Oso Polar', rarity:'rare', look:'Oso polar', beh:'charge', dmg:[18, 26], cd:3, knock:true, shock:true, affixes:['feroz', 'resiliente', 'robusta', 'valiente'], attack:'Zarpazo con onda de choque que aturde'},
   lobo:     {exp:10, name:'Lobo Ártico', rarity:'rare', look:'Lobo blanco de ojos azules', beh:'pounce', dmg:[16, 22], cd:1.8, bites:2, bleed:1, affixes:['rastreador', 'feroz', 'veloz', 'cazadora'], attack:'Doble mordisco con sangrado'},
   boreal:   {exp:10, name:'Boreal', rarity:'legendary', look:'Dragón de escarcha', beh:'cone', dmg:[18, 24], cd:2.2, fire:'#aee8ff', legendary:true, blizzard:true, affixes:['helada', 'dura', 'inspiradora', 'indomable'],

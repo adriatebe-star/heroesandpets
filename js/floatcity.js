@@ -86,7 +86,7 @@ Object.assign(ITEMS, {
 TREASURE_POOL.sea = [{id:'blackpearl', w:8}, {id:'nacreshell', w:8}, {id:'goldanchor', w:6}, {id:'tidecompass', w:1.6}, {id:'coralcrown', w:.9}, {id:'oceanheart', w:.45}];
 TREASURE_ZONES.floatcity = 'sea';
 // a la venta en Trapis desde el tier 11 y botín de los hombres pez
-for(const [id, price] of [['trident', 320], ['atlcrown', 280], ['atlantlantern', 260]]) SHOP.push({id, n:1, price, tier:11});
+for(const [id, price] of [['trident', 320], ['atlcrown', 280]]) SHOP.push({id, n:1, price, tier:11});
 for(const T of [LOOT.chestNormal, LOOT.chestRare]){ const r = T === LOOT.chestRare; for(const id of ['trident', 'atlcrown', 'atlantlantern']) T.table.push(Object.assign({w:r ? 4 : 2, id, lvl:11}, id === 'atlantlantern' ? {only:'floatcity'} : {})); }
 for(const id of ['trident', 'atlcrown', 'atlantlantern']) LOOT.monsterTable.push(Object.assign({w:3, id, lvl:11}, id === 'atlantlantern' ? {only:'floatcity'} : {}));
 function seaDrop(m){

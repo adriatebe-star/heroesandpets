@@ -53,7 +53,7 @@ function updateLanternGem(dt){
       for(const m of G.mons){
         if(m.dying || m.spawnIn < 1 || Math.hypot(m.x-P.x, m.y-P.y) > R2) continue;
         if(gm.burn) m.burnT = Math.max(m.burnT || 0, 1.5);
-        if(gm.freeze && Math.random() < .07 && !MONSTERS[m.type].boss && !(m.freezeT > 0) && !(m.freezeImmT > 0)){ m.freezeT = 1.2; m.freezeImmT = 1.2 + 10; burst(m.x, m.y-m.r, 12, ['#c8f0ff','#7ac8f0','#ffffff'], [30,100], [.3,.6], 0); ring(m.x, m.y-4, 20, '#c8f0ff', .3); }
+        if(gm.freeze && Math.random() < .14 && !MONSTERS[m.type].boss && !(m.freezeT > 0) && !(m.freezeImmT > 0)){ m.freezeT = 1.2; m.freezeImmT = 1.2 + 10; burst(m.x, m.y-m.r, 12, ['#c8f0ff','#7ac8f0','#ffffff'], [30,100], [.3,.6], 0); ring(m.x, m.y-4, 20, '#c8f0ff', .3); }
       }
     }
   }

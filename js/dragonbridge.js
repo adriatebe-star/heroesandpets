@@ -87,15 +87,15 @@ TREASURE_ZONES.dragonbridge = 'drg';
 regLoot('dragonbridge', ['dssword', 'dsbow', 'dsshield', 'dshelm', 'dsmail', 'dsgloves', 'dsboots'], 2.2);
 
 // ---------- caballeros del dragón, dragones y hermanos drakonianos ----------
-const KNIGHT_SKIN = ['#f0d8c0', '#d8b898', '#a88868'];
-ORC_CFG.dknight = {human:true, skin:KNIGHT_SKIN, hair:['#2a1a10'], hood:['#7a1c1c', '#c83a3a', '#3a0a0a'], tunic:['#5a1a14', '#a83a2a', '#2a0a08'], leg:['#2a0a08', '#5a1a14'], weapon:'greatsword', armor:'plate', hat:'helm', tabard:true, pauldron:true, noPaint:true, armW:5};
-ORC_CFG.dkarcher = {human:true, skin:KNIGHT_SKIN, hair:['#2a1a10'], hood:['#5a1a1a', '#9a3a2a', '#2a0a0a'], tunic:['#5a2a1a', '#9a4a2a', '#2a1208'], leg:['#2a1208', '#4a2a18'], weapon:'bow', armor:'vest', hat:'feathers', noPaint:true, armW:3};
-ORC_CFG.dkmage = {human:true, skin:KNIGHT_SKIN, hair:['#1a1228'], hood:['#6a2a14', '#c8641a', '#2a1008'], tunic:['#6a2a14', '#e8a020', '#2a1008'], leg:['#2a1008', '#6a2a14'], weapon:'staff', staffCol:['#ffe84a', '#ffffff'], armor:'robe', hat:'feathers', noPaint:true, armW:3};
-ORC_CFG.dkpaladin = {human:true, skin:KNIGHT_SKIN, hair:['#c8962e'], hood:['#d8d4c0', '#ffffff', '#8a8670'], tunic:['#e8c850', '#fff0a0', '#8a6a1a'], leg:['#8a6a1a', '#d8d4c0'], weapon:'hammer', armor:'plate', hat:'helm', tabard:true, pauldron:true, noPaint:true, armW:5};
+const KNIGHT_SKIN = ['#3f9a5a', '#2f7a46', '#1f5a34'];   // piel de escamas verdes: la cabeza del héroe queda tapada por el casco y el hocico de dragón (`cfg.dragon` en orcCanvas)
+ORC_CFG.dknight = {human:true, skin:KNIGHT_SKIN, dragon:{scale:['#3f9a5a', '#6ac488', '#1f5a34'], horn:['#e8e0c8', '#ffffff'], eye:'#ffd23a', helm:['#aab4c6', '#eef2fa', '#5a6478'], crest:'#c83a3a'}, hair:['#2a1a10'], hood:['#7a1c1c', '#c83a3a', '#3a0a0a'], tunic:['#5a1a14', '#a83a2a', '#2a0a08'], leg:['#2a0a08', '#5a1a14'], weapon:'greatsword', armor:'plate', tabard:true, pauldron:true, noPaint:true, armW:5};
+ORC_CFG.dkarcher = {human:true, skin:KNIGHT_SKIN, dragon:{scale:['#6a9a38', '#94c455', '#3a5c1c'], horn:['#d8c8a0', '#fff0c8'], eye:'#ffd23a', helm:['#8a6a42', '#c8a070', '#4a3220'], crest:'#e0602a'}, hair:['#2a1a10'], hood:['#5a1a1a', '#9a3a2a', '#2a0a0a'], tunic:['#5a2a1a', '#9a4a2a', '#2a1208'], leg:['#2a1208', '#4a2a18'], weapon:'bow', armor:'vest', noPaint:true, armW:3};
+ORC_CFG.dkmage = {human:true, skin:KNIGHT_SKIN, dragon:{scale:['#3a8a9a', '#62b8c8', '#1c4a56'], horn:['#e8d8a0', '#ffffff'], eye:'#ffe84a', helm:['#7a54b8', '#a888e8', '#3a2060'], crest:'#ffb040'}, hair:['#1a1228'], hood:['#6a2a14', '#c8641a', '#2a1008'], tunic:['#6a2a14', '#e8a020', '#2a1008'], leg:['#2a1008', '#6a2a14'], weapon:'staff', staffCol:['#ffe84a', '#ffffff'], armor:'robe', noPaint:true, armW:3};
+ORC_CFG.dkpaladin = {human:true, skin:KNIGHT_SKIN, dragon:{scale:['#4aa070', '#78d0a0', '#256a44'], horn:['#fff4c0', '#ffffff'], eye:'#fffbd0', helm:['#e0b840', '#fff0a0', '#8a6a18'], crest:'#ffffff'}, hair:['#c8962e'], hood:['#d8d4c0', '#ffffff', '#8a8670'], tunic:['#e8c850', '#fff0a0', '#8a6a1a'], leg:['#8a6a1a', '#d8d4c0'], weapon:'hammer', armor:'plate', tabard:true, pauldron:true, noPaint:true, armW:5};
 ORC_CFG.ignis = {human:true, skin:['#e0643a', '#b8401a', '#7a2208'], hair:['#ffd84a'], hood:['#5a1008', '#b82a14', '#2a0804'], tunic:['#7a1c10', '#d84a22', '#3a0e08'], leg:['#3a0e08', '#7a1c10'], weapon:'greatsword', armor:'plate', hat:'helm', crown:true, pauldron:true, noPaint:true, armW:6};
 ORC_CFG.glacius = {human:true, skin:['#9ad0f0', '#5a9ac8', '#2a5a88'], hair:['#ffffff'], hood:['#16406a', '#4a90d0', '#0a2040'], tunic:['#1c4a7a', '#7ac0e8', '#0e2a4a'], leg:['#0e2a4a', '#1c4a7a'], weapon:'hammer', armor:'plate', hat:'helm', crown:true, pauldron:true, noPaint:true, armW:6};
 ORC_CFG.voltus = {human:true, skin:['#a898e0', '#7a68b8', '#4a3a88'], hair:['#ffe84a'], hood:['#2a1a5a', '#5a3ac0', '#140a30'], tunic:['#3a2a7a', '#e8c820', '#1a1040'], leg:['#1a1040', '#3a2a7a'], weapon:'staff', staffCol:['#ffe84a', '#ffffff'], armor:'plate', hat:'helm', crown:true, pauldron:true, noPaint:true, armW:6};
-for(const [id, k] of [['dknight', 1.12], ['dkarcher', 1], ['dkmage', 1], ['dkpaladin', 1.12], ['ignis', 1.8], ['glacius', 1.8], ['voltus', 1.8]]){
+for(const [id, k] of [['dknight', .92], ['dkarcher', .85], ['dkmage', .85], ['dkpaladin', .92], ['ignis', 1.8], ['glacius', 1.8], ['voltus', 1.8]]){
   const c = ORC_CFG[id]; regMon(id, {w:Math.round(64*k), h:Math.round(56*k), ax:Math.round(24*k), ay:Math.round(54*k), canvas:f => oScaled(orcCanvas(f, c), k)});
 }
 const DRG_PAL = {
@@ -304,17 +304,17 @@ Object.assign(PET_SHAPES, {
   drakonar:   {w:34, h:30, ax:15, ay:25, fly:true, glow:'#ff9a3a', shapes:f => petDrakonar(f, {fl:['#5a1008', '#b82a14', '#ff5a2a', '#ffc07a'], bel:['#ffd84a', '#fff0a0'], tex:811})},
 });
 regPets(['brasadrago', 'escamin', 'alita', 'huevin', 'chispin', 'glacin', 'roquin', 'nimbo', 'lumina', 'tormentaazul', 'drakonar'], {
-  brasadrago: {exp:14, name:'Brasita Dragón', rarity:'normal', look:'Dragoncito rojo', beh:'cone', dmg:[9, 13], cd:2.4, fire:'#ff9a3a', affixes:['ignea'], attack:'Aliento de chispas en cono'},
-  escamin:    {exp:14, name:'Escamín', rarity:'normal', look:'Lagarto de escamas verdes', beh:'pounce', dmg:[11, 15], cd:1.5, bites:1, affixes:['dura'], attack:'Mordisco'},
-  alita:      {exp:14, name:'Alita', rarity:'normal', look:'Wyvern pequeña', beh:'flyer', dmg:[10, 14], cd:.9, affixes:['ligera'], attack:'Picotazos desde el aire'},
+  brasadrago: {exp:14, name:'Brasita Dragón', rarity:'normal', look:'Dragoncito rojo', beh:'cone', dmg:[9, 13], cd:2.4, fire:'#ff9a3a', affixes:['rastrobrasas'], attack:'Aliento de chispas en cono'},
+  escamin:    {exp:14, name:'Escamín', rarity:'normal', look:'Lagarto de escamas verdes', beh:'pounce', dmg:[11, 15], cd:1.5, bites:1, affixes:['fuenteaceite'], attack:'Mordisco'},
+  alita:      {exp:14, name:'Alita', rarity:'normal', look:'Wyvern pequeña', beh:'flyer', dmg:[10, 14], cd:.9, affixes:['pulmon'], attack:'Picotazos desde el aire'},
   huevin:     {exp:14, name:'Huevín', rarity:'normal', look:'Huevo de dragón con patas', beh:'charge', dmg:[11, 15], cd:2.4, miniStun:true, affixes:['robusta'], attack:'Embestida que aturde 0,5 s'},
-  chispin:    {exp:14, name:'Chispín', rarity:'normal', look:'Dragoncito amarillo', beh:'cone', dmg:[9, 13], cd:2.4, fire:'#fff8a8', affixes:['atronadora'], attack:'Descarga corta en cono'},
+  chispin:    {exp:14, name:'Chispín', rarity:'normal', look:'Dragoncito amarillo', beh:'cone', dmg:[9, 13], cd:2.4, fire:'#fff8a8', affixes:['furiacomp'], attack:'Descarga corta en cono'},
   glacin:     {exp:14, name:'Glacín', rarity:'magic', look:'Dragoncito de hielo', beh:'cone', dmg:[15, 20], cd:2.4, fire:'#a8f0ff', affixes:['helada', 'veloz'], attack:'Aliento helado en cono'},
-  roquin:     {exp:14, name:'Roquín', rarity:'magic', look:'Dragoncito de tierra', beh:'charge', dmg:[15, 20], cd:2.8, knock:true, shock:true, affixes:['robusta', 'dura'], attack:'Embate con onda de choque que aturde'},
-  nimbo:      {exp:14, name:'Nimbo', rarity:'magic', look:'Dragoncito de aire', beh:'cone', dmg:[14, 19], cd:2.4, fire:'#e8ffe0', gust:true, affixes:['ligera', 'voladora'], attack:'Ráfaga de viento en cono que empuja'},
-  lumina:     {exp:14, name:'Lumina', rarity:'rare', look:'Dragón de luz joven', beh:'cone', dmg:[26, 34], cd:2.2, fire:'#fff0a0', affixes:['curandera', 'sanadora', 'luciernaga', 'inspiradora'], attack:'Rayo de luz en cono'},
-  tormentaazul:{exp:14, name:'Tormenta Azul', rarity:'rare', look:'Dragón eléctrico joven', beh:'cone', dmg:[26, 34], cd:2, fire:'#ffd8ff', affixes:['electrica', 'atronadora', 'veloz', 'feroz'], attack:'Cadena de rayos en cono (salta a otro enemigo)'},
-  drakonar:   {exp:14, name:'Drakonar', rarity:'legendary', look:'Dragón de tres cabezas', beh:'cone', dmg:[34, 44], cd:2, fire:'#ff9a3a', legendary:true, fury:true, skillName:'¡Furia dragón!', affixes:['ignea', 'helada', 'indomable', 'temible'],
+  roquin:     {exp:14, name:'Roquín', rarity:'magic', look:'Dragoncito de tierra', beh:'charge', dmg:[15, 20], cd:2.8, knock:true, shock:true, affixes:['robusta', 'corazaviva'], attack:'Embate con onda de choque que aturde'},
+  nimbo:      {exp:14, name:'Nimbo', rarity:'magic', look:'Dragoncito de aire', beh:'cone', dmg:[14, 19], cd:2.4, fire:'#e8ffe0', gust:true, affixes:['vientoveloz', 'voladora'], attack:'Ráfaga de viento en cono que empuja'},
+  lumina:     {exp:14, name:'Lumina', rarity:'rare', look:'Dragón de luz joven', beh:'cone', dmg:[26, 34], cd:2.2, fire:'#fff0a0', affixes:['curandera', 'sanadora', 'savia', 'inspiradora'], attack:'Rayo de luz en cono'},
+  tormentaazul:{exp:14, name:'Tormenta Azul', rarity:'rare', look:'Dragón eléctrico joven', beh:'cone', dmg:[26, 34], cd:2, fire:'#ffd8ff', affixes:['electrica', 'rapaz', 'veloz', 'feroz'], attack:'Cadena de rayos en cono (salta a otro enemigo)'},
+  drakonar:   {exp:14, name:'Drakonar', rarity:'legendary', look:'Dragón de tres cabezas', beh:'cone', dmg:[34, 44], cd:2, fire:'#ff9a3a', legendary:true, fury:true, skillName:'¡Furia dragón!', affixes:['ignea', 'helada', 'indomable', 'segundoaliento'],
               attack:'Triple aliento en cono. Furia dragón cada 24 s: aliento en abanico que quema, congela y debilita a los enemigos'},
 }, PET_SHAPES);
 

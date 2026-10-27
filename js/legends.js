@@ -284,6 +284,7 @@ function updateLegends2(dt){
   // gelatina: escudo de 30 cada 20 s
   if(legendOn('slimeheart')){ P.gelT = (P.gelT ?? 20) - dt; if(P.gelT <= 0){ P.gelT = 20; P.gelShield = 30; addText(P.x, P.y-56, 'Gelatina', '#9affb0', 7); ring(P.x, P.y-10, 30, '#4ad85a', .4); } }
   else { P.gelT = undefined; if(!legendOn('pilgrimmedal')) P.gelShield = 0; }
+  if(P.petShield && !hasPetAffix('escudera')) P.petShield = 0;   // el escudo de la mascota Escudera se pierde si ya no la llevas
   // raíces: cada 10 s inmoviliza a los cercanos
   if(legendOn('rootgloves')){
     P.rootN = (P.rootN ?? 10) - dt;

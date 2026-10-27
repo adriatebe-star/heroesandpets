@@ -24,8 +24,45 @@ function useRepairKit(){
   burst(P.x, P.y-20, 14, ['#ffd84a', '#ffffff', '#c8ccd4'], [30, 90], [.4, .8], -60); refreshStats(); return true;
 }
 
+// el kit de reparación tiene su propio hueco en el cinturón
+QUICK_SLOTS.kit = ['repairkit']; QUICK_LABEL.kit = 'Kit de reparación'; QUICK_HINT.kit = 'kit';
+
+// ---------- herraduras de la suerte (talismanes que vende Uakala) y caja fuerte ----------
+const SHOE_ROWS = ["............", ".kkk....kkk.", "kSwSk..kSwSk", "kSSSk..kSSSk", "kSwSk..kSwSk", "kSSSkkkkSSSk", "kSwSSSSSSwSk", ".kSSSwwSSSk.", "..kkSSSSkk..", "....kkkk...."];
+const SHOES = {
+  shoe_c: {name:'Herradura normal de la suerte', pal:{S:'#b8bcc8', w:'#f0f2f8'}, price:600, value:120, fx:'Los consumibles que caen se duplican', desc:'Talismán. Mientras la llevas equipada, cuando cae un consumible se duplican sus unidades.'},
+  shoe_m: {name:'Herradura mágica de la suerte', pal:{S:'#4a88e8', w:'#bcd8ff'}, price:3000, value:500, fx:'25 % de duplicar los objetos mágicos que caen', desc:'Talismán. Mientras la llevas equipada, cuando cae un objeto mágico hay un 25 % de probabilidad de que se duplique.'},
+  shoe_r: {name:'Herradura rara de la suerte', pal:{S:'#e8c030', w:'#fff0a0'}, price:6000, value:900, fx:'25 % de duplicar los objetos raros que caen', desc:'Talismán. Mientras la llevas equipada, cuando cae un objeto raro hay un 25 % de probabilidad de que se duplique.'},
+  shoe_l: {name:'Herradura legendaria de la suerte', pal:{S:'#ff7a2a', w:'#ffd8a0'}, price:5000, value:800, fx:'Doble probabilidad de objetos legendarios (se destruye al encontrar uno)', desc:'Talismán. Mientras la llevas equipada, la probabilidad de que caigan objetos legendarios se duplica. Se destruye cuando encuentras un legendario.'},
+};
+for(const id in SHOES){ const s = SHOES[id]; ICON_ROWS[id] = {pal:s.pal, rows:SHOE_ROWS}; ICONS[id] = bakeRows(SHOE_ROWS, Object.assign({k:OUT}, s.pal)); ITEMS[id] = {name:s.name, icon:id, slot:'talisman', value:s.value, desc:s.desc, fx:s.fx}; }
+ICON_ROWS.safebox = {pal:{G:'#8a909c', g:'#c8ccd6', d:'#4a4e58', Y:'#ffd84a'}, rows:["............", ".kkkkkkkkkk.", "kGggggggggGk", "kGggggggggGk", "kGggkkkkggGk", "kGggkYYkggGk", "kGggkkkkggGk", "kGggggggggGk", "kddddddddddk", ".kk......kk."]};
+ICONS.safebox = bakeRows(ICON_ROWS.safebox.rows, Object.assign({k:OUT}, ICON_ROWS.safebox.pal));
+// los objetos que caen: herraduras de consumibles, mágicos y raros (duplican) y legendaria (se destruye al encontrar uno)
+const _dropItem0 = dropItem;
+dropItem = function(x, y, item){
+  const raid = G.sc && G.sc.kind === 'raid' && item && !item.noDup && item.id !== 'pet';
+  if(raid){
+    const d = ITEMS[item.id];
+    if(d && isConsumable(d) && hasTal('shoe_c') && item.n) item.n = Math.min(d.stack || item.n*2, item.n*2);
+    _dropItem0(x, y, item);
+    const dup = () => { const c = JSON.parse(JSON.stringify(item)); c.noDup = true; _dropItem0(x + rand(-16, 16), y + rand(-10, 10), c); addText(x, y - 30, '¡Duplicado!', '#ffe08a', 7, -20); };
+    if(d && d.gear && item.rarity === 'magic' && hasTal('shoe_m') && Math.random() < .25) dup();
+    else if(d && d.gear && item.rarity === 'rare' && hasTal('shoe_r') && Math.random() < .25) dup();
+    if(item.rarity === 'legendary' || (d && d.legend)){
+      const k = (G.inv.equip.tal || []).findIndex(t => t && t.id === 'shoe_l');
+      if(k >= 0){ G.inv.equip.tal[k] = null; toast('La herradura legendaria se ha destruido...', 3); refreshStats(); }
+    }
+    return;
+  }
+  _dropItem0(x, y, item);
+};
+{ const o1 = legendDrop, o2 = legendChest;   // la herradura legendaria duplica la probabilidad: una segunda tirada
+  legendDrop = function(m, lvl){ o1(m, lvl); if(hasTal('shoe_l')) o1(m, lvl); };
+  legendChest = function(c, lvl){ o2(c, lvl); if(hasTal('shoe_l')) o2(c, lvl); }; }
+
 // ---------- tienda de Uakala (pestaña «Tienda» del yunque) ----------
-const KIT_PRICE = 800, DUMMY_PRICE = 5000;
+const KIT_PRICE = 800, DUMMY_PRICE = 5000, SAFE_PRICE = 12000;
 UI.renderSmithShop = function(body){
   const g = G.save; body.innerHTML = '';
   const row = (img, title, desc, price, btn, off, fn) => {
@@ -43,6 +80,18 @@ UI.renderSmithShop = function(body){
     if(g.dummy) return; if(g.wallet < DUMMY_PRICE){ toast('No tienes suficiente oro', 1.6); return; }
     g.wallet -= DUMMY_PRICE; g.dummy = true; spawnDummy(); sfx('coin'); toast('El dummy de pruebas ya está en la guarida', 2.4); saveGame(); UI.refresh(); this.renderSmith();
   });
+  row(ICONS.safebox.toDataURL(), 'Caja fuerte', g.safeBox ? 'Ya la tienes: aparece como sección «Caja fuerte» al abrir el alijo.' : 'Un alijo extra de 40 huecos para guardar tu mejor equipo. Aparece en el alijo, bajo los objetos.', g.safeBox ? 0 : SAFE_PRICE, g.safeBox ? 'Comprada' : 'Comprar', !!g.safeBox || g.wallet < SAFE_PRICE, () => {
+    if(g.safeBox) return; if(g.wallet < SAFE_PRICE){ toast('No tienes suficiente oro', 1.6); return; }
+    g.wallet -= SAFE_PRICE; g.safeBox = Array(40).fill(null); sfx('coin'); toast('Compras la caja fuerte (40 huecos)', 2.4); saveGame(); UI.refresh(); this.renderSmith();
+  });
+  for(const id in SHOES){
+    const s = SHOES[id], d = ITEMS[id];
+    row(ICONS[id].toDataURL(), s.name, s.desc, s.price, 'Comprar', g.wallet < s.price, () => {
+      if(g.wallet < s.price){ toast('No tienes suficiente oro', 1.6); return; }
+      if(!addToBagOrStash(mkItem(id, 1))){ toast('No tienes sitio en la mochila ni en el alijo', 2); return; }
+      g.wallet -= s.price; sfx('coin'); toast('Compras ' + s.name, 2); saveGame(); UI.refresh(); this.renderSmith();
+    });
+  }
 };
 
 // ---------- dummy de pruebas ----------
@@ -126,7 +175,16 @@ function drawStatusRow(HS, oX, sY, sr, sX){
   }
 }
 
-Object.assign(LANG_EN, {'Kit de reparación':'Repair kit', 'Usar kit de reparación':'Use repair kit', 'No tienes kits de reparación':'You have no repair kits', 'No llevas nada que reparar':'You carry nothing that needs repair',
+Object.assign(LANG_EN, {'Herradura normal de la suerte':'Common lucky horseshoe', 'Herradura mágica de la suerte':'Magic lucky horseshoe', 'Herradura rara de la suerte':'Rare lucky horseshoe', 'Herradura legendaria de la suerte':'Legendary lucky horseshoe',
+  'Talismán. Mientras la llevas equipada, cuando cae un consumible se duplican sus unidades.':'Talisman. While equipped, whenever a consumable drops its units are doubled.',
+  'Talismán. Mientras la llevas equipada, cuando cae un objeto mágico hay un 25 % de probabilidad de que se duplique.':'Talisman. While equipped, whenever a magic item drops there is a 25 % chance it is duplicated.',
+  'Talismán. Mientras la llevas equipada, cuando cae un objeto raro hay un 25 % de probabilidad de que se duplique.':'Talisman. While equipped, whenever a rare item drops there is a 25 % chance it is duplicated.',
+  'Talismán. Mientras la llevas equipada, la probabilidad de que caigan objetos legendarios se duplica. Se destruye cuando encuentras un legendario.':'Talisman. While equipped, the chance of legendary items dropping is doubled. It is destroyed when you find a legendary.',
+  'Los consumibles que caen se duplican':'Dropped consumables are doubled', '25 % de duplicar los objetos mágicos que caen':'25 % chance to duplicate dropped magic items', '25 % de duplicar los objetos raros que caen':'25 % chance to duplicate dropped rare items',
+  'Doble probabilidad de objetos legendarios (se destruye al encontrar uno)':'Double chance of legendary items (destroyed when you find one)', '¡Duplicado!':'Duplicated!', 'La herradura legendaria se ha destruido...':'The legendary horseshoe has been destroyed...',
+  'Caja fuerte':'Safe', 'Comprada':'Bought', 'Ya la tienes: aparece como sección «Caja fuerte» al abrir el alijo.':'You already own it: it appears as a "Safe" section when you open the stash.', 'Un alijo extra de 40 huecos para guardar tu mejor equipo. Aparece en el alijo, bajo los objetos.':'An extra 40-slot stash for your best gear. It appears in the stash, below the items.',
+  'Compras la caja fuerte (40 huecos)':'You buy the safe (40 slots)', 'La caja fuerte no guarda mascotas':'The safe does not hold pets', 'La caja fuerte solo está en la guarida':'The safe is only in the den', 'Kit de reparación':'Repair kit',
+  'Necesitas la llave mágica del puente de los dragones (solo la primera vez)':'You need the magic key to the dragon bridge (first time only)', 'Necesitas la llave mágica del puente de los dragones':'You need the magic key to the dragon bridge', 'La llave se consume: el puente queda abierto para siempre':'The key is consumed: the bridge stays open forever', ' (gasta la llave, abre el puente para siempre)':' (uses the key, opens the bridge forever)', 'Usar kit de reparación':'Use repair kit', 'No tienes kits de reparación':'You have no repair kits', 'No llevas nada que reparar':'You carry nothing that needs repair',
   'Consumible raro. Asígnalo a un hueco de la barra de acciones y pulsa su tecla: repara todo el equipo que llevas puesto. Lo vende Uakala (800 de oro).':'Rare consumable. Assign it to an action bar slot and press its key: it repairs all the equipment you are wearing. Sold by Uakala (800 gold).',
   'Tienda':'Shop', 'Comprar':'Buy', 'Comprado':'Bought', 'Compras un kit de reparación':'You buy a repair kit', 'No tienes sitio en la mochila ni en el alijo':'You have no room in your backpack or stash',
   'Repara todo tu equipo puesto al usarlo (asígnalo a un hueco de la barra de acciones).':'Repairs all your worn equipment when used (assign it to an action bar slot).',

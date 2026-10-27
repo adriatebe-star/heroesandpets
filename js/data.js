@@ -359,7 +359,7 @@ const PET_AFFIX = {
   rastreador:  {name:'Rastreador', desc:'Detecta las jaulas desde mucho más lejos (también en el mapa)'},
   olfato:      {name:'Olfato',       desc:'Marca los cofres cercanos'},
   buscatesoros:{name:'Buscatesoros', desc:'+15 % de oro y +5 % de probabilidad de tesoro'},
-  avariciosa:  {name:'Avariciosa',   desc:'Recoge sola las monedas cercanas'},
+  avariciosa:  {name:'Avariciosa',   desc:'Recoge solas las monedas y los consumibles cercanos (los que pasan el filtro)'},
   luciernaga:  {name:'Luciérnaga',   desc:'Desprende luz y la linterna gasta un 20 % menos'},
   valiente:    {name:'Valiente',     desc:'+40 % de daño contra mágicos y raros'},
   espinosa:    {name:'Espinosa',     desc:'Devuelve el 20 % del daño que recibe'},
@@ -634,7 +634,7 @@ PET_AFFIX.eclipse = {name:'Eclipse', desc:'Cada 25 s confunde a los enemigos cer
 PET_AFFIX.luna ={name:'Luz de luna', desc:'Aura que revela a los Sombríos y cura 1 de vida por segundo al héroe'};
 Object.assign(PET_AFFIX, {
   cazadora:  {name:'Cazadora', desc:'+25 % de daño a enemigos marcados, sangrando o quemándose'},
-  escudera:  {name:'Escudera', desc:'Cada 12 s da un escudo de 25 de vida al héroe'},
+  escudera:  {name:'Escudera', desc:'Cada 12 s da un escudo al héroe (de 20 a 72 de vida según el nivel de la mascota); se ve en la bombona de vida'},
   estelar:   {name:'Estelar', desc:'Al matar a un enemigo, su siguiente ataque es crítico seguro'},
   resiliente:{name:'Resiliente', desc:'Pierde un 30 % menos de vida por veneno y otros efectos continuos'},
   agilc:     {name:'Ágil de combate', desc:'+12 % de esquivar golpes y +10 % de velocidad de ataque', fx:{dodge:12, aspd:10}},
