@@ -326,7 +326,7 @@ ART.dragongate = SP(paintSprite(120, 90, [
   {poly:[[10, 28], [14, 6], [20, 26]], c:['#e8e0d0', '#ffffff']}, {poly:[[100, 26], [106, 6], [110, 28]], c:['#e8e0d0', '#ffffff']},
 ]), 60, 88);
 function buildDragonBridge(seed){
-  const sc = buildRectWorld({id:'dragonbridge', name:'El puente de los dragones', lvl:14, petExp:14, cols:1, rows:8, nodeW:[300, 360], nodeH:[300, 360], boss:{w:760, h:560}, spacingX:440, spacingY:420,
+  const sc = buildRectWorld({id:'dragonbridge', name:'El puente de los dragones', lvl:14, petExp:14, monMul:.75, cols:1, rows:8, nodeW:[300, 360], nodeH:[300, 360], boss:{w:760, h:560}, spacingX:440, spacingY:420,
     solid:'water', darkness:.86, loops:0, warm:true, lightA:.8, corridor:80,
     floor:(x, y, e) => e ? '#1c1822' : BRG_STONE[tq(((Math.floor(x/20) + Math.floor(y/20)) & 1)*.2 + vnoise(x/12, y/12, 561)*.45 + hash(x, y, 562)*.2, x, y, 4)],
     void:(x, y, near) => near ? '#3a1410' : BRG_VOID[tq(vnoise(x/16, y/16, 563)*.7 + hash(x, y, 564)*.3, x, y, 4)],

@@ -137,7 +137,7 @@ function startRaid(expId='village'){
   randomReturnPortals(sc);
   if(Math.random() < LEGEND_CHEST_CHANCE) addLegendChest(sc);   // a veces hay un cofre legendario
   clearAroundInteractables(sc); clearBossRoom(sc);
-  G.save.sold = [];   // Trapis olvida lo recomprable al salir a una expedición
+  G.save.sold = []; G.save.shopBought = {};   // Trapis olvida lo recomprable y repone su género al salir a una expedición
   resetWorld(sc);
   for(const sp of G.sc.monsterSpawns) for(const e of sp.pack){
     for(let i=0;i<10;i++){
@@ -156,8 +156,8 @@ function startRaid(expId='village'){
 }
 function extract(how){
   G.save.wallet += G.raidGold;
-  G.save.inRaid = false; G.save.extracts = (G.save.extracts||0) + 1;
-  G.save.maxExp = Math.max(G.save.maxExp||0, G.sc.lvl||1);
+  G.save.inRaid = false; G.save.shopBought = {}; G.save.extracts = (G.save.extracts||0) + 1;
+  if(!G.sc.noRank) G.save.maxExp = Math.max(G.save.maxExp||0, G.sc.lvl||1);
   rollShopSpecials();
   const pets = G.rescuedNames.length ? G.rescuedNames.join(', ') : 'ninguna';
   const html = `<h1>¡HAS VUELTO A CASA!</h1><p class="sub">${how}</p>
@@ -180,7 +180,7 @@ function extract(how){
 function dropRaidLoss(){
   // las mascotas que llevabas caen contigo: el druida solo podrá revivir las que ya conocían la guarida
   for(const it of G.inv.equip.pet.concat(G.inv.bag, G.inv.equip.pbag || [])) if(it && it.id==='pet' && it.homed) G.save.fallen.push({pet:it.pet, shiny:!!it.shiny});
-  clearGear(); G.raidGold = 0; G.save.inRaid = false;
+  clearGear(); G.raidGold = 0; G.save.inRaid = false; G.save.shopBought = {};
 }
 function loseEverything(){
   dropRaidLoss();
@@ -282,13 +282,20 @@ function talkGonzalo(){
   if(questTalk('gonzalo')) return;
   UI.openSkills();
 }
-// ofertas especiales de Trapis: equipo mágico o raro que cambia tras cada expedición
+// ofertas especiales de Trapis: 8 objetos de equipo mágicos o raros (a veces legendarios) que cambian tras cada expedición
 function rollShopSpecials(){
   const tier = Math.max(1, G.save.maxExp||1), pool = SHOP.filter(o => o.tier <= tier && ITEMS[o.id].gear);
+  const legs = LEGEND_IDS.filter(id => ITEMS[id] && (ITEMS[id].lvl || 1) <= tier);
   G.save.shopSpecials = [];
-  for(let i=0;i<4 && pool.length;i++){
-    const o = pick(pool), rar = Math.random() < .2 ? 'rare' : 'magic', it = mkGear(o.id, rar, tier);
-    G.save.shopSpecials.push({item:it, price:Math.round(o.price * (rar==='rare' ? 4 : 2.2) * (1 + it.affixes.length*.1))});
+  let nLeg = 0;
+  for(let i=0;i<8 && pool.length;i++){
+    if(legs.length && nLeg < 2 && Math.random() < .08){
+      const id = legs.splice(randi(0, legs.length-1), 1)[0]; nLeg++;
+      G.save.shopSpecials.push({item:mkItem(id, 1, tier), price:Math.round((ITEMS[id].value || 300) * 10)});
+      continue;
+    }
+    const o = pick(pool), rar = Math.random() < .4 ? 'rare' : 'magic', it = mkGear(o.id, rar, tier);
+    G.save.shopSpecials.push({item:it, price:Math.round(o.price * (it.rarity==='rare' ? 4 : 2.2) * (1 + it.affixes.length*.1))});
   }
 }
 // Uakala, el herrero orco desterrado: pide vivir en la guarida y, una vez allí, repara y mejora el equipo
@@ -342,6 +349,7 @@ function talkAish(){
   UI.openAish();
 }
 function talkHorse(){
+  if(G.sc.id === 'garden'){ UI.say('Caballo', [{text:'¿Qué quieres hacer?', choice:[{label:'Volver a la guarida', fn:() => enterDen()}, {label:'Ir al mapa de incursiones', fn:() => { if((G.save.extracts||0) >= 1) UI.openRaidMap(); }}, {label:'Todavía no'}]}]); return; }
   if(G.sc.id === 'timehall'){ UI.say('Caballo', [{text:'¿Volver a la guarida?', choice:[{label:'Sí, volver', fn:() => enterDen()}, {label:'Todavía no'}]}]); return; }
   // tras volver con vida al menos una vez, el caballo muestra el mapa de incursiones
   if((G.save.extracts||0) >= 1){ UI.openRaidMap(); return; }
@@ -354,13 +362,16 @@ function talkHorse(){
 function interactables(){
   const sc = G.sc, list = [];
   const add = (x, y, r, text, fn, py) => { const d = Math.hypot(P.x-x, P.y-y); if(d < r) list.push({d, x, y:py ?? y-40, text, fn}); };
-  const talk = {juan:talkJuan, trapis:talkTrapis, druid:talkDruid, gonzalo:talkGonzalo, uakala:talkUakala, aish:talkAish, alexandra:talkAlexandra, rolecs:talkRolecs};
-  for(const n of sc.npcs) add(n.x, n.y, 34, n.rescue ? '[F] Hablar con ' + n.name : n.id==='rolecs' ? '[F] Rolecs, señor del tiempo' : n.id==='alexandra' ? (sc.kind==='raid' ? '[F] Hablar con Alexandra' : '[F] Alexandra, la nórdica jugona') : n.id==='aish' ? (sc.kind==='raid' ? '[F] Hablar con Aish' : '[F] Aish, elfo de luz') : n.id==='uakala' ? (sc.kind==='raid' ? '[F] Hablar con Uakala' : '[F] Herrero Uakala') : n.id==='trapis' ? '[F] Comerciar con Trapis' : n.id==='druid' ? '[F] Hablar con Chemma' : n.id==='gonzalo' ? '[F] Hablar con Gonzalo' : '[F] Hablar con Juan, el sabio', talk[n.id], n.y-52);
+  const talk = {juan:talkJuan, trapis:talkTrapis, druid:talkDruid, gonzalo:talkGonzalo, uakala:talkUakala, aish:talkAish, alexandra:talkAlexandra, rolecs:talkRolecs, oluaf:talkOluaf};
+  for(const n of sc.npcs) add(n.x, n.y, 34, n.rescue ? '[F] Hablar con ' + n.name : n.id==='oluaf' ? '[F] Oluaf, el pastor' : n.id==='rolecs' ? '[F] Rolecs, señor del tiempo' : n.id==='alexandra' ? (sc.kind==='raid' ? '[F] Hablar con Alexandra' : '[F] Alexandra, la nórdica jugona') : n.id==='aish' ? (sc.kind==='raid' ? '[F] Hablar con Aish' : '[F] Aish, elfo de luz') : n.id==='uakala' ? (sc.kind==='raid' ? '[F] Hablar con Uakala' : '[F] Herrero Uakala') : n.id==='trapis' ? '[F] Comerciar con Trapis' : n.id==='druid' ? '[F] Hablar con Chemma' : n.id==='gonzalo' ? '[F] Hablar con Gonzalo' : '[F] Hablar con Juan, el sabio', talk[n.id], n.y-52);
   if(sc.horse){
     if(sc.kind==='den') add(sc.horse.x, sc.horse.y, 46, '[F] Caballo', () => { sfx('horse'); talkHorse(); }, sc.horse.y-42);
     else add(sc.horse.x, sc.horse.y, 46, '[F] Volver a casa', () => { sfx('horse'); startChannel(3, 'Volviendo a casa...', () => extract('Has vuelto a lomos del caballo de Juan.'), '#c8a070'); }, sc.horse.y-42);
   }
+  if(sc.gardenDoor) add(sc.gardenDoor.x, sc.gardenDoor.y + 6, 54, '[F] Cruzar la puerta del jardín secreto', () => startChannel(2, 'Abriendo la puerta...', gardenEnter, '#ffb0e0'), sc.gardenDoor.y - 70);
+  if(sc.bench) add(sc.bench.x, sc.bench.y, 36, P.sitting ? '[F] Levantarse' : '[F] Sentarse en el banco', () => toggleSit(sc), sc.bench.y - 34);
   if(sc.bigCage) add(sc.bigCage.x, sc.bigCage.y, 32, '[F] Jaula grande (mascotas)', () => UI.toggleInv('cage'), sc.bigCage.y-44);
+  if(sc.safeProp) add(sc.safeProp.x, sc.safeProp.y, 32, '[F] Caja fuerte', () => UI.toggleInv('safe'), sc.safeProp.y-44);
   if(sc.slotProp) add(sc.slotProp.x, sc.slotProp.y, 34, '[F] Tragaperras', () => UI.openSlots(), sc.slotProp.y - 52);
   if(sc.stash) add(sc.stash.x, sc.stash.y, 30, '[F] Alijo', () => UI.toggleInv('stash'), sc.stash.y-26);
   if(sc.portalProp) add(0, -150, 60, '[F] Portal del tiempo', useTimePortal, -190);
@@ -401,7 +412,7 @@ const hasTal = id => (G.inv.equip.tal || []).some(t => t && t.id === id);
 function rollCagePet(lvl){
   let pool = petsOfExp(lvl).filter(id => !G.rescuedIds.includes(id)); if(!pool.length) pool = petsOfExp(lvl);
   // el adiestrador (rama Buscador) hace más probables las mascotas mágicas, raras y legendarias
-  const wt = id => { const q = PETS[id].rarity; return CAGE_CHANCE[q] * (q==='normal' ? 1 : 1 + (G.pt.findPct||0)/100) * (q==='legendary' && G.pt.legBonus ? 2 : 1) * (q!=='normal' && hasTal('rabbitfoot') ? 2 : 1); };
+  const wt = id => { const q = PETS[id].rarity; return CAGE_CHANCE[q] * (q==='normal' ? 1 : 1 + (G.pt.findPct||0)/100) * (q==='legendary' && G.pt.legBonus ? 2 : 1) * (q!=='normal' && hasTal('rabbitfoot') ? 2 : 1) * shepMul(q); };
   let r = Math.random()*pool.reduce((s, id) => s + wt(id), 0);
   for(const id of pool){ r -= wt(id); if(r <= 0) return id; }
   return pool[pool.length-1];
@@ -410,18 +421,33 @@ function openCage(c){
   c.pet = rollCagePet(G.sc.petExp ?? (G.sc.lvl || 1));   // la tirada se hace ahora, no al entrar en el mapa
   const clover = (G.inv.equip.tal || []).findIndex(t => t && t.id === 'luckclover');   // el trébol de la suerte duplica la probabilidad de mascota brillante
   let shiny = !!c.shiny;
-  if(!shiny && Math.random() < .05*(clover >= 0 ? 2 : 1)){ shiny = true; if(clover >= 0){ G.inv.equip.tal[clover] = null; toast('El trébol de la suerte se ha desvanecido...', 3); refreshStats(); } }   // 5 % de que sea brillante (las jaulas de regalo siempre lo son); el trébol desaparece al encontrarla
+  if(!shiny && Math.random() < .05*(clover >= 0 ? 2 : 1) + shepPct('shiny')/100){ shiny = true; if(clover >= 0){ G.inv.equip.tal[clover] = null; toast('El trébol de la suerte se ha desvanecido...', 3); refreshStats(); } }   // 5 % de que sea brillante (las jaulas de regalo siempre lo son); el trébol desaparece al encontrarla
   { const rf = (G.inv.equip.tal || []).findIndex(t => t && t.id === 'rabbitfoot'); if(rf >= 0 && PETS[c.pet].rarity === 'legendary'){ G.inv.equip.tal[rf] = null; toast('La pata de conejo se ha desvanecido...', 3); refreshStats(); } }
   const isNew = !(G.save.freedSp && G.save.freedSp[c.pet]);   // el cartel de enhorabuena solo sale con especies nuevas
   G.save.petsFreed = (G.save.petsFreed || 0) + 1; (G.save.freedSp ??= {})[c.pet] = true;   // los puntos del adiestrador cuentan especies distintas
   c.open = true; G.rescued++; G.rescuedNames.push(PETS[c.pet].name); G.rescuedIds.push(c.pet); sfx('cage');
   const it = mkPetItem(c.pet, false, shiny), p = PETS[c.pet];
-  if(!addToBag(it)){ dropItem(c.x, c.y+6, it); toast('Mochila llena: la mascota espera en el suelo', 2.5); }
   toast(shiny ? `¡${p.name} es BRILLANTE! (${RARITY[p.rarity].name})` : `¡Has rescatado a ${p.name}! (${RARITY[p.rarity].name})`, 3);
-  if(isNew) UI.showPetCard(c.pet, shiny);
+  showPetPick(it, c, isNew);   // ventanita con la mascota: clic o F para cogerla; sin sitio, cae al suelo
   burst(c.x, c.y-14, 24, ['#fff1c0','#7ae09a', RARITY[p.rarity].col], [40,160], [.5,1], -40);
   G.flash = {x:c.x, y:c.y-12, t:.4};
 }
+// ventanita al abrir una jaula: la mascota se coge con clic o con F; si la mochila está llena cae al suelo
+const PET_COL = {normal:'#ffffff', magic:'#6aa8ff', rare:'#f2d14b', legendary:'#ff4a4a'};   // color de la mascota (ventanita y suelo)
+let PET_PICK = null;
+function showPetPick(it, c, isNew){
+  const p = PETS[it.pet], col = PET_COL[p.rarity], kd = petDmgMult(it);
+  const take = () => {
+    if(!PET_PICK) return; PET_PICK = null;
+    const s = $('screen'); s.classList.add('hidden'); UI.screen = null; sfx('ui');
+    if(!addToBag(it)){ dropItem(c.x, c.y+6, it); toast('Mochila llena: la mascota cae al suelo', 2.5); }
+    if(isNew) UI.showPetCard(it.pet, !!it.shiny);
+  };
+  PET_PICK = {take};
+  UI.showScreen('<div class="petpick"><div class="pp-top">' + (it.shiny ? '★ ¡BRILLANTE! ★' : '¡Jaula abierta!') + '</div><img id="ppIcon" src="' + itemIconURL(it) + '" draggable="false"><h2 style="color:' + col + '">' + itemName(it) + '</h2><div class="pp-sub" style="color:' + col + '">Mascota ' + RARITY[p.rarity].name.toLowerCase() + '</div><div class="pp-st">Vida <b>' + petMaxHp(it) + '</b> · Daño <b>' + Math.round(p.dmg[0]*kd) + '-' + Math.round(p.dmg[1]*kd) + '</b></div></div>', 'Coger [F]', take);
+  $('ppIcon').onclick = take;
+}
+addEventListener('keydown', e => { if(PET_PICK && (e.code === 'KeyF' || e.code === 'Enter' || e.code === 'Space')){ e.preventDefault(); e.stopImmediatePropagation(); if(!e.repeat) PET_PICK.take(); } }, true);
 function pickLoot(l){
   if(!addToBag(l.item)){ toast('La mochila está llena'); return; }
   l.taken = true; G.loot = G.loot.filter(o => !o.taken);
@@ -448,6 +474,7 @@ function update(dt){
   updateTutorial(dt);
   if(!UI.dlg && !UI.screen && !G.paused && pressed.KeyI) UI.toggleInv(UI.invOpen ? UI.mode : false);
   if(!UI.dlg && !UI.screen && !G.paused && pressed.Tab){ G.bigMap = !G.bigMap; sfx('ui'); }
+  if(pressed.Escape && UI.oluafOpen){ UI.closeOluaf(); pressed.Escape = false; }
   if(pressed.Escape && UI.slotsOpen){ if(!SL.spinning) UI.closeSlots(); pressed.Escape = false; }
   if(pressed.Escape && UI.rouletteOpen){ if(!UI.rouletteSpinning) UI.closeRoulette(); pressed.Escape = false; }
   if(pressed.Escape){
@@ -651,7 +678,7 @@ function startGame(slot, fresh){
     if(n){ G.save.druid = true; setTimeout(() => toast(`Chemma puede devolver la vida a ${n} mascota${n>1?'s':''} perdida${n>1?'s':''}`, 5), 1500); }
     saveGame();
   }
-  if(UI.invOpen) UI.closeInv(); if(UI.mapOpen) UI.closeRaidMap(); if(UI.skillOpen) UI.closeSkills(); if(UI.trainerOpen) UI.closeTrainer(); if(UI.smithOpen) UI.closeSmith(); if(UI.aishOpen) UI.closeAish();
+  if(UI.invOpen) UI.closeInv(); if(UI.mapOpen) UI.closeRaidMap(); if(UI.skillOpen) UI.closeSkills(); if(UI.trainerOpen) UI.closeTrainer(); if(UI.smithOpen) UI.closeSmith(); if(UI.aishOpen) UI.closeAish(); if(UI.oluafOpen) UI.closeOluaf();
   G.bigMap = false; G.paused = false; G.kills = 0; G.raidGold = 0; G.rescued = 0; G.rescuedNames = [];
   closeMainMenu();
   enterDen();
@@ -673,3 +700,13 @@ function loop(now){
   endInput();
 }
 requestAnimationFrame(loop);
+
+// recargar (F5 / Ctrl+R / cerrar) dentro de una expedición cuenta como abandonarla: avisar antes de perder los objetos
+let RELOAD_OK = false;
+addEventListener('keydown', e => {
+  if(!(e.code === 'F5' || ((e.ctrlKey || e.metaKey) && e.code === 'KeyR'))) return;
+  if(!(typeof G !== 'undefined' && G.save && G.save.inRaid)) return;
+  e.preventDefault();
+  if(confirm('¡Estás dentro de una expedición! Si recargas la página perderás todos los objetos que llevas (equipo, mochila, oro de la expedición y mascotas). Sal primero con el caballo o con un portal. ¿Recargar de todos modos?')){ RELOAD_OK = true; location.reload(); }
+}, true);
+addEventListener('beforeunload', e => { if(!RELOAD_OK && typeof G !== 'undefined' && G.save && G.save.inRaid){ e.preventDefault(); e.returnValue = ''; } });

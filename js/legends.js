@@ -188,7 +188,7 @@ EX('trackercrossbow', 'plains', {name:'Ballesta del Rastreador', slot:'weapon', 
   desc:'Objeto legendario de las planicies. Usa flechas. Presa marcada: cada disparo marca al enemigo 5 s (recibe +25 % de daño de todos).'});
 EX('bisonhide', 'plains', {name:'Piel de Bisonte', slot:'chest', armor:20, ov:'legbison', fixed:[{k:'hp', v:20}],
   desc:'Objeto legendario de las planicies. Embestida: tras correr 3 s, tu siguiente golpe empuja con fuerza y aturde.'});
-EX('skullaxe', 'orccamp', {name:'Hacha Partecráneos', slot:'weapon', kind:'greataxe', twoHanded:true, dur:140, dmg:[44,60],
+EX('skullaxe', 'orccamp', {name:'Hacha Partecráneos', slot:'weapon', kind:'greataxe', twoHanded:true, dur:140, dmg:[56,76],
   desc:'Objeto legendario del campamento orco. A dos manos: no permite llevar escudo. Furia: con menos del 50 % de vida hace +30 % de daño.'});
 EX('trophybelt', 'orccamp', {name:'Cinturón de Trofeos', slot:'talisman', gear:false, unique:false, fixed:[{k:'hp', v:15}],
   desc:'Objeto legendario del campamento orco. Trofeos: cada enemigo muerto da +1 % de daño, hasta +20 % por incursión.'});

@@ -63,6 +63,7 @@ function drawPetBuffs(HS){
   const lt = G.inv.equip.lantern;
   if(lt && lt.gem && GEMS[lt.gem]) list.push({img:ICONS['gem_' + lt.gem], name:GEMS[lt.gem].name, col:GEMS[lt.gem].col, desc:GEMS[lt.gem].desc, from:'Gema del farolillo'});
   for(const t of (G.inv.equip.tal || [])) if(t){ const d = ITEMS[t.id]; list.push({img:ICONS[d.icon], name:d.name, col:'#b8f0a0', desc:d.fx || d.desc, from:'Talismán equipado'}); }
+  if(typeof shepBuffList === 'function') list.push(...shepBuffList());   // adornos del jardín secreto
   const fx = {};
   for(const p of G.pets){ if(!p.def || p.hp <= 0) continue; for(const a of p.def.affixes) if(heroFxOf(a) && PET_AFFIX[a]){ (fx[a] ??= {names:[]}).names.push(p.def.name); } }
   for(const k in fx) list.push({ic:heroFxOf(k).ic, name:PET_AFFIX[k].name, col:heroFxOf(k).col, desc:PET_AFFIX[k].desc, from:'De: ' + fx[k].names.join(', '), n:fx[k].names.length});

@@ -66,7 +66,8 @@ const qsMap = () => (G.save.qs ??= {});
 const qState = id => qsMap()[id];
 const qDone = id => qState(id) === 'done';
 const qIndex = id => QUESTS.findIndex(q => q.id === id);
-const qAvailable = q => !qState(q.id) && (qIndex(q.id) === 0 || qDone(QUESTS[qIndex(q.id) - 1].id)) && !!(GIVER_HERE[q.giver] && GIVER_HERE[q.giver]());
+const qPrevMain = q => { for(let i = qIndex(q.id) - 1; i >= 0; i--) if(!QUESTS[i].side) return QUESTS[i]; return null; };
+const qAvailable = q => !qState(q.id) && (q.side ? (!q.when || q.when()) : (!qPrevMain(q) || qDone(qPrevMain(q).id))) && !!(GIVER_HERE[q.giver] && GIVER_HERE[q.giver]());
 const qReady = q => qState(q.id) === 'active' && !q.auto && !!q.met();
 function takeItem1(id){ return takeItem(id); }
 let QUEST_REW = null;
@@ -121,13 +122,19 @@ function updateQuests(dt){
 }
 // texto del cuadro «MISIÓN» (bajo el minimapa)
 function questPanelLines(){
+  let main = null;
   for(const q of QUESTS){
+    if(q.side) continue;
     const st = qState(q.id);
-    if(st === 'active') return qReady(q) || (q.met() && !q.auto) ? ['MISIÓN', q.title, 'Vuelve con ' + UI_NAMES[q.giver].split(',')[0] + ' (!)'] : ['MISIÓN', q.title, ...q.obj()];
-    if(!st && qAvailable(q) && q.offer) return ['MISIÓN', 'Habla con ' + UI_NAMES[q.giver].split(',')[0], '(el «!» sobre su cabeza)'];
-    if(!st) return null;
+    if(st === 'active'){ main = qReady(q) || (q.met() && !q.auto) ? ['MISIÓN', q.title, 'Vuelve con ' + UI_NAMES[q.giver].split(',')[0] + ' (!)'] : ['MISIÓN', q.title, ...q.obj()]; break; }
+    if(!st && qAvailable(q) && q.offer){ main = ['MISIÓN', 'Habla con ' + UI_NAMES[q.giver].split(',')[0], '(el «!» sobre su cabeza)']; break; }
+    if(!st) break;
   }
-  return null;
+  // las misiones secundarias aceptadas salen debajo de la principal
+  let out = main || [];
+  for(const q of QUESTS) if(q.side && qState(q.id) === 'active')
+    out = out.concat(qReady(q) || q.met() ? ['MISIÓN SECUNDARIA', q.title, 'Vuelve con ' + UI_NAMES[q.giver].split(',')[0] + ' (!)'] : ['MISIÓN SECUNDARIA', q.title, ...q.obj()]);
+  return out.length ? out : null;
 }
 // ---------- migración de partidas antiguas: lo ya superado cuenta como misión hecha ----------
 function questMigrate(s, legacy){

@@ -680,7 +680,7 @@ Object.assign(ITEMS, {
              desc:'Golpe amplio. 35 % de probabilidad de causar sangrado (5 de daño por segundo durante 4 s).'},
   dagger:    {name:'Daga', icon:'dagger', slot:'weapon', kind:'dagger', gear:true, dur:60, dmg:[9,14], poisonChance:.4, value:18,
              desc:'Arma muy rápida de corto alcance. 40 % de probabilidad de envenenar 4 s.'},
-  greataxe:  {name:'Hacha a dos manos', icon:'greataxe', slot:'weapon', kind:'greataxe', gear:true, twoHanded:true, dur:90, dmg:[34,48], value:60,
+  greataxe:  {name:'Hacha a dos manos', icon:'greataxe', slot:'weapon', kind:'greataxe', gear:true, twoHanded:true, dur:90, dmg:[44,60], value:60,
              desc:'A dos manos: no permite llevar escudo. Ataque giratorio en área, como un ciclón, que golpea a todos los que te rodean.'},
   firesword: {name:'Espada de fuego', icon:'firesword', slot:'weapon', kind:'sword', gear:true, dur:100, dmg:[26,36], burnChance:.5, value:60,
              desc:'50 % de probabilidad de quemar al enemigo durante 4 s.'},

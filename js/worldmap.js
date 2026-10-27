@@ -18,7 +18,7 @@ function buildMapBase(){
   for(let i=0;i<18*MAP_K;i++){ const x = H(i,1,2)*MAP_W, y = H(i,2,2)*MAP_H, r = 60 + H(i,3,2)*140, gr = g.createRadialGradient(x, y, 0, x, y, r); gr.addColorStop(0, 'rgba(110,80,40,.10)'); gr.addColorStop(1, 'rgba(110,80,40,0)'); g.fillStyle = gr; g.fillRect(x-r, y-r, r*2, r*2); }   // manchas
   // praderas, bosques y zonas áridas (grandes manchas suaves)
   const patch = (u, v, rx, ry, col) => { const [x, y] = mapU(u, v), gr = g.createRadialGradient(x, y, 0, x, y, Math.max(rx, ry)); gr.addColorStop(0, col); gr.addColorStop(1, 'rgba(0,0,0,0)'); g.save(); g.translate(x, y); g.scale(1, ry/rx); g.translate(-x, -y); g.fillStyle = gr; g.fillRect(x-rx, y-rx, rx*2, rx*2); g.restore(); };
-  const BIOME = {village:'rgba(120,180,70,.55)', cemetery:'rgba(60,72,72,.55)', crypt:'rgba(70,56,78,.55)', plains:'rgba(222,184,70,.55)', orccamp:'rgba(160,72,40,.55)', castle:'rgba(110,110,122,.5)', river:'rgba(80,150,115,.42)', forest:'rgba(28,92,46,.6)', mine:'rgba(120,86,52,.55)', temple:'rgba(230,220,150,.6)', icepeak:'rgba(238,248,255,.8)', floatcity:'rgba(100,170,205,.45)', timehall:'rgba(140,110,215,.5)', northvillage:'rgba(225,238,250,.85)', jurassic:'rgba(60,170,90,.55)', camelot:'rgba(130,140,180,.5)', space:'rgba(40,30,90,.6)', dragonbridge:'rgba(110,50,56,.6)'};
+  const BIOME = {gardenmaze:'rgba(80,170,80,.55)', village:'rgba(120,180,70,.55)', cemetery:'rgba(60,72,72,.55)', crypt:'rgba(70,56,78,.55)', plains:'rgba(222,184,70,.55)', orccamp:'rgba(160,72,40,.55)', castle:'rgba(110,110,122,.5)', river:'rgba(80,150,115,.42)', forest:'rgba(28,92,46,.6)', mine:'rgba(120,86,52,.55)', temple:'rgba(230,220,150,.6)', icepeak:'rgba(238,248,255,.8)', floatcity:'rgba(100,170,205,.45)', timehall:'rgba(140,110,215,.5)', northvillage:'rgba(225,238,250,.85)', jurassic:'rgba(60,170,90,.55)', camelot:'rgba(130,140,180,.5)', space:'rgba(40,30,90,.6)', dragonbridge:'rgba(110,50,56,.6)', dragoncave:'rgba(60,20,70,.62)'};
   for(const e of ALL_EXPS()) if(BIOME[e.id]){ patch(e.mapX, e.mapY, 620, 430, BIOME[e.id]); patch(e.mapX, e.mapY, 380, 270, BIOME[e.id]); }
   patch(.9, .05, 900, 520, 'rgba(90,80,70,.28)');
   // río (de oeste a sur, pasando por El río travieso) con afluente y orillas
@@ -76,6 +76,8 @@ function buildMapBase(){
   around('floatcity', 700, 470, 50, (x, y, s) => snowPine(x, y, s), 12);
   around('timehall', 520, 380, 36, (x, y, s) => crystal(x, y, s*1.1), 13);
   around('northvillage', 560, 400, 90, (x, y, s, i) => i % 3 ? snowPine(x, y, s) : hut(x, y, s*.9), 17);
+  around('gardenmaze', 520, 380, 80, (x, y, s, i) => i % 3 ? oak(x, y, s*.8) : tuft(x, y, s), 22);
+  around('dragoncave', 560, 400, 80, (x, y, s, i) => mount(x, y + 8, s*1.5), 19);
   around('dragonbridge', 560, 400, 70, (x, y, s, i) => i % 3 ? mount(x, y + 8, s*1.4) : snowPine(x, y, s), 18);
   around('jurassic', 520, 380, 60, (x, y, s, i) => i % 3 ? oak(x, y, s) : tuft(x, y, s), 14);
   around('camelot', 520, 380, 50, (x, y, s, i) => i % 3 ? mound(x, y, s) : pillar(x, y, s), 15);
@@ -143,7 +145,7 @@ UI.renderRaidMap = function(){
   const cw = Math.max(320, Math.round(wrap.clientWidth)), ch = Math.max(220, Math.round(wrap.clientHeight));
   if(c.width !== cw || c.height !== ch){ c.width = cw; c.height = ch; }
   this.mapEnsureCam(c);
-  if(!this._mapBase) this._mapBase = buildMapBase();
+  const mk = (G.save && G.save.qs && G.save.qs.garden ? 1 : 0) + (G.save && G.save.gardenFound ? 2 : 0); if(!this._mapBase || this._mapKey !== mk){ this._mapKey = mk; this._mapBase = buildMapBase(); }
   const g = c.getContext('2d'), cam = this.mapCam, Wm = c.width, Hm = c.height, sx = x => (x - cam.x)*cam.z + Wm/2, sy = y => (y - cam.y)*cam.z + Hm/2;
   g.setTransform(1, 0, 0, 1, 0, 0); g.fillStyle = '#2a1c10'; g.fillRect(0, 0, Wm, Hm);
   g.imageSmoothingEnabled = true; g.drawImage(this._mapBase, sx(0), sy(0), MAP_W*cam.z, MAP_H*cam.z);

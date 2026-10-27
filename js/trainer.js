@@ -105,7 +105,7 @@ UI.reviveAt = function(i){
   const it = mkPetItem(e.pet, true, e.shiny);
   if(!addToBagOrStash(it)){ toast('No tienes sitio ni en la mochila ni en el alijo', 2); return; }
   G.save.wallet -= cost; G.save.fallen.splice(i, 1);
-  sfx('cage'); toast(`¡${e.shiny ? '★ ' : ''}${PETS[e.pet].name} ha vuelto a la vida!`, 2.5);
+  sfx('cage'); toast(`¡Has comprado a ${e.shiny ? '★ ' : ''}${PETS[e.pet].name}!`, 2.5);
   saveGame(); this.refresh(); this.hideColPop(); this.renderTrainer();
 };
 
@@ -196,13 +196,13 @@ UI.drawPetTree = function(){
 UI.hideColPop = function(){ clearTimeout(this._colT); const p = $('colPop'); if(p) p.classList.add('hidden'); };
 UI.renderCollection = function(body){
   const col = G.save.collection, sh = G.save.shinies, ids = Object.keys(PETS), got = ids.filter(id => col[id]).length;
-  const order = {normal:0, magic:1, rare:2, legendary:3}, fallenIds = new Set(G.save.fallen.map(e => e.pet));
-  let h = `<div class="colhead">Colección: <b>${got}</b> / ${ids.length} mascotas rescatadas · <b>${ids.filter(id => sh[id]).length}</b> brillantes ★ · † = caída (se puede resucitar)</div><div id="colGrid">`;
+  const order = {normal:0, magic:1, rare:2, legendary:3}, fallenIds = new Set(G.save.fallen.map(e => e.pet)), gardenIds = new Set((G.save.garden || []).map(e => e.pet));
+  let h = `<div class="colhead">Colección: <b>${got}</b> / ${ids.length} mascotas rescatadas · <b>${ids.filter(id => sh[id]).length}</b> brillantes ★ · † = caída · 🌷 = entregada al jardín secreto</div><div id="colGrid">`;
   for(const e of EXPEDITIONS.filter(x => !x.locked).concat(HIDDEN_EXPEDITIONS)){
     const list = ids.filter(id => PETS[id].exp === (e.petExp ?? e.lvl)).sort((a, b) => order[PETS[a].rarity] - order[PETS[b].rarity]);
     h += `<div class="colexp"><h4>${e.lvl}. ${e.name}</h4><div class="colrow">` + list.map(id => {
       const p = PETS[id], have = !!col[id];
-      return `<div class="colpet ${have ? 'have' : ''} ${fallenIds.has(id) ? 'dead' : ''}" data-id="${id}" style="--rc:${RARITY[p.rarity].col}">${sh[id] ? '<i class="colstar">★</i>' : ''}${fallenIds.has(id) ? '<i class="coldead">†</i>' : ''}<img src="${itemIconURL({id:'pet', pet:id})}" draggable="false"><span>${have ? p.name : '???'}</span></div>`;
+      return `<div class="colpet ${have ? 'have' : ''} ${fallenIds.has(id) ? 'dead' : ''}" data-id="${id}" style="--rc:${RARITY[p.rarity].col}">${sh[id] ? '<i class="colstar">★</i>' : ''}${fallenIds.has(id) ? '<i class="coldead">†</i>' : ''}${gardenIds.has(id) ? '<i class="colgarden" title="Entregada al jardín secreto">🌷</i>' : ''}<img src="${itemIconURL({id:'pet', pet:id})}" draggable="false"><span>${have ? p.name : '???'}</span></div>`;
     }).join('') + '</div></div>';
   }
   body.innerHTML = h + '</div>';
@@ -224,12 +224,18 @@ UI.showColPop = function(el, id){
       <div class="cp-st">${stats(n, 1)}</div>${sh[id] ? `<div class="cp-st" style="color:#ff9ad8">★ Brillante: ${stats(b, 1.1)}</div>` : ''}
       <div class="cp-aff">${p.affixes.map(a => `<div><b>${PET_AFFIX[a].name}</b> · ${PET_AFFIX[a].desc}</div>`).join('')}</div>
       <div class="cp-att">${p.attack || ''}</div>`;
-    const fallen = G.save.fallen.map((e, i) => ({e, i})).filter(x => x.e.pet === id), base = reviveBase(id);
-    html += `<div class="cp-price">Resucitar: <b>${base}</b> oro${sh[id] ? ` · brillante ★ <b>${base*2}</b> oro` : ''}</div>`;
-    if(fallen.length) html += fallen.map(x => `<button data-i="${x.i}" ${G.save.wallet >= reviveCost(x.e) ? '' : 'disabled'}>Resucitar ${x.e.shiny ? 'versión brillante ★' : sh[id] ? 'versión normal' : ''} · ${reviveCost(x.e)} oro</button>`).join('');
-    else html += '<div class="sub">Esta mascota no ha caído: no necesita resucitar.</div>';
+    const base = reviveBase(id), vers = [false].concat(sh[id] ? [true] : []);
+    html += `<div class="cp-price">Comprar: <b>${base}</b> oro${sh[id] ? ` · brillante ★ <b>${base*2}</b> oro` : ''}</div>`;
+    // se puede comprar cualquier especie liberada, aunque ya tengas una igual
+    html += vers.map(s => `<button data-s="${s ? 1 : 0}" ${G.save.wallet >= reviveCost({pet:id, shiny:s}) ? '' : 'disabled'}>Comprar ${s ? 'versión brillante ★' : sh[id] ? 'versión normal' : ''} · ${reviveCost({pet:id, shiny:s})} oro</button>`).join('');
     pop.innerHTML = html;
-    pop.querySelectorAll('button').forEach(bt => bt.onclick = () => this.reviveAt(+bt.dataset.i));
+    pop.querySelectorAll('button').forEach(bt => bt.onclick = () => {
+      const s = bt.dataset.s === '1', k = G.save.fallen.findIndex(e => e.pet === id && !!e.shiny === s);   // si estaba caída, se usa esa entrada
+      if(k >= 0) return this.reviveAt(k);
+      const e = {pet:id, shiny:s}; G.save.fallen.push(e);
+      this.reviveAt(G.save.fallen.length - 1);
+      const j = G.save.fallen.indexOf(e); if(j >= 0) G.save.fallen.splice(j, 1);   // si no se pudo (sin oro o sin sitio), no deja una caída falsa
+    });
   }
   pop.classList.remove('hidden');
   const r = el.getBoundingClientRect(), pw = pop.offsetWidth, ph = pop.offsetHeight;

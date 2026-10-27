@@ -891,6 +891,11 @@ const LANG_EN = {"-{} % de consumo de aceite":"-{} % oil consumption",
 "Misión cumplida: ¡la primera expedición comienza!":"Mission complete: the first expedition begins!",
 "Mochila":"Backpack",
 "Mochila llena: la mascota espera en el suelo":"Backpack full: the pet waits on the ground",
+"[F] Caja fuerte":"[F] Safe",
+"Caja fuerte":"Safe",
+"La caja fuerte está llena":"The safe is full",
+"Ya la tienes: está en la guarida, junto al alijo (F para abrirla).":"You already own it: it is in the den, next to the stash (F to open it).",
+"Una caja fuerte de 40 huecos para tu mejor equipo. Aparece en la guarida y se abre con F; sus objetos no se ven en el alijo ni con Trapis.":"A 40-slot safe for your best gear. It stands in the den and opens with F; its items do not show in the stash or with Trapis.",
 "Jaula gigante para mascotas":"Giant pet cage",
 "Amplía la jaula grande a 200 huecos para mascotas (necesitas tener ya la jaula grande).":"Expands the large cage to 200 pet slots (you must already own the large cage).",
 "Ya llevas ese talismán":"You already wear that talisman",
@@ -995,6 +1000,18 @@ const LANG_EN = {"-{} % de consumo de aceite":"-{} % oil consumption",
 "Objeto único de Urr, el gran jefe orco. 60 % de probabilidad de provocar sangrado.":"Unique item of Urr, the great orc chief. 60 % chance to cause bleeding.",
 "Objeto único de Urr, el gran jefe orco. Bloquea el 88 % del daño frontal.":"Unique item of Urr, the great orc chief. Blocks 88 % of frontal damage.",
 "Obsidiana":"Obsidian",
+"Resucitar {} (perdida) · {} oro":"Revive {} (lost) · {} gold",
+"Entregada al jardín secreto":"Delivered to the secret garden",
+"Las mascotas brillantes no se pueden entregar al jardín.":"Shiny pets cannot be delivered to the garden.",
+"Colección / Comprar":"Collection / Buy",
+"Comprar:":"Buy:",
+"Comprar versión brillante ★ · {} oro":"Buy shiny version ★ · {} gold",
+"Comprar versión normal · {} oro":"Buy normal version · {} gold",
+"Comprar  · {} oro":"Buy · {} gold",
+"¡Has comprado a {}!":"You bought {}!",
+"Se ha devuelto {} mascota repetida del jardín y se ha quitado su moneda extra":"{} duplicate pet returned from the garden and its extra coin removed",
+"MISIÓN SECUNDARIA":"SIDE QUEST",
+"Ofertas especiales: 8 objetos, a veces legendarios (cambian tras cada expedición)":"Special offers: 8 items, sometimes legendary (they change after each expedition)",
 "Ofertas especiales (cambian tras cada expedición)":"Special offers (they change after each expedition)",
 "Ojillos":"Little eyes",
 "Ojo de buscador":"Seeker's Eye",
@@ -2249,4 +2266,16 @@ const LANG_EN = {"-{} % de consumo de aceite":"-{} % oil consumption",
 "¡Aliento de aire!":"Air breath!",
 "¡Aliento eléctrico!":"Electric breath!",
 "¡Aliento de luz!":"Light breath!"};
+LANG.load(LANG_EN);
+
+Object.assign(LANG_EN,{
+"¡Jaula abierta!":"Cage opened!",
+"★ ¡BRILLANTE! ★":"★ SHINY! ★",
+"Coger [F]":"Take [F]",
+"Mochila llena: la mascota cae al suelo":"Backpack full: the pet drops to the ground",
+"Mascota normal":"Normal pet","Mascota mágica":"Magic pet","Mascota rara":"Rare pet","Mascota legendaria":"Legendary pet"
+}); LANG.load(LANG_EN);
+
+Object.assign(LANG_EN, {'Agotado':'Sold out', 'Trapis solo tiene uno de cada. Vuelve tras otra expedición':'Trapis only has one of each. Come back after another expedition',
+  '¡Estás dentro de una expedición! Si recargas la página perderás todos los objetos que llevas (equipo, mochila, oro de la expedición y mascotas). Sal primero con el caballo o con un portal. ¿Recargar de todos modos?':'You are inside an expedition! If you reload the page you will lose everything you carry (gear, backpack, expedition gold and pets). Leave first with the horse or a portal. Reload anyway?'});
 LANG.load(LANG_EN);

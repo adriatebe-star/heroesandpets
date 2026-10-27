@@ -52,7 +52,7 @@ function gearStats(){
     for(const a of it.affixes || []){ const st = affixStat(a.k); s[st] = (s[st]||0) + a.v; const A = ITEM_AFFIX[a.k]; if(A && A.stat2 && a.w !== undefined) s[A.stat2] = (s[A.stat2]||0) + a.w; }
   }
   for(const it of E.tal || []) if(it) for(const a of it.affixes || []){ const st = affixStat(a.k); s[st] = (s[st]||0) + a.v; }   // talismanes con bonos fijos (legendarios)
-  if(typeof lanternGem === 'function'){ const gm = lanternGem(); s.move += gm.move || 0; s.dmg += gm.dmg || 0; s.sreg += gm.sreg || 0; }   // zafiro (velocidad) y obsidiana (daño y estamina)
+  if(typeof lanternGem === 'function'){ const gm = lanternGem(); s.move += gm.move || 0; s.dmg += gm.dmg || 0; s.sreg += gm.sreg || 0; s.leech = (s.leech || 0) + (gm.leech || 0); }   // zafiro (velocidad) y obsidiana (daño y estamina)
   s.gold += (MS('exp',10) ? 10 : 0) + (MS('exp',15) ? 10 : 0) + (MS('exp',30) ? 15 : 0) + TT('or');
   s.leech = (s.leech || 0) + (MS('agr',25) ? 5 : 0);
   if(typeof petHeroBonus === 'function') petHeroBonus(s);   // bufos de las mascotas de nivel 14+
@@ -138,7 +138,7 @@ function lootClass(l){
   const it = l.item; if(!it || it.id === 'pet') return 'pet';
   return lootClassOf(it);
 }
-function lootColor(l){ const c = lootClass(l); return c === 'pet' ? itemColor(l.item) : LOOT_COL[c] || itemColor(l.item); }
+function lootColor(l){ const c = lootClass(l); return c === 'pet' ? (PET_COL[PETS[l.item.pet].rarity] || itemColor(l.item)) : LOOT_COL[c] || itemColor(l.item); }
 function lootVisible(l){
   const c = lootClass(l); if(c === 'pet' || c === 'quest') return true;
   if(SETTINGS.lootFilter[c] === false) return false;
@@ -174,6 +174,9 @@ function updatePlayer(dt){
     P.charmT -= dt; const sr = P.charmSrc;
     if(sr && !sr.dying && !(P.rootT > 0)){ const cdx = sr.x - P.x, cdy = sr.y - P.y, cd = Math.hypot(cdx, cdy) || 1; if(cd > 24){ ix = cdx/cd; iy = cdy/cd; } else { ix = iy = 0; } } else P.charmT = 0;
     if(Math.random() < dt*12) G.parts.push({x:P.x + rand(-6,6), y:P.y - 30, vx:rand(-8,8), vy:-20, life:.5, max:.5, size:2, col:pick(['#ff9ae0','#ffffff','#c8a0ff'])});
+  }
+  if(P.sitting){   // sentado en el banco del jardín: moverse (o salir de la escena) te levanta
+    if(!(sc.bench && Math.hypot(P.x - sc.bench.x, P.y - sc.bench.y - 4) < 10) || ix || iy) P.sitting = false; else ix = iy = 0;
   }
   const il = Math.hypot(ix,iy); if(il){ ix/=il; iy/=il; P.dx=ix; P.dy=iy; }
   P.moving = il>0;
@@ -220,10 +223,10 @@ function updatePlayer(dt){
   P.dashCd -= dt; P.inv -= dt; if(P.potionCd > 0) P.potionCd -= dt;
   if(P.infernoT > 0){ P.infernoT -= dt; for(const m of G.mons) if(!m.dying && Math.hypot(m.x-P.x, m.y-P.y) < 62) m.burnT = Math.max(m.burnT, 1.2); if(Math.random() < dt*50){ const an = Math.random()*Math.PI*2; G.parts.push({x:P.x+Math.cos(an)*52, y:P.y-8+Math.sin(an)*38, vx:0, vy:-40, life:.4, max:.4, size:2.5, col:pick(['#ff5a1a','#ff8a2a','#ffc04a'])}); } } P.slowT -= dt; if(P.frozenT > 0) P.frozenT -= dt; P.speedT -= dt; P.noStamT -= dt; if(P.gallopT > 0) P.gallopT -= dt; if(P.eclipseT > 0) P.eclipseT -= dt; if(P.warT > 0) P.warT -= dt;
 
-  if(P.bleedT > 0){ P.bleedT -= dt; P.bleedAcc = (P.bleedAcc||0) + 5*dt*(1 - Math.min(.8, (S2.bleedRes||0)/100)); if(P.bleedAcc >= 1){ const d = Math.floor(P.bleedAcc); P.bleedAcc -= d; hurtPlayer(d, '#c8202a'); } }
+  if(P.bleedT > 0){ P.bleedT -= dt; P.bleedAcc = (P.bleedAcc||0) + 5*(P.bleedX||1)*dt*(1 - Math.min(.8, (S2.bleedRes||0)/100)); if(P.bleedAcc >= 1){ const d = Math.floor(P.bleedAcc); P.bleedAcc -= d; hurtPlayer(d, '#c8202a'); } if(P.bleedT <= 0) P.bleedX = 1; }
   if(P.regenT > 0){ P.regenT -= dt; P.hp = Math.min(P.maxHp, P.hp + 6*dt); if(Math.random() < dt*8) G.parts.push({x:P.x+rand(-6,6), y:P.y-rand(8,26), vx:0, vy:-20, life:.5, max:.5, size:1.5, col:'#7ad86a'}); }
   if(P.burnT > 0){ P.burnT -= dt; P.burnAcc = (P.burnAcc||0) + 5*dt*(1 - Math.min(.8, (S2.eleRes||0)/100)); if(P.burnAcc >= 1){ const d = Math.floor(P.burnAcc); P.burnAcc -= d; hurtPlayer(d, '#ff8a2a'); } if(Math.random() < dt*30) G.parts.push({x:P.x+rand(-5,5), y:P.y-rand(4,26), vx:0, vy:-30, life:.4, max:.4, size:2, col:pick(['#ff5a1a','#ffc04a'])}); }
-  if(P.poisonT > 0){ P.poisonT -= dt; P.poisonAcc = (P.poisonAcc||0) + 7*dt*(1 - Math.min(.8, (S2.poisRes||0)/100)); if(P.poisonAcc >= 1){ const d=Math.floor(P.poisonAcc); P.poisonAcc-=d; hurtPlayer(d, '#8ad04a'); } }
+  if(P.poisonT > 0){ P.poisonT -= dt; P.poisonAcc = (P.poisonAcc||0) + 7*(P.poisonX||1)*dt*(1 - Math.min(.8, (S2.poisRes||0)/100)); if(P.poisonAcc >= 1){ const d=Math.floor(P.poisonAcc); P.poisonAcc-=d; hurtPlayer(d, '#8ad04a'); } if(P.poisonT <= 0) P.poisonX = 1; }
   // Selene (luz de luna) cura al héroe
   if(G.pets.some(p => p.def.moonlight) && P.hp < P.maxHp) P.hp = Math.min(P.maxHp, P.hp + dt);
 
@@ -349,6 +352,7 @@ function resolveAttack(){
       const p0 = G.projs[G.projs.length-1], an = P.face + (Math.random() < .5 ? -.13 : .13), sp = Math.hypot(p0.vx, p0.vy);
       G.projs.push({...p0, vx:Math.cos(an)*sp, vy:Math.sin(an)*sp, ang:an, bounce:0});
     }
+    if(la.volley){ const p0 = G.projs.find(q => q.from === 'player' && q.kind === 'arrow' && q.x === sx && q.y === sy), sp = p0 ? Math.hypot(p0.vx, p0.vy) : 0; if(p0) for(const da of [-.16, .16]){ const an = P.face + da; G.projs.push({...p0, vx:Math.cos(an)*sp, vy:Math.sin(an)*sp, ang:an, bounce:0}); } }
     wearWeapon(w); return;
   }
   if(kind==='flamethrower'){   // gran llamarada: chorro de fuego y llamas que quedan en el suelo
@@ -475,7 +479,7 @@ function damagePlayer(dmg, m, elem){
     P.stDelay = .6;
     const rawDmg = dmg; dmg *= 1 - blockPct;
     addText(P.x, P.y-50, 'Bloqueo', '#c8d0e0', 7); sfx('block');
-    if(sh && sh.id === 'lastwall' && !m.dying) legendReflect(m, rawDmg, -dx/d, -dy/d);
+    if(sh && (sh.id === 'lastwall' || sh.id === 'obsmirror') && !m.dying) legendReflect(m, rawDmg, -dx/d, -dy/d);
     if(sh && (sh.id === 'valhallashield' || sh.id === 'glaciusshield') && !m.dying && !MONSTERS[m.type].boss && Math.random() < .35 && !(m.freezeImmT > 0)){ m.freezeT = Math.max(m.freezeT || 0, 1.5); addText(m.x, m.y - m.r*2 - 18, '¡Congelado!', '#c8f0ff', 7); }
     burst(P.x+Math.cos(P.face)*10, P.y-18, 6, ['#c8ccd4','#96704a'], [40,120], [.15,.3], 0);
     if(sh && sh.dur !== undefined && wearDur(sh)){ G.inv.equip.shield = null; P.blocking = false; toast(`¡${itemName(sh)} se ha roto!`); sfx('breakItem'); refreshStats(); }
@@ -503,7 +507,7 @@ function damagePlayer(dmg, m, elem){
   if(monFx(m, 'burn')) P.burnT = Math.max(P.burnT||0, 3);
   if(monFx(m, 'slow')) P.slowT = Math.max(P.slowT||0, 2);
   if(MONSTERS[m.type].poisonHit) P.poisonT = Math.max(P.poisonT, 6);
-  if(MONSTERS[m.type].bleedHit) P.bleedT = Math.max(P.bleedT||0, 7);
+  if(MONSTERS[m.type].bleedHit){ P.bleedT = Math.max(P.bleedT||0, 7); P.bleedX = MONSTERS[m.type].bleedX || 1; }
   if(MONSTERS[m.type].burnHit) P.burnT = Math.max(P.burnT||0, 3);
   if(MONSTERS[m.type].weakHit){ P.weakT = Math.max(P.weakT||0, 4); addText(P.x, P.y-62, '¡Debilitado!', '#c8b8ff', 7); }
   if(MONSTERS[m.type].electric){ P.weakT = Math.max(P.weakT||0, 3); if(Math.random() < .3 && !legendOn('yetiheart')){ P.rootT = Math.max(P.rootT||0, .6); addText(P.x, P.y-62, '¡Descarga!', '#ffe84a', 8); } burst(P.x, P.y-22, 8, ['#ffe84a','#ffffff','#9af0ff'], [30,100], [.2,.4], 0); }   // tridentes eléctricos
@@ -801,7 +805,7 @@ function hitMonster(m, dmg, o){
   if(o.src==='pet' && o.pet && o.pet.def.affixes.includes('valiente') && m.rarity!=='normal') dmg *= 1.4;
   if(m.markT > 0) dmg *= 1.25;
   if(m.exposedT > 0) dmg *= 1.1;   // presa fácil
-  if(o.src==='player' && m.bleedT > 0 && legendOn('fenrirfang')) dmg *= 1.25;
+  if(o.src==='player' && m.bleedT > 0){ if(legendOn('fenrirfang')) dmg *= 1.25; if(legendOn('pruner')) dmg *= 1.2; }
   if(o.src==='pet' && o.pet && petHas(o.pet,'cazadora') && (m.markT > 0 || m.bleedT > 0 || m.burnT > 0)) dmg *= 1.25;
   dmg *= legendHitMod(m);
   if(o.src==='player' && P.eclipseT > 0) dmg *= 1.3;
@@ -1164,7 +1168,7 @@ const petFx = (p, k) => { let s = 0; for(const a of p.def.affixes){ const f = PE
 const monFx = (m, k) => { let s = 0; for(const a of m.affixes){ const f = MON_AFFIX[a] && MON_AFFIX[a].fx; if(f && f[k]) s += f[k]; } return s; };
 const petCd = p => p.def.cd * (petHas(p,'veloz') ? .8 : 1) * (centinelaOn(p) ? .5 : 1) * (p.item.shiny ? .91 : 1) / (p.item.serums && p.item.serums.super ? 1.2 : 1) / (legendOn('alphahorn') ? 1.25 : 1) / (1 + petFx(p, 'aspd')/100) * Math.max(.4, 1 - (G.pt.petAspd||0)/100) * rand(.9,1.1);
 const centinelaOn = p => petHas(p,'centinela') && !P.dead && P.hp < P.maxHp*.3;
-function petDamage(p){ return rollR(p.def.dmg) * (petHas(p,'feroz') ? 1.25 : 1) * (centinelaOn(p) ? 1.5 : 1) * (1 + (G.stats ? G.stats.petdmg : 0)/100) * petDmgMult(p.item) * (legendOn('alphahorn') ? 1.25 : 1) * (1 + petFx(p, 'dmg')/100) * (p.packArmed ? (p.packArmed = false, 2) : 1) * (1 + ((G.pt.petDmg||0) + (G.pt.petAll||0))/100); }
+function petDamage(p){ return rollR(p.def.dmg) * (petHas(p,'feroz') ? 1.25 : 1) * (centinelaOn(p) ? 1.5 : 1) * (1 + (G.stats ? G.stats.petdmg : 0)/100) * petDmgMult(p.item) * (legendOn('alphahorn') ? 1.25 : 1) * (1 + petFx(p, 'dmg')/100) * (p.packArmed ? (p.packArmed = false, 2) : 1) * (1 + ((G.pt.petDmg||0) + (G.pt.petAll||0))/100) * (1 + (typeof lanternGem === 'function' ? (lanternGem().petDmg || 0) : 0)); }
 function petStrike(p, m, mult=1, extra={}){
   // las mascotas de tierra no golpean a través de los muros
   if(!PET_ART[p.def.id].fly && !los(G.sc, p.x, p.y-4, m.x, m.y-4)) return;
@@ -1325,6 +1329,7 @@ function updatePet(p, dt){
       p.bloomCd = 24;
       const heal = Math.round(P.maxHp*.2); P.hp = Math.min(P.maxHp, P.hp + heal); addText(P.x, P.y-48, '+' + heal, '#7ad86a', 9);
       for(const q of G.pets) if(q.hp > 0){ q.hp = Math.min(q.maxHp, q.hp + q.maxHp*.2); addText(q.x, q.y-34, '+' + Math.round(q.maxHp*.2), '#7ad86a', 7); burst(q.x, q.y-10, 8, ['#fff0a0','#a8ffb8','#ffffff'], [20,80], [.4,.8], -50); }
+      if(p.def.id === 'flora') for(const m of G.mons) if(!m.dying && !(m.slowImmT > 0) && Math.hypot(m.x-p.x, m.y-p.y) < 200){ m.slowT = Math.max(m.slowT || 0, 3); burst(m.x, m.y-10, 6, ['#ffb0d8','#ffffff'], [20,70], [.4,.7], -30); }   // ¡Primavera!: los enemigos cercanos se ralentizan 3 s
       for(const r2 of [30, 55, 80]) ring(p.x, p.y-8, r2, '#fff0a0', .5);
       burst(P.x, P.y-20, 18, ['#fff0a0','#a8ffb8','#ffffff'], [40,120], [.5,1], -60); addText(p.x, p.y-42, p.def.skillName || '¡Floración!', '#fff0a0', 9); sfx('alba'); G.flash = {x:p.x, y:p.y-10, t:.3};
     }
@@ -1465,6 +1470,11 @@ function updatePet(p, dt){
   // posición de seguimiento: detrás del héroe según la última dirección en la que caminó
   const side = P.dx >= 0 ? -1 : 1, off = FOLLOW_OFF[p.slot] || FOLLOW_OFF[0];
   tx = P.x + side*Math.abs(off[0]); ty = P.y + off[1];
+  if(P.sitting){   // con el héroe sentado, las mascotas van hacia el banco y se reparten delante y a los lados
+    const al = G.pets.filter(q => q.hp > 0), n = Math.max(1, al.length), k = Math.max(0, al.indexOf(p)), a = Math.PI*(.12 + .76*(n > 1 ? k/(n - 1) : .5));
+    tx = P.x + Math.cos(a)*(30 + n*4); ty = P.y + 8 + Math.sin(a)*(22 + n*3);
+  }
+
 
   if(p.state==='engage'){
     const m = p.target, dx = m.x-p.x, dy = m.y-p.y, d = Math.hypot(dx,dy) || 1;
@@ -1673,7 +1683,7 @@ function updateProjs(dt){
     if(!pr.ghost && blocked(G.sc, pr.x, pr.y+10, 1)){ pr.life = 0; if(pr.explode) explodeAt(pr.x - pr.vx*dt, pr.y - pr.vy*dt, pr.dmg); else { sfx('stoneHit'); burst(pr.x, pr.y, 4, ['#7e7a72','#57534d'], [30,80], [.15,.3]); } continue; }
     // flechas de los monstruos: dañan al héroe y a las mascotas de tierra
     if(pr.from==='mon'){
-      if(!P.dead && Math.hypot(P.x-pr.x, P.y-14-pr.y) < P.r+5){ if(damagePlayer(pr.dmg, pr.mon, (pr.burn || pr.fire) ? 'fire' : (pr.weak || pr.kind==='zap') ? 'light' : pr.elem)){ if(pr.slow) P.slowT = pr.slow; if(pr.kind === 'snowball' && Math.random() < .35) freezeHero(1.1); if(pr.weak) P.weakT = Math.max(P.weakT || 0, pr.weak); if(pr.poison) P.poisonT = Math.max(P.poisonT, 7);
+      if(!P.dead && Math.hypot(P.x-pr.x, P.y-14-pr.y) < P.r+5){ if(damagePlayer(pr.dmg, pr.mon, (pr.burn || pr.fire) ? 'fire' : (pr.weak || pr.kind==='zap') ? 'light' : pr.elem)){ if(pr.slow) P.slowT = pr.slow; if(pr.kind === 'snowball' && Math.random() < .35) freezeHero(1.1); if(pr.weak) P.weakT = Math.max(P.weakT || 0, pr.weak); if(pr.poison){ P.poisonT = Math.max(P.poisonT, 7); P.poisonX = pr.poisonX || 1; }
         if(pr.burn) P.burnT = Math.max(P.burnT||0, 3);
         if(pr.bleed) P.bleedT = Math.max(P.bleedT||0, 7);
         if(pr.root){ P.rootT = Math.max(P.rootT||0, pr.root); addText(P.x, P.y-56, '¡Inmovilizado!', '#c8a0ff', 7); ring(P.x, P.y-4, 18, '#8a60d0', .35); }
@@ -1938,7 +1948,8 @@ function drawHero(){
   const x=Math.round(P.x), y=Math.round(P.y), fx=Math.cos(P.face), fy=Math.sin(P.face), px=-fy, py=fx;
   const dir = fx<0 ? -1 : 1;
   const step = P.moving ? Math.sin(P.walk) : 0;
-  const bob = P.moving ? -Math.round(Math.abs(Math.sin(P.walk))*1.5) : (Math.sin(G.t*2.5)>.6 ? -1 : 0);
+  const sit = P.sitting ? 5 : 0;   // sentado en el banco: el cuerpo baja y las piernas se doblan hacia delante
+  const bob = (P.moving ? -Math.round(Math.abs(Math.sin(P.walk))*1.5) : (Math.sin(G.t*2.5)>.6 ? -1 : 0)) + sit;
   const alpha = ((P.inv>0 && !P.dashT && Math.floor(P.inv*20)%2) ? .45 : 1) * (P.invisT > 0 ? .35 : 1);
   b.globalAlpha = alpha;
   const jz = Math.round(P.jumpZ || 0);
@@ -1997,7 +2008,13 @@ function drawHero(){
   spr('cloak', sway, bob); spr('pack', 0, bob);
   const la = Math.round(step*2.5);
   const legs = [[-6-la, Math.min(0,-Math.round(Math.max(0,-step)*2))], [-1+la, Math.min(0,-Math.round(Math.max(0,step)*2))]];
-  for(const [lx, ly] of legs){ spr('leg', lx, ly); if(E.feet) armorOv(ovName(E.feet, E.feet.id==='urrboots' ? 'urrboot' : 'boot'), E.feet.rarity, lx, ly); }
+  for(const [lx, ly] of legs){
+    if(sit){   // pierna girada hacia delante desde la cadera, con un leve balanceo
+      b.save(); b.translate(lx + 4, -8 + sit); b.rotate(-1.35 + Math.sin(G.t*2 + lx)*.05);
+      spr('leg', 0, 8); if(E.feet) armorOv(ovName(E.feet, E.feet.id==='urrboots' ? 'urrboot' : 'boot'), E.feet.rarity, 0, 8);
+      b.restore();
+    } else { spr('leg', lx, ly); if(E.feet) armorOv(ovName(E.feet, E.feet.id==='urrboots' ? 'urrboot' : 'boot'), E.feet.rarity, lx, ly); }
+  }
   spr('torso', 0, bob); if(E.chest) armorOv(ovName(E.chest, E.chest.id==='elfmail' ? 'elfmail' : 'chest'), E.chest.rarity, 0, bob);
   spr('hood', 0, bob);  if(E.head) armorOv(ovName(E.head, E.head.id==='countessveil' ? 'veil' : E.head.id==='urrhelm' ? 'urrhelm' : 'helmet'), E.head.rarity, 0, bob);
   b.restore();

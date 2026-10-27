@@ -111,7 +111,7 @@ function slResolve(r){
   s.wallet += win;
   if(ev.kind === 'triple'){
     if(ev.s === 6){ const id = pick(LEGEND_IDS); extra = ` + ${tr('¡Objeto legendario!')} ${tr(ITEMS[id].name)}`; if(!slotGive(mkItem(id, 1, 12))) extra += ' (' + tr('al suelo') + ')'; }
-    else if(ev.s === 5){ const id = pick(Object.keys(GEMS).filter(g => ITEMS[g])); extra = ` + ${tr(ITEMS[id].name)}`; if(!slotGive(mkItem(id))) extra += ' (' + tr('al suelo') + ')'; }
+    else if(ev.s === 5){ const id = pick(Object.keys(GEMS).filter(g => ITEMS[g] && !GEMS[g].only)); extra = ` + ${tr(ITEMS[id].name)}`; if(!slotGive(mkItem(id))) extra += ' (' + tr('al suelo') + ')'; }
     else if(ev.s === 4){ extra = ' + 5 ' + tr('pociones superiores'); if(!slotGive(mkItem('superpotion', 5))) extra += ' (' + tr('al suelo') + ')'; }
     else if(ev.s === 3){ extra = ' + 10 ' + tr('galletas'); if(!slotGive(mkItem('cookie', 10))) extra += ' (' + tr('al suelo') + ')'; }
   }

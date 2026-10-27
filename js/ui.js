@@ -158,14 +158,14 @@ const UI = {
 
   // ---------- inventario (modo: false | 'stash' | 'shop' | 'druid') ----------
   mode: false,
-  get stashOpen(){ return this.invOpen && (this.mode==='stash' || this.mode==='shop' || this.mode==='cage'); },
+  get stashOpen(){ return this.invOpen && (this.mode==='stash' || this.mode==='shop' || this.mode==='cage' || this.mode==='safe'); },
   toggleInv(mode=false){
     if(this.invOpen){ this.closeInv(); return; }
     this.invOpen = true; this.mode = mode; G.bigMap = false;
     $('inv').classList.remove('hidden');
-    $('stashPanel').classList.toggle('hidden', mode!=='stash' && mode!=='shop' && mode!=='cage');
+    $('stashPanel').classList.toggle('hidden', mode!=='stash' && mode!=='shop' && mode!=='cage' && mode!=='safe');
     $('equipPanel').classList.remove('hidden');   // con el mercader el equipo se ve igual que con I o el alijo
-    $('inv').classList.toggle('wide', mode==='stash' || mode==='cage');   // con tantos paneles, si no caben en pantalla se puede desplazar
+    $('inv').classList.toggle('wide', mode==='stash' || mode==='cage' || mode==='safe');   // con tantos paneles, si no caben en pantalla se puede desplazar
     $('inv').classList.toggle('shopmode', mode==='shop');
     if(mode==='shop'){ this.shopTab = 'buy'; const tb = $('shopTabs'); if(tb) tb.onclick = e => { const b = e.target.closest('button'); if(!b) return; this.shopTab = b.dataset.st; sfx('ui'); this.renderShop(); }; }   // con Trapis: 3 columnas (equipo y mochila · alijo · tienda) ajustadas a la pantalla
     $('shopPanel').classList.toggle('hidden', mode!=='shop');
@@ -188,14 +188,14 @@ const UI = {
   renderShop(){
     const tier = Math.max(1, G.save.maxExp||1), box = $('shopSlots'), q = ($('shopSearch').value || '').trim().toLowerCase(); box.innerHTML = '';
     document.querySelectorAll('#shopTabs button').forEach(b => b.classList.toggle('on', b.dataset.st === (this.shopTab || 'buy')));
-    const offer = (it, price, onBuy, tag) => {
+    const offer = (it, price, onBuy, tag, soldOut) => {
       if(!nameMatch(it, q)) return;
-      const d = ITEMS[it.id], el = document.createElement('div'); el.className = 'offer' + (tag ? ' special' : '');
+      const d = ITEMS[it.id], el = document.createElement('div'); el.className = 'offer' + (tag ? ' special' : '') + (soldOut ? ' soldout' : '');
       const can = G.save.wallet >= price;
       el.innerHTML = `<div class="slot" style="border-color:${itemColor(it)}"><img src="${itemIconURL(it)}" draggable="false">${it.n>1?`<span class="cnt">${it.n}</span>`:''}</div>
-        <div class="oname" style="color:${itemColor(it)}">${itemName(it)}</div><div class="price ${can?'':'no'}">${price} oro</div>`;
+        <div class="oname" style="color:${itemColor(it)}">${itemName(it)}</div><div class="price ${can && !soldOut ? '' : 'no'}">${soldOut ? 'Agotado' : price + ' oro'}</div>`;
       el.onmouseenter = e => this.showTip(it, e); el.onmousemove = e => this.moveTip(e); el.onmouseleave = () => $('tip').classList.add('hidden');
-      el.onclick = onBuy;
+      el.onclick = soldOut ? () => { toast('Trapis solo tiene uno de cada. Vuelve tras otra expedición', 2); sfx('ui'); } : onBuy;
       box.append(el);
     };
     if(this.shopTab === 'back'){   // recomprar lo que le has vendido a Trapis (algo más caro)
@@ -214,12 +214,12 @@ const UI = {
     let lastCat = null;
     for(const r of rows){
       if(r.cat !== lastCat){ lastCat = r.cat; const h = document.createElement('div'); h.className = 'shophead'; h.textContent = r.cat; box.append(h); }
-      offer(r.it, r.o.price, () => this.buy(r.o));
+      offer(r.it, r.o.price, () => this.buy(r.o), false, shopSoldOut(r.o, r.it));
     }
     if(!(G.save.shopSpecials||[]).length) rollShopSpecials();
     const sp = G.save.shopSpecials || [];
     if(sp.length){
-      if(!q){ const h = document.createElement('div'); h.className = 'shophead'; h.textContent = 'Ofertas especiales (cambian tras cada expedición)'; box.append(h); }
+      if(!q){ const h = document.createElement('div'); h.className = 'shophead'; h.textContent = 'Ofertas especiales: 8 objetos, a veces legendarios (cambian tras cada expedición)'; box.append(h); }
       sp.forEach((s2, i) => offer(s2.item, s2.price, () => this.buySpecial(i), true));
     }
     const next = SHOP.find(o => o.tier > tier);
@@ -231,7 +231,9 @@ const UI = {
   buy(o){
     if(G.save.wallet < o.price){ toast('No tienes suficiente oro', 1.6); sfx('ui'); return; }
     const it = shopItem(o);
+    if(shopSoldOut(o, it)){ toast('Trapis solo tiene uno de cada. Vuelve tras otra expedición', 2); sfx('ui'); return; }
     if(!addToBagOrStash(it)){ toast('No tienes sitio ni en la mochila ni en el alijo', 1.8); return; }
+    if(!shopRepeat(it)) (G.save.shopBought ||= {})[o.id] = true;
     G.save.wallet -= o.price; sfx('coin'); toast(`Compras ${itemName(it)} por ${o.price} oro`, 1.6);
     saveGame(); this.refresh();
   },
@@ -272,7 +274,7 @@ const UI = {
   // ---------- alijo: 100 huecos, mostrado por categorías ----------
   renderStash(){
     const st = $('stashSlots'); st.innerHTML = '';
-    $('stashPanel').querySelector('h3').firstChild.textContent = this.mode==='cage' ? 'Jaula grande (mascotas) ' : 'Alijo (a salvo) ';
+    $('stashPanel').querySelector('h3').firstChild.textContent = this.mode==='cage' ? 'Jaula grande (mascotas) ' : this.mode==='safe' ? 'Caja fuerte ' : 'Alijo (a salvo) ';
     const q = (this.stashQ || '').trim().toLowerCase(), div = (cls, txt) => { const d = document.createElement('div'); d.className = cls; if(txt !== undefined) d.textContent = txt; return d; };
     // mascotas agrupadas por nivel de expedición (de menor a mayor); `free` = huecos libres de la jaula
     const petGroups = (arr, area, idxs, free) => {
@@ -286,6 +288,12 @@ const UI = {
       if(free && free.length){ st.append(div('cathead lvl', `Huecos libres (${free.length})`)); const g = div('slots grid10'); for(const i of free) g.append(this.slotEl({area, key:i}, '', {hint:'mascota', cls:'petslot'})); st.append(g); }
     };
     const cageIdx = () => { const cg = G.save.petCage || [], idx = [], free = []; cg.forEach((it, i) => { if(it){ if(nameMatch(it, q)) idx.push(i); } else free.push(i); }); return {cg, idx, free}; };
+    if(this.mode==='safe'){   // la caja fuerte se abre desde su sitio en la guarida; sus objetos no salen ni en el alijo ni con Trapis
+      const sb = G.save.safeBox || [], g = div('slots grid10'); let shown = 0;
+      sb.forEach((it, i) => { if(!it || nameMatch(it, q)){ if(it) shown++; if(!q || it) g.append(this.slotEl({area:'safe', key:i})); } });
+      st.append(g); if(q && !shown) st.append(div('empty', 'Nada coincide con la búsqueda.'));
+      $('stashCount').textContent = sb.filter(Boolean).length + ' / ' + sb.length; return;
+    }
     if(this.mode==='cage'){   // la jaula grande se abre sola desde su sitio en la guarida
       const {cg, idx, free} = cageIdx(); petGroups(cg, 'cage', idx, q ? [] : free);
       if(q && !idx.length) st.append(div('empty', 'Ninguna mascota coincide con la búsqueda.'));
@@ -306,10 +314,6 @@ const UI = {
     if(G.save.petCage){   // jaula grande: alijo de hasta 100-200 mascotas
       const {cg, idx, free} = cageIdx();
       if(!q || idx.length){ shown += idx.length; st.append(div('cathead', `Jaula grande (${cg.filter(Boolean).length} / ${cg.length} mascotas)`)); petGroups(cg, 'cage', idx, q ? [] : free); }
-    }
-    if(G.save.safeBox){   // caja fuerte: 40 huecos para el mejor equipo
-      const sb = G.save.safeBox, idx = []; sb.forEach((it, i) => { if(!it || nameMatch(it, q)) idx.push(i); });
-      if(!q || idx.some(i => sb[i])){ st.append(div('cathead', `Caja fuerte (${sb.filter(Boolean).length} / ${sb.length})`)); const g = div('slots grid10'); for(const i of idx) if(!q || sb[i]) g.append(this.slotEl({area:'safe', key:i})); st.append(g); shown += idx.filter(i => sb[i]).length; }
     }
     const used = G.save.stash.filter(Boolean).length;
     if(!used && !q){ st.append(div('empty', 'El alijo está vacío. Arrastra aquí lo que quieras guardar.')); }
@@ -460,6 +464,7 @@ const UI = {
     }
     if(this.mode==='shop'){ this.sell(ref); return; }
     if(this.stashOpen){
+      if(this.mode==='safe'){ if(it.id === 'pet'){ toast('La caja fuerte no guarda mascotas', 1.6); return; } if(!addTo(G.save.safeBox || [], it)){ toast('La caja fuerte está llena'); return; } setRef(ref, null); afterInvChange(); return; }
       if(this.mode==='cage'){ if(it.id !== 'pet'){ toast('La jaula grande solo guarda mascotas', 1.6); return; } if(!addTo(G.save.petCage || [], it)){ toast('La jaula grande está llena'); return; } setRef(ref, null); afterInvChange(); return; }
       if(it.id==='pet' && G.save.petCage && addTo(G.save.petCage, it)){ setRef(ref, null); afterInvChange(); return; }
       if(!addTo(G.save.stash, it)){ toast('El alijo está lleno'); return; }
@@ -738,8 +743,8 @@ function drawHUD(){
   if(raid){
     textO(`Mascotas rescatadas: ${G.rescued}/${G.sc.cages.length}`, W-20, my+ms+44);
     textO('Vuelve al caballo [F] o a un portal', W-20, my+ms+62, '#a89a80');
-    { const q = questLines(); if(q) q.forEach((t, i) => textO(t, W-20, my+ms+92+i*18, i === 0 ? '#c8a050' : i === 1 ? '#fff2a0' : '#e8d8b0')); }   // la misión sigue a la vista dentro de las expediciones
-  } else { const q = questLines(); if(q) q.forEach((t, i) => textO(t, W-20, my+ms+44+i*18, i === 0 ? '#c8a050' : i === 1 ? '#fff2a0' : '#e8d8b0')); else textO('Habla con Juan · El caballo te lleva', W-20, my+ms+44, '#a89a80'); }
+    { const q = questLines(); if(q) q.forEach((t, i) => textO(t, W-20, my+ms+92+i*18, /^MISIÓN/.test(t) ? '#c8a050' : /^MISIÓN/.test(q[i-1] || '') ? '#fff2a0' : '#e8d8b0')); }   // la misión sigue a la vista dentro de las expediciones
+  } else { const q = questLines(); if(q) q.forEach((t, i) => textO(t, W-20, my+ms+44+i*18, /^MISIÓN/.test(t) ? '#c8a050' : /^MISIÓN/.test(q[i-1] || '') ? '#fff2a0' : '#e8d8b0')); else textO('Habla con Juan · El caballo te lleva', W-20, my+ms+44, '#a89a80'); }
   ctx.textAlign = 'left';
   if(!raid) drawPetCounter();
   drawTutorial(); drawElfBuff();
@@ -1029,6 +1034,9 @@ UI.closeRaidMap = function(){ this.mapOpen = false; $('raidMap').classList.add('
 // (el dibujo del mapa y su cámara están en js/worldmap.js)
 
 // Trapis vende siempre la versión normal del equipo
+// Trapis solo vende 1 de cada objeto (salvo consumibles y munición) hasta que entres y salgas de una expedición
+const shopRepeat = it => ['Consumibles', 'Munición'].includes(itemCat(it));
+const shopSoldOut = (o, it) => !shopRepeat(it) && !!(G.save.shopBought && G.save.shopBought[o.id]);
 function shopItem(o){ return ITEMS[o.id].gear ? mkGear(o.id, 'normal') : mkItem(o.id, o.n); }
 
 // ---------- categorías de objetos (para ordenar el alijo) ----------
@@ -1138,7 +1146,7 @@ UI.renderMapInfo = function(id){
   const lk = expLocked(e);
   if(e.hall){   // zona especial (sin expedición): la sala del tiempo
     $('mapInfo').innerHTML = `<h3>Zona especial</h3><h2>${e.name}</h2><p>${e.desc}</p>` + (lk ? `<button disabled>Supera el nivel anterior para llegar</button>` : sel ? '<button id="mapGo">Viajar</button>' : '');
-    const g2 = $('mapGo'); if(g2) g2.onclick = () => { this.closeRaidMap(); enterTimeHall(); };
+    const g2 = $('mapGo'); if(g2) g2.onclick = () => { this.closeRaidMap(); if(e.id === 'garden') enterGarden(); else enterTimeHall(); };
     return;
   }
   const pets = petsOfExp(e.petExp ?? e.lvl).sort((a,c) => ['normal','magic','rare','legendary'].indexOf(PETS[a].rarity) - ['normal','magic','rare','legendary'].indexOf(PETS[c].rarity));
@@ -1280,7 +1288,7 @@ UI.drawTree = function(){
 // los jefes bloquean el avance: no se puede pasar al nivel siguiente sin derrotar al jefe del anterior (las partidas que ya llegaron más lejos lo dan por hecho)
 const bossDown = e => !e.boss || !!(G.save.bossDone && G.save.bossDone[e.id]) || !!(G.save.bossGift && G.save.bossGift[e.id]) || (G.save.maxExp||0) > e.lvl;
 const blockBoss = e => EXPEDITIONS.find(x => x.boss && x.lvl === e.lvl - 1 && !bossDown(x));
-const expLocked = e => !e.hidden && (e.locked || (G.save.maxExp||0) < (e.prevLvl ?? e.lvl - 1) || !!blockBoss(e) || !!blockQuest(e));
+const expLocked = e => !e.hidden && !e.noGate && (e.locked || (G.save.maxExp||0) < (e.prevLvl ?? e.lvl - 1) || !!blockBoss(e) || !!blockQuest(e));
 
 // ---------- cartel de enhorabuena al rescatar una mascota ----------
 UI.showPetCard = function(id, shiny=false){

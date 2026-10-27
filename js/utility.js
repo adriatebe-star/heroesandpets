@@ -61,6 +61,12 @@ dropItem = function(x, y, item){
   legendDrop = function(m, lvl){ o1(m, lvl); if(hasTal('shoe_l')) o1(m, lvl); };
   legendChest = function(c, lvl){ o2(c, lvl); if(hasTal('shoe_l')) o2(c, lvl); }; }
 
+ART.safebox = SP(paintSprite(28, 30, [
+  {r:[3,27,6,3], c:['#1a1a20','#3a3a44']}, {r:[19,27,6,3], c:['#1a1a20','#3a3a44']},
+  {r:[2,4,24,24], c:['#2a2c34','#4a4e5a','#7a808e']}, {r:[4,6,20,20], c:['#3a3e48','#5a606e','#8a90a0']}, {r:[6,8,16,16], c:['#2a2c34','#4a4e5a']},
+  {e:[14,16,5,5], c:['#6a5018','#c8a030','#ffe070']}, {e:[14,16,2,2], c:['#2a2c34','#4a4e5a']}, {r:[13,10,2,3], c:['#c8a030','#ffe070']},
+  {r:[22,13,3,6], c:['#6a5018','#c8a030']}, {p:[[7,9,'#aab0c0'],[8,9,'#aab0c0'],[7,10,'#aab0c0'],[20,23,'#1a1a20']]},
+]), 14, 29);
 // ---------- tienda de Uakala (pestaña «Tienda» del yunque) ----------
 const KIT_PRICE = 800, DUMMY_PRICE = 5000, SAFE_PRICE = 12000;
 UI.renderSmithShop = function(body){
@@ -80,9 +86,9 @@ UI.renderSmithShop = function(body){
     if(g.dummy) return; if(g.wallet < DUMMY_PRICE){ toast('No tienes suficiente oro', 1.6); return; }
     g.wallet -= DUMMY_PRICE; g.dummy = true; spawnDummy(); sfx('coin'); toast('El dummy de pruebas ya está en la guarida', 2.4); saveGame(); UI.refresh(); this.renderSmith();
   });
-  row(ICONS.safebox.toDataURL(), 'Caja fuerte', g.safeBox ? 'Ya la tienes: aparece como sección «Caja fuerte» al abrir el alijo.' : 'Un alijo extra de 40 huecos para guardar tu mejor equipo. Aparece en el alijo, bajo los objetos.', g.safeBox ? 0 : SAFE_PRICE, g.safeBox ? 'Comprada' : 'Comprar', !!g.safeBox || g.wallet < SAFE_PRICE, () => {
+  row(ICONS.safebox.toDataURL(), 'Caja fuerte', g.safeBox ? 'Ya la tienes: está en la guarida, junto al alijo (F para abrirla).' : 'Una caja fuerte de 40 huecos para tu mejor equipo. Aparece en la guarida y se abre con F; sus objetos no se ven en el alijo ni con Trapis.', g.safeBox ? 0 : SAFE_PRICE, g.safeBox ? 'Comprada' : 'Comprar', !!g.safeBox || g.wallet < SAFE_PRICE, () => {
     if(g.safeBox) return; if(g.wallet < SAFE_PRICE){ toast('No tienes suficiente oro', 1.6); return; }
-    g.wallet -= SAFE_PRICE; g.safeBox = Array(40).fill(null); sfx('coin'); toast('Compras la caja fuerte (40 huecos)', 2.4); saveGame(); UI.refresh(); this.renderSmith();
+    g.wallet -= SAFE_PRICE; g.safeBox = Array(40).fill(null); { const sc = G.sc; if(sc && sc.kind === 'den' && !sc.safeProp){ sc.safeProp = {x:-242, y:92}; propSprite(sc, ART.safebox, -242, 92, {t:'r', x:-254, y:85, w:24, h:8}, [14,3]); sc.lights.push({x:-242, y:78, r:60, a:.35, warm:true, flick:.05}); } } sfx('coin'); toast('Compras la caja fuerte (40 huecos)', 2.4); saveGame(); UI.refresh(); this.renderSmith();
   });
   for(const id in SHOES){
     const s = SHOES[id], d = ITEMS[id];

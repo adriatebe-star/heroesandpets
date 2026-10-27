@@ -67,7 +67,7 @@ Object.assign(ICON_ROWS, {
 });
 for(const k of ['trident', 'atlcrown', 'atlantern', 'blackpearl', 'nacreshell', 'goldanchor', 'tidecompass', 'coralcrown', 'oceanheart']){ const d = ICON_ROWS[k]; ICONS[k] = bakeRows(d.rows.map(r => r.padEnd(12, '.')), Object.assign({k:OUT}, d.pal)); }
 Object.assign(ITEMS, {
-  trident:    {name:'Tridente', icon:'trident', slot:'weapon', kind:'trident', gear:true, dur:120, dmg:[62, 86], value:200,
+  trident:    {name:'Tridente', icon:'trident', slot:'weapon', kind:'trident', gear:true, dur:120, dmg:[80, 106], crit:15, value:200,
                desc:'Arma cuerpo a cuerpo de gran alcance: su estocada va en línea recta y alcanza a todos los enemigos de esa línea. Mucho daño. Se desgasta con cada golpe.'},
   atlcrown:   {name:'Corona atlante', icon:'atlcrown', slot:'head', gear:true, armor:0, lightMul:1.5, dodge:12, ov:'atlcrown', value:190,
                desc:'Una corona de oro y perlas sin ninguna defensa, pero tu luz llega un 50 % más lejos y tienes un 12 % de probabilidad de esquivar los golpes.'},

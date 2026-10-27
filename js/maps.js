@@ -260,6 +260,7 @@ function buildDen(){
     propSprite(sc, ART.bigcage, -242, 40, {t:'r', x:-256, y:33, w:28, h:8}, [16,3]);
     sc.lights.push({x:-242, y:20, r:70, a:.5, warm:true, flick:.08});
   }
+  if(G.save.safeBox){ sc.safeProp = {x:-242, y:92}; propSprite(sc, ART.safebox, -242, 92, {t:'r', x:-254, y:85, w:24, h:8}, [14,3]); sc.lights.push({x:-242, y:78, r:60, a:.35, warm:true, flick:.05}); }   // caja fuerte (comprada a Uakala)
   addCollider(sc, {t:'c', x:-200, y:32, r:10});
   // cama y decoración
   propSprite(sc, ART.bed, 205, 75, {t:'r', x:193, y:63, w:24, h:12});

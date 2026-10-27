@@ -4,7 +4,7 @@
 //  Aquí vive lo compartido: portal y llaves del tiempo, el marco de los jefes, el constructor de mapas por salas y los legendarios generales.
 // =====================================================================
 const HIDDEN_EXPEDITIONS = [];
-const ALL_EXPS = () => EXPEDITIONS.concat(HIDDEN_EXPEDITIONS);   // las del portal también salen en el mapa de incursiones (pero solo se entra por el portal)   // expediciones que solo se alcanzan por el portal de Rolecs (no salen en el mapa de incursiones)
+const ALL_EXPS = () => EXPEDITIONS.concat(HIDDEN_EXPEDITIONS).filter(e => !e.show || e.show());   // las del portal también salen en el mapa de incursiones (pero solo se entra por el portal)   // expediciones que solo se alcanzan por el portal de Rolecs (no salen en el mapa de incursiones)
 const RAID_BUILDERS = {};
 const PORTAL_DESTS = ['jurassic', 'camelot', 'space'];
 function takeItem(id){
@@ -245,7 +245,7 @@ function buildRectWorld(cfg, seed){
   for(const n of nodes){
     if(n === start || n.boss) continue;
     const far = clamp((Y1 - n.y)/(Y1 - Y0), 0, 1), pack = []; let hasRare = false;
-    const types = cfg.groups[Math.floor(R()*cfg.groups.length)], cnt = Math.round((3 + Math.floor(R()*3) + (far > .5 ? 1 : 0))*1.35);
+    const types = cfg.groups[Math.floor(R()*cfg.groups.length)], cnt = Math.round((3 + Math.floor(R()*3) + (far > .5 ? 1 : 0))*1.35*(cfg.monMul || 1));
     for(let k = 0; k < cnt; k++){ let r = rar(far); if(r === 'rare' && hasRare) r = 'magic'; if(r === 'rare') hasRare = true; pack.push({type:types[Math.floor(R()*types.length)], rarity:r}); }
     sc.monsterSpawns.push({x:Math.round(n.x), y:Math.round(n.y + 20), pack});
   }
