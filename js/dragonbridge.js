@@ -164,7 +164,7 @@ BRAINS.voltus = {wake:'¡Voltus, el hermano del rayo, se alza!', rage:'¡Voltus 
 // formas de dragón: mismos ataques, más fuertes, más un aliento enorme y un coletazo
 const dragonBrain = (base, name, col, breathCol, fx, extra) => Object.assign({}, BRAINS[base], {wake:'¡' + name + '!', rage:'¡' + name + ' ruge con furia!', col, chargeSpd:450, p2spd:1.3, keep:60,
   attacks:BRAINS[base].attacks.filter(a => a.id !== 'blink').concat([
-    {id:'breath', name:'¡Aliento de dragón!', prep:1.1, w:24, min:80, cast:m => wide(m, 5, .3, 40, 520, 1.25, breathCol, fx, .9)},
+    {id:'breath', name:'¡Aliento de dragón!', prep:1.1, w:24, min:80, cast:m => { const a0 = angTo(m); for(let i = 0; i < 5; i++) bossBeam(m, a0 + (i - 2)*.3, .9, 120, 560, 1.4, breathCol, Math.random() < .55 ? fx : undefined); }},
     {id:'tail', name:'Coletazo', prep:.8, w:16, max:170, warn:150, cast:m => bossSlam(m, 150, 1.2, col)},
     {id:'fly', name:'¡Zarpazo en picado!', prep:.9, w:12, min:170, cast:m => bossLeap(m, P.x, P.y, .8)},
   ], extra || []), land:m => { bossSlam(m, 160, 1.3, col); bossRingBooms(m, 10, 180, 1); }});

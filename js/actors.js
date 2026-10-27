@@ -1227,7 +1227,7 @@ function petDie(p){
 }
 function nearestMonster(x, y, range, filter){
   let best = null, bd = range;
-  for(const m of G.mons){ if(m.dying || m.spawnIn < 1 || (filter && !filter(m))) continue; const d = Math.hypot(m.x-x, m.y-y); if(d < bd){ bd = d; best = m; } }
+  for(const m of G.mons){ if(m.dying || m.dummy || m.spawnIn < 1 || (filter && !filter(m))) continue; const d = Math.hypot(m.x-x, m.y-y); if(d < bd){ bd = d; best = m; } }
   return best;
 }
 const validMon = m => m && !m.dying && G.mons.includes(m);

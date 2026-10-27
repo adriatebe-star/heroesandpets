@@ -2235,5 +2235,11 @@ const LANG_EN = {"-{} % de consumo de aceite":"-{} % oil consumption",
 "Rayo tractor que ralentiza a los enemigos en área":"Tractor beam that slows enemies in an area",
 "Rayo láser en cono (triple golpe)":"Laser beam in a cone (triple hit)",
 "¡Agujero negro!":"Black hole!",
-"Rayo estelar en cono. Agujero negro cada 24 s: un torbellino arrastra y daña a los enemigos cercanos":"Star beam in a cone. Black hole every 24 s: a vortex drags and damages nearby enemies"};
+"Rayo estelar en cono. Agujero negro cada 24 s: un torbellino arrastra y daña a los enemigos cercanos":"Star beam in a cone. Black hole every 24 s: a vortex drags and damages nearby enemies",
+"¡Envenenado!":"Poisoned!",
+"¡Ralentizado!":"Slowed!",
+"¡Aliento de tierra!":"Earth breath!",
+"¡Aliento de aire!":"Air breath!",
+"¡Aliento eléctrico!":"Electric breath!",
+"¡Aliento de luz!":"Light breath!"};
 LANG.load(LANG_EN);

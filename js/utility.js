@@ -57,7 +57,7 @@ ART.dummy = SP(paintSprite(32, 40, [
   {r:[10, 37, 12, 3], c:['#2a1a0e', '#4a3220']},                                              // base
   {p:[[13, 10, '#2a1a0e'], [19, 10, '#2a1a0e']]},
 ]), 16, 38);
-const dummyAt = () => ({x:-70, y:70});
+const dummyAt = () => ({x:235, y:55});
 function spawnDummy(){
   if(!G.save.dummy || !G.sc || G.sc.kind !== 'den' || G.mons.some(m => m.dummy)) return;
   const p = dummyAt(), m = mkMonster('dummy', 'normal', p.x, p.y, {affixes:[], instant:true, name:'Dummy de pruebas'});
