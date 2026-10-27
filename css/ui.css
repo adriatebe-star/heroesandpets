@@ -478,3 +478,11 @@ kbd{background:var(--ink);border:2px solid var(--frame);padding:1px 7px;color:va
 .lfhead{display:flex;align-items:center;gap:8px;margin:2px 0 8px;font-size:15px}.lfall{margin-bottom:6px}.lfall .mbtn{padding:6px 12px;font-size:13px}
 .lflist{max-height:48vh;overflow:auto;border:1px solid #3a3028;padding:4px 8px;background:rgba(0,0,0,.25)}.lfitem{display:flex;align-items:center;gap:8px;padding:3px 0;font-size:13px;cursor:pointer}
 .lfitem img{width:24px;height:24px;image-rendering:pixelated;flex:none}.lfitem span{flex:1}.lfitem small{color:#9a8e78;font-size:11px}
+
+/* chat (Enter) */
+#chat{position:fixed;left:16px;bottom:200px;width:min(520px,60vw);z-index:60;pointer-events:none;font:13px/1.35 'Courier New',monospace}
+#chat.hidden{display:none}
+#chatLog{display:flex;flex-direction:column;gap:2px;text-shadow:0 1px 2px #000,0 0 3px #000;padding:2px 4px}
+#chatInput{display:none;width:100%;box-sizing:border-box;margin-top:4px;padding:6px 8px;background:rgba(10,8,14,.88);border:2px solid #5a4a36;color:#f4ecd8;font:inherit;outline:none;pointer-events:auto}
+#chat.open #chatInput{display:block}
+#chat.open #chatLog{background:rgba(10,8,14,.45)}

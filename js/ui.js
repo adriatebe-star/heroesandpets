@@ -624,6 +624,7 @@ const ORB = {
 };
 function drawOrb(cx, cy, r, frac, pal, o={}){
   frac = clamp(frac, 0, 1);
+  let shd = o.shield || 0; if(frac + shd > 1){ const tot = frac + shd; frac /= tot; shd /= tot; }   // con escudo, la bombona se reparte entre vida (rojo) y escudo (azul)
   ctx.save();
   // aro de metal
   const rim = ctx.createLinearGradient(cx, cy-r-8, cx, cy+r+8);
@@ -631,6 +632,7 @@ function drawOrb(cx, cy, r, frac, pal, o={}){
   ctx.beginPath(); ctx.arc(cx, cy, r + Math.max(4, r*.13), 0, Math.PI*2); ctx.fillStyle = '#0c0a0e'; ctx.fill();
   ctx.beginPath(); ctx.arc(cx, cy, r + Math.max(3, r*.1), 0, Math.PI*2); ctx.fillStyle = rim; ctx.fill();
   ctx.beginPath(); ctx.arc(cx, cy, r+1, 0, Math.PI*2); ctx.fillStyle = '#0c0a0e'; ctx.fill();
+  if(shd > 0){ ctx.beginPath(); ctx.arc(cx, cy, r + Math.max(3, r*.1), 0, Math.PI*2); ctx.strokeStyle = 'rgba(130,190,255,' + (.55 + Math.sin(G.t*5)*.2) + ')'; ctx.lineWidth = Math.max(2, r*.06); ctx.stroke(); }   // aro azul mientras hay escudo
   // interior
   ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI*2); ctx.clip();
   const bg = ctx.createRadialGradient(cx, cy, r*.2, cx, cy, r); bg.addColorStop(0, '#1e1a22'); bg.addColorStop(1, '#08070a');
@@ -642,8 +644,8 @@ function drawOrb(cx, cy, r, frac, pal, o={}){
     ctx.lineTo(cx+r, cy+r); ctx.closePath();
     const lg = ctx.createLinearGradient(0, lvl, 0, cy+r); lg.addColorStop(0, pal[0]); lg.addColorStop(.35, pal[1]); lg.addColorStop(1, pal[2]);
     ctx.fillStyle = lg; ctx.fill();
-    if(o.shield > 0){   // escudo (azul) sobre el nivel de vida
-      const l2 = cy + r - 2*r*Math.min(1, frac + o.shield);
+    if(shd > 0){   // escudo (azul) sobre el nivel de vida
+      const l2 = cy + r - 2*r*Math.min(1, frac + shd);
       ctx.beginPath(); ctx.moveTo(cx-r, lvl + 2);
       for(let i=0;i<=24;i++){ const x = cx-r + i/24*2*r; ctx.lineTo(x, l2 + Math.sin(t*1.3 + i*.6)*amp*.7); }
       ctx.lineTo(cx+r, lvl + 2); ctx.closePath();
