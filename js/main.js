@@ -51,6 +51,7 @@ function loadGame(slot){
   s.skillPts = Math.max(0, (s.level-1) - (s.tree.length-1));
   if(s.extracts === undefined) s.extracts = s.trapis ? 1 : 0;
   fixBars(s);
+  s.freedSp = Object.assign({}, Object.fromEntries(Object.keys(s.collection || {}).map(k => [k, true])), s.freedSp || {});   // especies distintas liberadas (puntos del adiestrador)
   if(!s.petsFreed) s.petsFreed = Object.keys(s.collection || {}).length;      // partidas antiguas: cuenta las mascotas ya conocidas
   s.fallen = (s.fallen || []).map(e => typeof e === 'string' ? {pet:e, shiny:false} : e);
   s.shinies ??= {}; s.bossGift ??= {};
@@ -411,12 +412,13 @@ function openCage(c){
   let shiny = !!c.shiny;
   if(!shiny && Math.random() < .05*(clover >= 0 ? 2 : 1)){ shiny = true; if(clover >= 0){ G.inv.equip.tal[clover] = null; toast('El trébol de la suerte se ha desvanecido...', 3); refreshStats(); } }   // 5 % de que sea brillante (las jaulas de regalo siempre lo son); el trébol desaparece al encontrarla
   { const rf = (G.inv.equip.tal || []).findIndex(t => t && t.id === 'rabbitfoot'); if(rf >= 0 && PETS[c.pet].rarity === 'legendary'){ G.inv.equip.tal[rf] = null; toast('La pata de conejo se ha desvanecido...', 3); refreshStats(); } }
-  G.save.petsFreed = (G.save.petsFreed || 0) + 1;
+  const isNew = !(G.save.freedSp && G.save.freedSp[c.pet]);   // el cartel de enhorabuena solo sale con especies nuevas
+  G.save.petsFreed = (G.save.petsFreed || 0) + 1; (G.save.freedSp ??= {})[c.pet] = true;   // los puntos del adiestrador cuentan especies distintas
   c.open = true; G.rescued++; G.rescuedNames.push(PETS[c.pet].name); G.rescuedIds.push(c.pet); sfx('cage');
   const it = mkPetItem(c.pet, false, shiny), p = PETS[c.pet];
   if(!addToBag(it)){ dropItem(c.x, c.y+6, it); toast('Mochila llena: la mascota espera en el suelo', 2.5); }
   toast(shiny ? `¡${p.name} es BRILLANTE! (${RARITY[p.rarity].name})` : `¡Has rescatado a ${p.name}! (${RARITY[p.rarity].name})`, 3);
-  UI.showPetCard(c.pet, shiny);
+  if(isNew) UI.showPetCard(c.pet, shiny);
   burst(c.x, c.y-14, 24, ['#fff1c0','#7ae09a', RARITY[p.rarity].col], [40,160], [.5,1], -40);
   G.flash = {x:c.x, y:c.y-12, t:.4};
 }

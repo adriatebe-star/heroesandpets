@@ -42,7 +42,7 @@ function gemTint(gm){
 function updateLanternGem(dt){
   const gm = lanternGem(); if(gm === NOGEM || P.dead) return;
   const inRaid = G.sc.kind === 'raid', lit = P.lantern && (P.oil > 0 || !inRaid);
-  if(gm.hpDrain && inRaid && P.hp > 1) P.hp = Math.max(1, P.hp - gm.hpDrain*dt);   // obsidiana: te debilita poco a poco, pero nunca te mata
+  if(gm.hpDrain && inRaid && P.hp > 1){ const h0 = P.hp; P.hp = Math.max(1, P.hp - gm.hpDrain*dt); if(G.channel) G.channel.hp -= h0 - P.hp; }   // el desgaste de la obsidiana no interrumpe abrir cofres, jaulas ni el caballo   // obsidiana: te debilita poco a poco, pero nunca te mata
   if(lit && gm.regen && P.hp < P.maxHp) P.hp = Math.min(P.maxHp, P.hp + gm.regen*dt);
   if(lit && gm.petRegen) for(const p of G.pets) if(p.hp > 0 && p.hp < p.maxHp) p.hp = Math.min(p.maxHp, p.hp + gm.petRegen*dt);
   if(gm.oilRegen && inRaid && P.oil < oilMax()) P.oil = Math.min(oilMax(), P.oil + gm.oilRegen*dt);

@@ -63,7 +63,8 @@ function refreshPetBonus(){
   for(const id of G.save.petTree) { const n = PTREE.byId[id]; if(n && n.fx) for(const k in n.fx) t[k] = (t[k] || 0) + n.fx[k]; }
   G.pt = t;
 }
-const petPoints = () => Math.floor((G.save.petsFreed || 0)/5) - (G.save.petTree.length - 1);
+const petSpecies = () => Object.keys(G.save.freedSp || {}).length;   // mascotas DISTINTAS liberadas (las repetidas no dan puntos)
+const petPoints = () => Math.floor(petSpecies()/5) - (G.save.petTree.length - 1);
 // al cambiar bonos de vida, las mascotas guardadas se curan al máximo nuevo (solo se aprende en la guarida)
 function restorePetItems(){
   for(const it of allPetStores()) if(it && it.id === 'pet') it.hp = petMaxHp(it);
@@ -143,7 +144,7 @@ UI.renderTrain = function(body){
     if(n.notable) toast(`¡${n.name}! ${n.txt}`, 3);
     this.renderTrainer();
   };
-  const left = 5 - ((s.petsFreed || 0) % 5), cost = spent*20;
+  const left = 5 - (petSpecies() % 5), cost = spent*20;
   const rows = Object.entries(PBRANCH).map(([k, B]) => {
     const got = s.petTree.filter(id => PTREE.byId[id].b === k).length;
     return `<div class="trow"><b style="color:${B.col}">${B.name}</b> <span>${got} / 15</span><div class="tper">${B.per}</div></div>`;
@@ -151,7 +152,7 @@ UI.renderTrain = function(body){
   const tot = Object.entries(G.pt).filter(([k, v]) => v && PSTAT_NAMES[k] && PSTAT_NAMES[k][1] !== undefined).map(([k, v]) => {
     const [nm, u] = PSTAT_NAMES[k]; const val = k==='petCrit' ? Math.round(v*100) : (Math.round(v*100)/100); return `<div><span>${nm}</span><b>+${String(val).replace('.', ',')}${u==='/s' ? ' /s' : ' %'}</b></div>`;
   }).join('') || '<div class="sub">Aún no has aprendido nada.</div>';
-  $('ptInfo').innerHTML = `<div class="ptpts">${pts > 0 ? `Tienes <b>${pts}</b> punto${pts>1?'s':''} para invertir` : 'No tienes puntos'}<br><span>Mascotas liberadas: ${s.petsFreed || 0} · siguiente punto en ${left}</span></div>${rows}<div class="pttot">${tot}</div>
+  $('ptInfo').innerHTML = `<div class="ptpts">${pts > 0 ? `Tienes <b>${pts}</b> punto${pts>1?'s':''} para invertir` : 'No tienes puntos'}<br><span>Mascotas distintas liberadas: ${petSpecies()} · siguiente punto en ${left}</span></div>${rows}<div class="pttot">${tot}</div>
     ${spent ? `<button id="ptReset">Olvidar todo (${cost} oro)</button>` : ''}`;
   const rb = $('ptReset');
   if(rb) rb.onclick = () => {

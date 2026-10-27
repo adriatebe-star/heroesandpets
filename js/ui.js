@@ -45,7 +45,11 @@ function refRejects(r, it, skipKey){
   if(r.area==='safe') return it.id === 'pet' ? 'La caja fuerte no guarda mascotas' : (UI.stashOpen ? null : 'La caja fuerte solo está en la guarida');
   if(r.area==='cage') return it.id !== 'pet' ? 'La jaula grande solo guarda mascotas' : (UI.stashOpen ? null : 'La jaula grande solo está en la guarida');
   if(r.area==='pbag') return it.id === 'pet' ? null : 'La mochila mágica solo guarda mascotas';
-  if(String(r.key).startsWith('tal')) return it.id !== 'pet' && ITEMS[it.id].slot === 'talisman' ? null : 'Ahí solo van talismanes';
+  if(String(r.key).startsWith('tal')){
+    if(it.id === 'pet' || ITEMS[it.id].slot !== 'talisman') return 'Ahí solo van talismanes';
+    if(G.inv.equip.tal.some((o, k) => o && o !== it && o.id === it.id && ('tal' + k) !== r.key && ('tal' + k) !== (skipKey || ''))) return 'Ya llevas ese talismán';   // no se pueden llevar dos iguales
+    return null;
+  }
   if(r.key.startsWith('pet')){
     if(it.id !== 'pet') return 'En este hueco solo van mascotas';
     if(G.inv.equip.pet.some((o, k) => o && o !== it && o.pet === it.pet && ('pet' + k) !== r.key && ('pet' + k) !== (skipKey || ''))) return 'Ya llevas equipada esa mascota';   // sin mascotas repetidas
@@ -580,7 +584,7 @@ function autoEquip(it){
     return false;
   }
   const d = ITEMS[it.id]; if(!d || !d.slot || d.stack) return false;
-  if(d.slot === 'talisman'){ const k = E.tal.findIndex(x => !x); if(k >= 0){ E.tal[k] = it; return true; } return false; }
+  if(d.slot === 'talisman'){ if(E.tal.some(o => o && o.id === it.id)) return false; const k = E.tal.findIndex(x => !x); if(k >= 0){ E.tal[k] = it; return true; } return false; }
   const twoH = o => o && ITEMS[o.id].twoHanded;
   if(d.slot === 'shield' && (twoH(E.w1) || twoH(E.w2))) return false;
   if(d.twoHanded && E.shield) return false;
