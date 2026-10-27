@@ -2278,4 +2278,11 @@ Object.assign(LANG_EN,{
 
 Object.assign(LANG_EN, {'Agotado':'Sold out', 'Trapis solo tiene uno de cada. Vuelve tras otra expedición':'Trapis only has one of each. Come back after another expedition',
   '¡Estás dentro de una expedición! Si recargas la página perderás todos los objetos que llevas (equipo, mochila, oro de la expedición y mascotas). Sal primero con el caballo o con un portal. ¿Recargar de todos modos?':'You are inside an expedition! If you reload the page you will lose everything you carry (gear, backpack, expedition gold and pets). Leave first with the horse or a portal. Reload anyway?'});
+Object.assign(LANG_EN,{"Las mascotas corrían por los campos y la gente reía bajo el sol.":"Pets ran through the fields and people laughed under the sun.",
+"Pero un día el cielo se apagó, y dos ojos rojos se abrieron entre las nubes.":"But one day the sky went dark, and two red eyes opened among the clouds.",
+"Era él: el Señor de la Noche.":"It was him: the Lord of the Night.",
+"Sus sombras poseyeron a los animales, a los orcos, a los elfos y hasta a los dragones, y esparcieron las jaulas por los rincones del mundo.":"His shadows possessed the animals, the orcs, the elves and even the dragons, and scattered the cages across the corners of the world.",
+"Pero dicen que quien lleve una luz y un corazón valiente podrá abrirlas... y volver vivo para contarlo.":"But they say that whoever carries a light and a brave heart can open them... and return alive to tell the tale.",
+"Una noche, Juan, el sabio, encontró a un viajero encapuchado, medio muerto, a la entrada de una cueva.":"One night, Juan the sage found a hooded traveler, half dead, at the entrance of a cave.",
+"Nadie sabe su nombre. Solo que lleva un farolillo... y que las mascotas lo esperan. Su viaje empieza ahora.":"Nobody knows their name. Only that they carry a lantern... and that the pets are waiting. Their journey begins now."});
 LANG.load(LANG_EN);
