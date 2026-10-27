@@ -137,6 +137,7 @@ function startRaid(expId='village'){
   randomReturnPortals(sc);
   if(Math.random() < LEGEND_CHEST_CHANCE) addLegendChest(sc);   // a veces hay un cofre legendario
   clearAroundInteractables(sc); clearBossRoom(sc);
+  G.raidT = 0;
   G.save.sold = []; G.save.shopBought = {};   // Trapis olvida lo recomprable y repone su género al salir a una expedición
   resetWorld(sc);
   for(const sp of G.sc.monsterSpawns) for(const e of sp.pack){
@@ -158,7 +159,7 @@ function extract(how){
   G.save.wallet += G.raidGold;
   G.save.inRaid = false; G.save.shopBought = {}; G.save.extracts = (G.save.extracts||0) + 1;
   if(!G.sc.noRank) G.save.maxExp = Math.max(G.save.maxExp||0, G.sc.lvl||1);
-  rollShopSpecials();
+  if((G.raidT||0) >= SPECIALS_MIN_RAID) rollShopSpecials();   // las ofertas solo cambian si pasaste al menos 2 min dentro
   const pets = G.rescuedNames.length ? G.rescuedNames.join(', ') : 'ninguna';
   const html = `<h1>¡HAS VUELTO A CASA!</h1><p class="sub">${how}</p>
     <p>Oro conseguido: <b class="gold">${G.raidGold}</b></p><p>Mascotas rescatadas: <b>${pets}</b></p><p>Monstruos derrotados: <b>${G.kills}</b></p>`;
@@ -283,13 +284,14 @@ function talkGonzalo(){
   UI.openSkills();
 }
 // ofertas especiales de Trapis: 8 objetos de equipo mágicos o raros (a veces legendarios) que cambian tras cada expedición
+const SPECIALS_MIN_RAID = 120;
 function rollShopSpecials(){
   const tier = Math.max(1, G.save.maxExp||1), pool = SHOP.filter(o => o.tier <= tier && ITEMS[o.id].gear);
   const legs = LEGEND_IDS.filter(id => ITEMS[id] && (ITEMS[id].lvl || 1) <= tier);
   G.save.shopSpecials = [];
   let nLeg = 0;
   for(let i=0;i<8 && pool.length;i++){
-    if(legs.length && nLeg < 2 && Math.random() < .08){
+    if(legs.length && nLeg < 2 && Math.random() < .03){
       const id = legs.splice(randi(0, legs.length-1), 1)[0]; nLeg++;
       G.save.shopSpecials.push({item:mkItem(id, 1, tier), price:Math.round((ITEMS[id].value || 300) * 10)});
       continue;
@@ -467,6 +469,7 @@ function updatePortals(dt){
 // ---------- actualización ----------
 function update(dt){
   G.t += dt;
+  if(G.sc.kind==='raid' && !G.paused) G.raidT = (G.raidT||0) + dt;   // cronómetro de la expedición
   for(const t of toasts) t.t -= dt;
   while(toasts.length && toasts[0].t <= 0) toasts.shift();
   if(UI.introOpen){ pressed.KeyI = pressed.Tab = pressed.Escape = false; }

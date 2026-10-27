@@ -2285,4 +2285,5 @@ Object.assign(LANG_EN,{"Las mascotas corrían por los campos y la gente reía ba
 "Pero dicen que quien lleve una luz y un corazón valiente podrá abrirlas... y volver vivo para contarlo.":"But they say that whoever carries a light and a brave heart can open them... and return alive to tell the tale.",
 "Una noche, Juan, el sabio, encontró a un viajero encapuchado, medio muerto, a la entrada de una cueva.":"One night, Juan the sage found a hooded traveler, half dead, at the entrance of a cave.",
 "Nadie sabe su nombre. Solo que lleva un farolillo... y que las mascotas lo esperan. Su viaje empieza ahora.":"Nobody knows their name. Only that they carry a lantern... and that the pets are waiting. Their journey begins now."});
+Object.assign(LANG_EN,{'Ofertas especiales: 8 objetos, rara vez legendarios (cambian tras una expedición de al menos 2 minutos)':'Special offers: 8 items, rarely legendary (they change after an expedition of at least 2 minutes)'});
 LANG.load(LANG_EN);

@@ -219,7 +219,7 @@ const UI = {
     if(!(G.save.shopSpecials||[]).length) rollShopSpecials();
     const sp = G.save.shopSpecials || [];
     if(sp.length){
-      if(!q){ const h = document.createElement('div'); h.className = 'shophead'; h.textContent = 'Ofertas especiales: 8 objetos, a veces legendarios (cambian tras cada expedición)'; box.append(h); }
+      if(!q){ const h = document.createElement('div'); h.className = 'shophead'; h.textContent = 'Ofertas especiales: 8 objetos, rara vez legendarios (cambian tras una expedición de al menos 2 minutos)'; box.append(h); }
       sp.forEach((s2, i) => offer(s2.item, s2.price, () => this.buySpecial(i), true));
     }
     const next = SHOP.find(o => o.tier > tier);
@@ -687,6 +687,10 @@ function drawOrb(cx, cy, r, frac, pal, o={}){
 function drawHUD(){
   const raid = G.sc.kind==='raid';
   ctx.imageSmoothingEnabled = false; ctx.textBaseline = 'middle';
+  if(raid){   // cronómetro de la expedición (verde al pasar los 2 min: las ofertas de Trapis se renovarán)
+    const s = Math.floor(G.raidT||0), ok = s >= SPECIALS_MIN_RAID, tx = `${Math.floor(s/60)}:${String(s%60).padStart(2,'0')}`;
+    ctx.font = 'bold 20px monospace'; ctx.textAlign = 'center'; ctx.lineWidth = 4; ctx.strokeStyle = 'rgba(0,0,0,.8)'; ctx.strokeText(tx, W/2, 22); ctx.fillStyle = ok ? '#8fe08f' : '#e8d8b0'; ctx.fillText(tx, W/2, 22); ctx.textAlign = 'left';
+  }
   // escala del HUD según el tamaño de la ventana
   const HS = clamp(Math.min(H/950, W/1150), .8, 1.5);
   // ---- bombonas (abajo a la izquierda) ----
