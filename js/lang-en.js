@@ -2328,4 +2328,7 @@ Object.assign(LANG_EN,{
   "Partida recuperada": "Game recovered",
   "El juego se cerró de forma inesperada durante la expedición. Se ha restaurado tu equipo, tu mochila y tus mascotas tal y como estaban hace unos segundos.": "The game closed unexpectedly during the expedition. Your gear, backpack and pets have been restored as they were a few seconds ago.",
 });
+Object.assign(LANG_EN,{
+  "No se pudo contactar con el servicio de salas (0.peerjs.com). Revisa tu internet, el cortafuegos o prueba con otro navegador": "Could not reach the room service (0.peerjs.com). Check your internet, firewall, or try another browser",
+});
 LANG.load(LANG_EN);
