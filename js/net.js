@@ -49,8 +49,14 @@ NET.hostRoom = function(){
     const open = () => {
       const code = netCode(), hub = new Peer(NET.PREFIX + code, {debug:0});
       hub.on('open', () => { NET.role = 'host'; NET.myId = 0; NET.hub = hub; NET.code = code; res(code); });
+      hub.on('disconnected', () => {   // se cortó el contacto con el servicio de salas: sin esto el código deja de existir
+        NET.lastErr = 'disconnected · sala desconectada del servicio, reconectando';
+        const retry = n => { if(NET.hub !== hub || hub.destroyed || !hub.disconnected) return; try { hub.reconnect(); } catch(x){} if(n < 30) setTimeout(() => retry(n + 1), 3000); };
+        retry(0);
+      });
       hub.on('error', e => {
         NET.lastErr = e.type + (e.message ? ' · ' + e.message : '');
+        if(NET.code && e.type !== 'unavailable-id') return;
         if(e.type === 'unavailable-id' && ++tries < 6){ try { hub.destroy(); } catch(x){} open(); return; }
         if(!NET.code) rej(new Error(e.type === 'network' || e.type === 'server-error' || e.type === 'socket-error' ? 'No se pudo contactar con el servicio de salas (0.peerjs.com). Revisa tu internet, el cortafuegos o prueba con otro navegador' : 'Error: ' + e.type));
       });
@@ -114,6 +120,7 @@ NET.diagnose = async function(){
     const r = await fetch('https://0.peerjs.com/peerjs/id', {signal:c.signal, cache:'no-store'}); clearTimeout(tm);
     L.push('Servicio de salas (0.peerjs.com): responde ' + r.status + ' en ' + Math.round(performance.now() - t0) + ' ms');
   } catch(e){ L.push('Servicio de salas (0.peerjs.com): NO se alcanza (' + (e.name === 'AbortError' ? 'tiempo agotado' : e.message) + ')'); }
+  if(NET.role === 'host' && NET.hub) L.push('Tu sala ' + NET.code + ': ' + (NET.hub.disconnected ? 'DESCONECTADA del servicio (nadie puede unirse)' : 'registrada y visible'));
   if(NET.lastErr) L.push('Último error de PeerJS: ' + NET.lastErr);
   return L.join('\n');
 };
