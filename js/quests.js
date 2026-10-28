@@ -168,17 +168,22 @@ function dropQuestItem(sc, itemId, cell){
   sc.lights.push({x, y:y - 6, r:100, a:.9, warm:true, tint:'rgba(70,255,70,.2)', flick:.2});
 }
 // colocación de PNJ y objetos de misión al generar cada expedición (tras resetWorld)
+// misma colocación para todos los jugadores: se siembra con la semilla de la incursión (Math.random sembrado) y el sitio no depende de las misiones de cada uno
 function placeQuestStuff(sc, expId){
+  const old = Math.random; Math.random = rng((sc.seed|0) ^ 0x51ed);
+  try { placeQuestStuff0(sc, expId); } finally { Math.random = old; }
+}
+function placeQuestStuff0(sc, expId){
   const s = G.save; if(!s || !s.qs) return;
   const cells = reachCells(sc);
   if(expId === 'village' && qState('friends') === 'active'){
-    const hs = (sc.houses || []).slice().sort(() => Math.random() - .5), inside = h => cells.filter(([x, y]) => x > h.x + 20 && x < h.x + h.w - 20 && y > h.y + 26 && y < h.y + h.h - 12);
+    const hs = (sc.houses || []).slice().sort(() => Math.random() - .5), spots = {}, inside = h => cells.filter(([x, y]) => x > h.x + 20 && x < h.x + h.w - 20 && y > h.y + 26 && y < h.y + h.h - 12);
     const want = []; if(!s.trapis) want.push(['trapis', 'Trapis']); if(!s.gonzalo) want.push(['gonzalo', 'Gonzalo']);
-    for(const [id, nm] of want){
+    for(const id of ['trapis', 'gonzalo']){   // los dos sitios se calculan siempre, aunque uno ya esté rescatado
       let c = null; while(hs.length && !c){ const h = hs.shift(), cs = inside(h); if(cs.length) c = cs[Math.floor(Math.random()*cs.length)]; }
-      if(!c) c = farCell(cells, sc, 350);
-      if(c) addRescueNpc(sc, id, nm, c[0], c[1]);
+      spots[id] = c || farCell(cells, sc, 350);
     }
+    for(const [id, nm] of want){ const c = spots[id]; if(c) addRescueNpc(sc, id, nm, c[0], c[1]); }
   }
   if(expId === 'cemetery' && qState('cousin') === 'active' && !s.druid){ const c = farCell(cells, sc, 500); if(c) addRescueNpc(sc, 'druid', 'Chemma', c[0], c[1]); }
   if(expId === 'plains' && qState('medkit') === 'active' && countItem('medkit') === 0) dropQuestItem(sc, 'medkit', farCell(cells, sc, 600));

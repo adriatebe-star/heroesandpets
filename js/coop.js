@@ -35,7 +35,10 @@ function coopRemote(id){
 }
 NET.on('st', (s, from) => {
   const r = coopRemote(from), eq = s.eq, pt = s.pt; delete s.eq; delete s.pt; if(pt) coopPetsApply(r, pt);
-  Object.assign(r, s); r.tx = s.x; r.ty = s.y; r.x = r.fresh ? s.x : r.x; r.y = r.fresh ? s.y : r.y; r.fresh = false;
+  const ox = r.x, oy = r.y, now = performance.now();   // Object.assign pisaba la posición suavizada con la del paquete: de ahí los tirones
+  if(!r.fresh && r.rt && now - r.rt > 5){ const d = (now - r.rt)/1000; r.vx = clamp((s.x - r.tx)/d, -420, 420); r.vy = clamp((s.y - r.ty)/d, -420, 420); } else { r.vx = r.vy = 0; }
+  r.rt = now;
+  Object.assign(r, s); r.tx = s.x; r.ty = s.y; r.x = r.fresh ? s.x : ox; r.y = r.fresh ? s.y : oy; r.fresh = false;
   if(eq) r.eq = eq;
   r.seen = G.t;
 });
@@ -48,14 +51,17 @@ function coopUpdate(dt){
   if(!NET.role || !G.mp) { if(G.remote.length) G.remote = []; return; }
   COOP.eqT += dt; COOP.acc += dt; COOP.snapT = (COOP.snapT || 0) + dt;
   if(NET.role === 'host' && G.sc.kind === 'raid' && COOP.snapT >= .1){ COOP.snapT = 0; coopSnapshot(); coopScanNew(); }
-  if(COOP.acc >= 1/15){
+  if(COOP.acc >= 1/30){
     COOP.acc = 0;
     // el anfitrión reenvía a los demás con el id de origen (relé), así todos se ven entre sí
     NET.send('st', coopState(), undefined, true);
   }
   for(const r of G.remote){
     for(const g of r.ghosts || []){ const q = Math.min(1, dt*10); g.x += (g.tx - g.x)*q; g.y += (g.ty - g.y)*q; }
-    if(r.tx != null){ const k = Math.min(1, dt*14); r.x += (r.tx - r.x)*k; r.y += (r.ty - r.y)*k; }
+    if(r.tx != null){   // se predice un poco con la velocidad del último paquete y se suaviza hacia ese punto
+      const ah = Math.min(.12, (performance.now() - (r.rt || 0))/1000), k = Math.min(1, dt*16);
+      r.x += (r.tx + (r.vx || 0)*ah - r.x)*k; r.y += (r.ty + (r.vy || 0)*ah - r.y)*k;
+    }
     r.hidden = r.sc !== undefined && r.sc !== coopSceneKey();
   }
 }
