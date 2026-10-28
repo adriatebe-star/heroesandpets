@@ -2307,4 +2307,7 @@ Object.assign(LANG_EN,{
   "Entrar": "Enter",
   "Quedarme en la guarida": "Stay in the den",
 });
+Object.assign(LANG_EN,{
+  "⚠ Tu mapa no coincide con el del anfitrión (¿versión distinta?)": "⚠ Your map doesn't match the host's (different version?)",
+});
 LANG.load(LANG_EN);

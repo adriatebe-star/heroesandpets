@@ -81,16 +81,16 @@ LOBBY.start = function(){
 LOBBY.go = function(expId, seed){
   LOBBY.close(false); UI.closeRaidMap && UI.closeRaidMap();
   if(UI.invOpen) UI.closeInv(); if(UI.skillOpen) UI.closeSkills(); if(UI.trainerOpen) UI.closeTrainer(); if(UI.smithOpen) UI.closeSmith(); if(UI.aishOpen) UI.closeAish(); if(UI.oluafOpen) UI.closeOluaf(); if(typeof closePause === 'function') closePause();
-  G.mp = true; startRaid(expId, seed); if(NET.role === 'host') coopScaleBosses();
+  G.mp = true; startRaid(expId, seed); if(NET.role === 'host'){ coopScaleBosses(); NET.send('mh', {exp:expId, h:coopMapHash()}); } else coopCheckMap();
 };
 
 // ---------- mensajes ----------
 NET.on('peer', d => {
   if(!G.menu) G.mp = true;
-  NET.send('hello', {name:LOBBY.myName()}, NET.role === 'host' ? d.id : undefined);
+  NET.send('hello', {name:LOBBY.myName(), ver:COOP_VER}, NET.role === 'host' ? d.id : undefined);
   LOBBY.render();
 });
-NET.on('hello', (d, from) => { LOBBY.names[from] = d.name; if(NET.role === 'host') NET.send('names', LOBBY.names); LOBBY.render(); });
+NET.on('hello', (d, from) => { if(d.ver && d.ver !== COOP_VER) toast('⚠ Versión distinta: tú ' + COOP_VER + ', ' + d.name + ' ' + d.ver + '. Actualizad el juego', 10); LOBBY.names[from] = d.name; if(NET.role === 'host') NET.send('names', LOBBY.names); LOBBY.render(); });
 NET.on('names', d => { Object.assign(LOBBY.names, d); LOBBY.render(); });
 NET.on('peerLeft', () => { LOBBY.render(); });
 NET.on('closed', () => { if(LOBBY.askEl){ LOBBY.askEl.remove(); LOBBY.askEl = null; } LOBBY.answer = null; if(LOBBY.el) LOBBY.render(); if(G.mp){ G.mp = false; toast('Se ha cerrado la sala', 2.5); } });

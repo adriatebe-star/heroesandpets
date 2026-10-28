@@ -460,6 +460,7 @@ addEventListener('keydown', e => { if(PET_PICK && (e.code === 'KeyF' || e.code =
 function pickLoot(l){
   if(!addToBag(l.item)){ toast('La mochila está llena'); return; }
   l.taken = true; G.loot = G.loot.filter(o => !o.taken);
+  if(l.lid != null && NET.role && G.mp) NET.send('lp', {lid:l.lid}, undefined, true);   // cooperativo: desaparece también para los compañeros
   addText(P.x, P.y-46, itemName(l.item), itemColor(l.item), 7); sfx('pickup');
 }
 function updatePortals(dt){
@@ -548,6 +549,11 @@ function collectLights(){
       const gm = lanternGem(); L.push({x:P.lx, y:P.ly, r:175*fl*(gm.light||1)*(legendOn('minerhelm') ? 1.3 : 1)*((G.inv.equip.head && ITEMS[G.inv.equip.head.id].lightMul) || 1)*(G.inv.equip.lantern && G.inv.equip.lantern.id === 'dawnlantern' ? 1.4 : 1), a:1, warm:true, tint:gemTint(gm)});
     }
     L.push({x:P.x, y:P.y-16, r:44, a:.55, ambient:true});
+  }
+  for(const r of G.remote || []){   // farolillo de los compañeros
+    if(r.hidden || r.dead) continue;
+    L.push({x:r.x, y:r.y-16, r:44, a:.55, ambient:true});
+    if(r.lt) L.push({x:r.x + r.lt[1], y:r.y + r.lt[2], r:r.lt[0]*(1 + Math.sin(t*13 + r.id)*.03 + (Math.random()-.5)*.03), a:1, warm:true, tint:r.lt[3]});
   }
   for(const p of G.pets){
     if(p.exhaustedT > 0) continue;

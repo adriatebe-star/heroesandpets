@@ -10,12 +10,20 @@ function coopEquip(){
   for(const k of COOP_EQ_SLOTS) e[k] = E[k] ? {id:E[k].id, rarity:E[k].rarity} : null;
   return e;
 }
+// luz del farolillo para los compañeros: [radio, desplazamiento x, y, tinte] o 0 si está apagado
+function coopLight(){
+  if(P.dead || !P.lantern || P.hallT > 0 || !(P.oil > 0 || G.sc.kind !== 'raid')) return 0;
+  const gm = lanternGem(), E = G.inv.equip;
+  const r = 175*(gm.light || 1)*(legendOn('minerhelm') ? 1.3 : 1)*((E.head && ITEMS[E.head.id].lightMul) || 1)*(E.lantern && E.lantern.id === 'dawnlantern' ? 1.4 : 1);
+  const dx = (P.lx ?? P.x) - P.x, dy = (P.ly ?? P.y) - P.y, ok = Math.abs(dx) < 80 && Math.abs(dy) < 80;   // lx/ly los calcula el dibujo del héroe
+  return [Math.round(r), ok ? Math.round(dx) : 0, ok ? Math.round(dy) : -12, gemTint(gm)];
+}
 function coopSceneKey(){ return G.sc.exp ? G.sc.exp.id : G.sc.kind + ':' + (G.sc.name || ''); }
 function coopState(){
   const f = ['x', 'y', 'face', 'moving', 'walk', 'punchT', 'punchDur', 'combo', 'atkKind', 'jumpZ', 'blocking', 'hp', 'maxHp', 'dead', 'sitting', 'invisT', 'frozenT', 'inv', 'dashT'];
   const s = {}; for(const k of f) s[k] = P[k];
   s.x = Math.round(P.x); s.y = Math.round(P.y); s.walk = +P.walk.toFixed(2); s.face = +P.face.toFixed(2);
-  s.pt = coopPetsState(); s.aw = G.activeW; s.sc = coopSceneKey();
+  s.pt = coopPetsState(); s.lt = coopLight(); s.aw = G.activeW; s.sc = coopSceneKey();
   const eq = coopEquip(), key = JSON.stringify(eq);
   if(key !== COOP.eqKey || COOP.eqT > 2){ s.eq = eq; COOP.eqKey = key; COOP.eqT = 0; }
   return s;
@@ -239,3 +247,27 @@ function coopPetsApply(r, list){
   });
   r.ghosts.length = list.length;
 }
+
+// objetos tirados al suelo: los ven y los pueden coger los compañeros (id de objeto `lid`)
+function coopDropped(l){
+  if(!l || !NET.role || !G.mp) return;
+  l.lid = NET.myId*100000 + (COOP.lid = (COOP.lid || 0) + 1);
+  NET.send('ld', {lid:l.lid, item:l.item, x:Math.round(l.x), y:Math.round(l.y), sc:coopSceneKey()}, undefined, true);
+}
+NET.on('ld', d => {
+  if(!G.mp || G.sc.kind !== 'raid' || d.sc !== coopSceneKey()) return;
+  dropItem(d.x, d.y, d.item); G.loot[G.loot.length-1].lid = d.lid;
+});
+NET.on('lp', d => { for(const l of G.loot) if(l.lid === d.lid) l.taken = true; G.loot = G.loot.filter(o => !o.taken); });
+
+// comprobación de que todos generan el mismo mapa y tienen la misma versión
+function coopMapHash(){
+  const s = G.sc, str = JSON.stringify([s.chests.map(c => [c.x, c.y, c.rare ? 1 : 0]), s.cages.map(c => [c.x, c.y]), s.portals.map(p => [p.x, p.y]), s.props.length, s.props.slice(0, 400).map(p => [p.x|0, p.y|0]), (s.walls || []).length, s.spawn]);
+  let h = 0; for(let i = 0; i < str.length; i++) h = (h*31 + str.charCodeAt(i)) | 0; return h;
+}
+const COOP_VER = (document.title.match(/v(d{8}w)/) || [])[1] || '?';
+function coopCheckMap(){
+  const m = LOBBY.hostMap; if(!m || !G.sc.exp || m.exp !== G.sc.exp.id) return;
+  if(NET.role === 'guest' && m.h !== coopMapHash()) toast('⚠ Tu mapa no coincide con el del anfitrión (¿versión distinta?)', 9);
+}
+NET.on('mh', d => { LOBBY.hostMap = d; coopCheckMap(); });

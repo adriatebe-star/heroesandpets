@@ -91,7 +91,7 @@ function afterInvChange(){
 }
 function dropRef(r){
   const it = getRef(r); if(!it) return;
-  if(G.sc.kind==='raid'){ it.noDup = true; dropItem(P.x, P.y, it); setRef(r, null); toast('Has tirado ' + itemName(it), 1.4); }
+  if(G.sc.kind==='raid'){ it.noDup = true; dropItem(P.x, P.y, it); if(typeof coopDropped === 'function') coopDropped(G.loot[G.loot.length-1]); setRef(r, null); toast('Has tirado ' + itemName(it), 1.4); }
   else { if(!confirm('¿Tirar ' + itemName(it) + '? Se perderá.')) return; setRef(r, null); }
   afterInvChange();
 }
