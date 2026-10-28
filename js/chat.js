@@ -36,7 +36,7 @@ chatIn.placeholder = tr(chatIn.placeholder);
 chatIn.addEventListener('keydown', e => {
   e.stopPropagation();
   if(e.key === 'Escape'){ e.preventDefault(); chatClose(); }
-  else if(e.key === 'Enter'){ e.preventDefault(); const v = chatIn.value.trim(); if(v){ if(v[0] === '/') chatRun(v); else chatSay((G.save.name || tr('Tú')) + ': ' + v); } chatClose(); }
+  else if(e.key === 'Enter'){ e.preventDefault(); const v = chatIn.value.trim(); if(v){ if(v[0] === '/') chatRun(v); else { chatSay((G.save.name || tr('Tú')) + ': ' + v); if(NET.role && G.mp) NET.send('chat', (G.save.name || 'Viajero') + ': ' + v, undefined, true); } } chatClose(); }
 });
 addEventListener('keydown', e => {
   if(e.code !== 'Enter' && e.code !== 'NumpadEnter') return;

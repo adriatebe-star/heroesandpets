@@ -2286,4 +2286,25 @@ Object.assign(LANG_EN,{"Las mascotas corrían por los campos y la gente reía ba
 "Una noche, Juan, el sabio, encontró a un viajero encapuchado, medio muerto, a la entrada de una cueva.":"One night, Juan the sage found a hooded traveler, half dead, at the entrance of a cave.",
 "Nadie sabe su nombre. Solo que lleva un farolillo... y que las mascotas lo esperan. Su viaje empieza ahora.":"Nobody knows their name. Only that they carry a lantern... and that the pets are waiting. Their journey begins now."});
 Object.assign(LANG_EN,{'Ofertas especiales: 8 objetos, rara vez legendarios (cambian tras una expedición de al menos 2 minutos)':'Special offers: 8 items, rarely legendary (they change after an expedition of at least 2 minutes)'});
+Object.assign(LANG_EN,{"Jugar en cooperativo":"Play co-op","Crear sala":"Create room","Unirme a una sala":"Join a room","Conectar":"Connect","Invitar a otro jugador":"Invite another player","¡Empezar expedición!":"Start expedition!","Salir de la sala":"Leave room","Se ha cerrado la sala":"The room has been closed","No tienes desbloqueada esa expedición":"You have not unlocked that expedition","Código no válido":"Invalid code","Respuesta no válida":"Invalid reply","Aceptar":"Accept","Copiar":"Copy","Copiado":"Copied"});
+Object.assign(LANG_EN,{'Cooperativo':'Co-op','Cooperativo · {}':'Co-op · {}','Viajero':'Traveler','Jugador':'Player','Cooperativo · ':'Co-op · ','Juega con hasta 4 amigos. Sin servidor: os pasáis un código.':'Play with up to 4 friends. No server: you pass each other a code.','Pega el código del anfitrión:':'Paste the host code:','Jugadores':'Players','Enviar este código de respuesta al anfitrión:':'Send this reply code to the host:','Envía este código de respuesta al anfitrión:':'Send this reply code to the host:','Conectando…':'Connecting…','Cuando el anfitrión inicie la partida, entrarás automáticamente.':'When the host starts the game, you will join automatically.','Código de respuesta':'Reply code'});
+Object.assign(LANG_EN,{
+  "Cooperativa": "Co-op",
+  "Cooperativa: elige tu partida": "Co-op: choose your save",
+  "Empezar aquí": "Start here",
+  "Sala cooperativa": "Co-op room",
+  "Seguir en la guarida": "Stay in the den",
+  "Guarida compartida": "Shared den",
+  "Solo el anfitrión elige la expedición": "Only the host picks the expedition",
+  "Esta expedición no está disponible en cooperativo": "This expedition isn't available in co-op",
+  "No tienes desbloqueada esa expedición: te quedas en la guarida": "You haven't unlocked that expedition: you stay in the den",
+  "Compartís la guarida: cada uno con su alijo. Para salir de expedición juntos, el anfitrión habla con el caballo.": "You share the den, each with your own stash. To go on an expedition together, the host talks to the horse.",
+  "Compartís la guarida (cada uno con su alijo). Cuando el anfitrión salga de expedición, entrarás automáticamente.": "You share the den (each with your own stash). When the host leaves on an expedition, you'll join automatically.",
+});
+Object.assign(LANG_EN,{
+  "El anfitrión sale de expedición": "The host is leaving on an expedition",
+  "¿Quieres entrar con él?": "Do you want to join them?",
+  "Entrar": "Enter",
+  "Quedarme en la guarida": "Stay in the den",
+});
 LANG.load(LANG_EN);

@@ -79,16 +79,16 @@ function openMainMenu(){
 }
 function closeMainMenu(){ G.menu = false; $('menu').classList.add('hidden'); }
 function slotRow(n){
-  const i = slotInfo(n), load = MENU.mode === 'load';
+  const i = slotInfo(n), load = MENU.mode === 'load', coop = MENU.mode === 'coop';
   if(MENU.confirm && MENU.confirm.n === n){
     const del = MENU.confirm.del;
     return `<div class="sslot"><div class="sinfo red">${del ? '¿Borrar' : '¿Sobrescribir'} la partida de la ranura ${n}?<small>Se perderá para siempre.</small></div>
       <button data-act="${del ? 'delyes' : 'newyes'}" data-n="${n}">Sí</button><button data-act="no">No</button></div>`;
   }
-  if(!i) return `<div class="sslot empty"><div class="sinfo">Ranura ${n} · vacía</div>${load ? '' : `<button data-act="new" data-n="${n}">Empezar</button>`}</div>`;
+  if(!i) return `<div class="sslot empty"><div class="sinfo">Ranura ${n} · vacía</div>${coop ? `<button data-act="coopgo" data-n="${n}">Empezar aquí</button>` : load ? '' : `<button data-act="new" data-n="${n}">Empezar</button>`}</div>`;
   const nm = i.name || 'Aventurero sin nombre';
   return `<div class="sslot"><div class="sinfo"><b>${nm}</b><small>Ranura ${n} · Nv ${i.level} · ${i.gold} oro · ${i.runs} expediciones${i.inRaid ? ' · <span class="red">sin volver de expedición</span>' : ''}</small></div>
-    ${load ? `<button data-act="load" data-n="${n}">Jugar</button><button class="small" data-act="del" data-n="${n}">Borrar</button>` : `<button data-act="new" data-n="${n}">Sobrescribir</button>`}</div>`;
+    ${coop ? `<button data-act="coopgo" data-n="${n}">Jugar</button>` : load ? `<button data-act="load" data-n="${n}">Jugar</button><button class="small" data-act="del" data-n="${n}">Borrar</button>` : `<button data-act="new" data-n="${n}">Sobrescribir</button>`}</div>`;
 }
 function renderMenu(){
   const body = $('menuBody'), v = MENU.view;
@@ -97,9 +97,10 @@ function renderMenu(){
   if(v === 'main'){
     h = `<div class="mbtns"><button class="mbtn" data-act="newgame">Nueva partida</button>
       <button class="mbtn" data-act="continue" ${any ? '' : 'disabled'}>Continuar partida</button>
+      <button class="mbtn" data-act="coop">Cooperativa</button>
       <button class="mbtn" data-act="config">Configuración</button><button class="mbtn" data-act="controls">Controles</button><button class="mbtn" data-act="sound">Sonido</button><button class="mbtn" data-act="lang">Idioma</button></div>`;
   } else if(v === 'slots'){
-    h = `<div class="mpanel"><h2>${MENU.mode === 'new' ? 'Nueva partida' : 'Continuar partida'}</h2>${[1, 2, 3].map(slotRow).join('')}<button data-act="back">Volver</button></div>`;
+    h = `<div class="mpanel"><h2>${MENU.mode === 'new' ? 'Nueva partida' : MENU.mode === 'coop' ? 'Cooperativa: elige tu partida' : 'Continuar partida'}</h2>${[1, 2, 3].map(slotRow).join('')}<button data-act="back">Volver</button></div>`;
   } else if(v === 'controls'){
     h = `<div class="mpanel"><h2>Controles</h2>${controlsHTML()}<button data-act="back">Volver</button></div>`;
   } else if(v === 'lang'){
@@ -116,6 +117,8 @@ $('menuBody').addEventListener('click', e => {
   const act = t.dataset.act, n = +t.dataset.n; sfx('ui');
   if(act === 'newgame'){ MENU.view = 'slots'; MENU.mode = 'new'; }
   else if(act === 'continue'){ MENU.view = 'slots'; MENU.mode = 'load'; }
+  else if(act === 'coop'){ MENU.view = 'slots'; MENU.mode = 'coop'; }
+  else if(act === 'coopgo'){ MENU.coopPending = true; startGame(n, !slotInfo(n)); return; }
   else if(act === 'controls') MENU.view = 'controls';
   else if(act === 'sound') MENU.view = 'sound';
   else if(act === 'config') MENU.view = 'config';
@@ -165,7 +168,7 @@ function renderPause(){
   if(v === 'main'){
     h = `<h2>Pausa</h2><div class="mbtns">
       <button class="mbtn" data-act="resume">Continuar</button><button class="mbtn" data-act="config">Configuración</button><button class="mbtn" data-act="controls">Controles</button>
-      <button class="mbtn" data-act="lootfilter">Filtro de objetos</button><button class="mbtn" data-act="sound">Volumen</button><button class="mbtn" data-act="lang">Idioma</button><button class="mbtn" data-act="exit">Guardar y salir</button></div>
+      ${!raid && typeof LOBBY !== 'undefined' ? '<button class="mbtn" data-act="cooproom">Sala cooperativa</button>' : ''}<button class="mbtn" data-act="lootfilter">Filtro de objetos</button><button class="mbtn" data-act="sound">Volumen</button><button class="mbtn" data-act="lang">Idioma</button><button class="mbtn" data-act="exit">Guardar y salir</button></div>
       ${raid ? '<p class="red small">Estás en una expedición: si sales perderás el equipo, la mochila y las mascotas como si murieras.</p>' : ''}`;
   } else if(v === 'confirm'){
     h = `<h2 class="red">¿Salir de la expedición?</h2><p>Si sales ahora perderás <b>todo lo que llevas</b> (equipo, mochila, oro de la expedición y mascotas) como si hubieras muerto. Lo que hay en el alijo está a salvo.</p>
@@ -189,6 +192,7 @@ $('pauseBox').addEventListener('click', e => {
   const t = e.target.closest('button'); if(!t) return;
   const act = t.dataset.act; sfx('ui');
   if(act === 'resume'){ closePause(); return; }
+  if(act === 'cooproom'){ closePause(); LOBBY.openDen(); return; }
   if(act === 'controls') PAUSE.view = 'controls';
   else if(act === 'sound') PAUSE.view = 'sound';
   else if(act === 'config') PAUSE.view = 'config';
@@ -203,6 +207,7 @@ $('pauseBox').addEventListener('click', e => {
   renderPause();
 });
 function exitToMenu(){
+  if(typeof LOBBY !== 'undefined'){ LOBBY.close(true); }
   G.save.inRaid = false; saveGame();
   closePause(); openMainMenu();
 }

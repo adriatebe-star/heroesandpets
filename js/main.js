@@ -79,7 +79,7 @@ function resetWorld(sc){
   G.pets = []; G.allies = []; syncPets();
 }
 function enterDen(){
-  resetWorld(buildDen());
+  G.mp = !!NET.role; resetWorld(buildDen());
   // en la guarida las mascotas se recuperan del todo y quedan registradas como "de la guarida"
   for(const it of allPetStores()) if(it && it.id==='pet'){ it.hp = petMaxHp(it); it.homed = true; G.save.collection[it.pet] = true; if(it.shiny) G.save.shinies[it.pet] = true; }
   for(const p of G.pets){ p.hp = p.maxHp; p.exhaustedT = 0; }
@@ -130,8 +130,15 @@ function clearBossRoom(sc){
     removeCollider(sc, c); return false;
   });
 }
-function startRaid(expId='village'){
-  const seed = Math.floor(Math.random()*1e9), exp = EXPEDITIONS.find(e => e.id===expId) || HIDDEN_EXPEDITIONS.find(e => e.id===expId) || EXPEDITIONS[0];
+// en cooperativo todos usan la misma semilla y un Math.random sembrado mientras se genera la incursión, para que el mapa sea idéntico
+function startRaid(expId='village', mpSeed){
+  const realRandom = Math.random;
+  if(mpSeed != null) Math.random = rng(mpSeed ^ 0x5bd1e995);
+  G.mpInit = true;
+  try { startRaidInner(expId, mpSeed != null ? mpSeed : Math.floor(realRandom()*1e9)); } finally { Math.random = realRandom; G.mpInit = false; }
+}
+function startRaidInner(expId, seed){
+  const exp = EXPEDITIONS.find(e => e.id===expId) || HIDDEN_EXPEDITIONS.find(e => e.id===expId) || EXPEDITIONS[0];
   const sc = RAID_BUILDERS[expId] ? RAID_BUILDERS[expId](seed) : expId==='floatcity' ? buildFloatCity(seed) : expId==='icepeak' ? buildIcePeak(seed) : expId==='temple' ? buildTemple(seed) : expId==='forest' ? buildForest(seed) : expId==='mine' ? buildMine(seed) : expId==='river' ? buildRiver(seed) : expId==='castle' ? buildCastle(seed) : expId==='orccamp' ? buildOrcCamp(seed) : expId==='plains' ? buildPlains(seed) : expId==='crypt' ? buildCrypt(seed) : expId==='cemetery' ? buildCemetery(seed) : buildVillage(seed);
   sc.lvl = exp.lvl; sc.exp = exp; sc.petExp = exp.petExp ?? exp.lvl;
   randomReturnPortals(sc);
@@ -139,7 +146,7 @@ function startRaid(expId='village'){
   clearAroundInteractables(sc); clearBossRoom(sc);
   G.raidT = 0;
   G.save.sold = []; G.save.shopBought = {};   // Trapis olvida lo recomprable y repone su género al salir a una expedición
-  resetWorld(sc);
+  resetWorld(sc); G.monSeq = 0; G.monSeqL = 0;
   for(const sp of G.sc.monsterSpawns) for(const e of sp.pack){
     for(let i=0;i<10;i++){
       const x = sp.x + rand(-32,32), y = sp.y + rand(-32,32);
@@ -391,7 +398,7 @@ function updateChannel(dt){
   if(c.t >= c.dur){ G.channel = null; c.fn(); }
 }
 function openChest(c){
-  c.open = true; sfx('chest');
+  c.open = true; sfx('chest'); coopOpened('chest', c);
   if(c.legend){ openLegendChest(c); return; }
   const T = c.rare ? LOOT.chestRare : LOOT.chestNormal, n = randi(T.rolls[0], T.rolls[1]), lvl = G.sc.lvl || 1;
   const table = lootFor(T.table, lvl), bonus = c.rare ? .5 : 0;
@@ -427,7 +434,7 @@ function openCage(c){
   { const rf = (G.inv.equip.tal || []).findIndex(t => t && t.id === 'rabbitfoot'); if(rf >= 0 && PETS[c.pet].rarity === 'legendary'){ G.inv.equip.tal[rf] = null; toast('La pata de conejo se ha desvanecido...', 3); refreshStats(); } }
   const isNew = !(G.save.freedSp && G.save.freedSp[c.pet]);   // el cartel de enhorabuena solo sale con especies nuevas
   G.save.petsFreed = (G.save.petsFreed || 0) + 1; (G.save.freedSp ??= {})[c.pet] = true;   // los puntos del adiestrador cuentan especies distintas
-  c.open = true; G.rescued++; G.rescuedNames.push(PETS[c.pet].name); G.rescuedIds.push(c.pet); sfx('cage');
+  c.open = true; coopOpened('cage', c); G.rescued++; G.rescuedNames.push(PETS[c.pet].name); G.rescuedIds.push(c.pet); sfx('cage');
   const it = mkPetItem(c.pet, false, shiny), p = PETS[c.pet];
   toast(shiny ? `¡${p.name} es BRILLANTE! (${RARITY[p.rarity].name})` : `¡Has rescatado a ${p.name}! (${RARITY[p.rarity].name})`, 3);
   showPetPick(it, c, isNew);   // ventanita con la mascota: clic o F para cogerla; sin sitio, cae al suelo
@@ -470,6 +477,7 @@ function updatePortals(dt){
 function update(dt){
   G.t += dt;
   if(G.sc.kind==='raid' && !G.paused) G.raidT = (G.raidT||0) + dt;   // cronómetro de la expedición
+  if(NET.role) coopUpdate(dt);
   for(const t of toasts) t.t -= dt;
   while(toasts.length && toasts[0].t <= 0) toasts.shift();
   if(UI.introOpen){ pressed.KeyI = pressed.Tab = pressed.Escape = false; }
@@ -485,7 +493,7 @@ function update(dt){
     else if(UI.invOpen || UI.mapOpen || UI.skillOpen || UI.trainerOpen || UI.smithOpen || UI.aishOpen || G.bigMap){ if(UI.smithOpen) UI.closeSmith(); if(UI.aishOpen) UI.closeAish(); if(UI.trainerOpen) UI.closeTrainer(); if(UI.invOpen) UI.closeInv(); if(UI.mapOpen) UI.closeRaidMap(); if(UI.skillOpen) UI.closeSkills(); G.bigMap = false; }
     else if(!UI.dlg && !UI.screen && !P.dead) openPause();
   }
-  if(G.paused) return;
+  if(G.paused && !(G.mp && NET.role)) return;   // en cooperativo el menú de pausa no detiene el mundo
   updateBigMapDrag();
   if(pressed.KeyH) G.showHelp = !G.showHelp;
   if(pressed.KeyM) toggleMute();
@@ -497,11 +505,11 @@ function update(dt){
   if(G.hitstop > 0){ G.hitstop -= dt; return; }
   G.shake *= Math.exp(-dt*12);
 
-  { const st0 = P.st; updatePlayer(dt); if(P.elfT > 0){ P.elfT -= dt; if(P.st < st0) P.st = st0; } }   // poción élfica: nada gasta estamina
+  if(!G.paused){ const st0 = P.st; updatePlayer(dt); if(P.elfT > 0){ P.elfT -= dt; if(P.st < st0) P.st = st0; } }   // poción élfica: nada gasta estamina
   for(const p of G.pets) updatePet(p, dt);
   separatePets(dt);
   updateAllies(dt);
-  for(const m of G.mons) updateMonster(m, dt);
+  if(NET.role === 'guest' && G.mp && G.sc.kind === 'raid') coopMirrorMons(dt); else for(const m of G.mons) updateMonster(m, dt);   // el invitado solo refleja lo que simula el anfitrión
   G.mons = G.mons.filter(m => !(m.dying > .25));
   updateProjs(dt); updateHazards(dt); updateTraps(dt); updateLoot(dt);
   for(const p of G.parts){ p.life -= dt; if(p.vx !== undefined){ p.x += p.vx*dt; p.y += p.vy*dt; p.vx *= .93; p.vy = p.vy*.93 + (p.grav||0)*dt; } }
@@ -516,7 +524,7 @@ function update(dt){
   for(const w of G.sc.wisps || []){ w.ph += dt; w.x = w.hx + Math.sin(w.ph*.5)*34; w.y = w.hy + Math.cos(w.ph*.37)*22; }
 
   // interacciones
-  if(!P.dead){
+  if(!P.dead && !G.paused){
     if(G.sc.kind==='raid') updatePortals(dt);
     if(G.channel && !G.channel.portal) updateChannel(dt);
     G.prompt = UI.blocking() || G.channel || G.noIntT > 0 ? null : interactables();
@@ -637,6 +645,7 @@ function draw(){
   for(const al of G.allies) list.push({y:al.y, draw:() => drawAlly(al)});
   for(const g of G.parts) if(g.ghost) list.push({y:g.y-1, draw:() => drawGhost(g)});
   for(const pr of G.projs) list.push({y:pr.y+10, draw:() => drawProj(pr)});
+  for(const r of G.remote || []) list.push({y:r.y, draw:() => drawRemote(r)});
   list.push({y:P.y, draw:() => { if(P.frozenT > 0 && !P.dead){ b.save(); b.filter = 'sepia(1) hue-rotate(170deg) saturate(2.6) brightness(1.2)'; drawHero(); b.restore(); if(Math.random() < .3) G.parts.push({x:P.x + rand(-7, 7), y:P.y - rand(2, 30), vx:0, vy:-10, life:.5, max:.5, size:1.5, col:'#e8faff'}); } else drawHero(); }});
   if(P.flameT > 0 && !P.dead) list.push({y:P.y + 2, draw:drawFlameJet});
   list.sort((a,c) => a.y - c.y);
@@ -654,6 +663,7 @@ function draw(){
   ctx.imageSmoothingEnabled = false;
   ctx.drawImage(buf, 0, 0, bw*PX, bh*PX);
   drawWorldOverlay();
+  coopDrawNames();
   drawHUD();
   drawMonsterTip();
 }
@@ -686,9 +696,11 @@ function startGame(slot, fresh){
   closeMainMenu();
   enterDen();
   TUT.lx = null; TUT.dist = 0; TUT.runT = 0; TUT.gave = false; TUT.invSeen = false; TUT.flash = 0;
-  if(!G.save.introDone){ G.save.introDone = true; saveGame(); UI.showIntro(() => toast('Tutorial: sigue las instrucciones de la pantalla', 3.4)); }
+  const coopOpen = MENU.coopPending; MENU.coopPending = false; const intro = !G.save.introDone;
+  if(intro){ G.save.introDone = true; saveGame(); UI.showIntro(() => { toast('Tutorial: sigue las instrucciones de la pantalla', 3.4); if(coopOpen) LOBBY.openDen(); }); }
   else if(lostOnLoad) UI.showScreen('<h1 class="red">Expedición abandonada</h1><p>Abandonaste la última expedición sin volver: perdiste lo que llevabas.</p>', 'Continuar');
   else if(G.save.name) toast('Bienvenido de nuevo, ' + G.save.name, 2.6);
+  if(coopOpen && !intro) setTimeout(() => LOBBY.openDen(), 50);
 }
 openMainMenu();
 $('dialog').addEventListener('click', () => { if(UI.dlg && !UI.dlg.waiting) UI.next(); });

@@ -573,6 +573,7 @@ function mkMonster(type, rarity, x, y, o={}){
     lastHit:99, aggro:false, target:null, tauntT:0, tauntBy:null, stunT:0, slowT:0, freezeT:0, weakT:0, poisonT:0, burnT:0, dot:0, fearT:0,
     summonT:8, jumpT:rand(3,5), jump:null, poisonDrop:1.2, stolen:0, fleeT:0, revealT:0, wander:null, wanderT:0,
     name: o.name ?? monName(type, rarity, affixes)};
+  m.id = (NET.role === 'guest' && !G.mpInit) ? -(G.monSeqL = (G.monSeqL||0) + 1) : (G.monSeq = (G.monSeq||0) + 1);   // cooperativo: ids iguales en todos los clientes
   for(const a of affixes){ const f = MON_AFFIX[a] && MON_AFFIX[a].fx; if(!f) continue; if(f.hp){ m.hp *= 1 + f.hp/100; m.maxHp = m.hp; } if(f.dmg) m.dmg *= 1 + f.dmg/100; if(f.spd) m.baseSpd *= 1 + f.spd/100; }   // afijos nuevos del editor
   m.shieldMax = m.shield;
   return m;
@@ -582,6 +583,7 @@ function monTargets(){
   if(!P.dead && !(P.invisT > 0)) t.push(P);   // la coraza fantasmal te hace invisible
   // Sombra (sigilo): los enemigos la ignoran mientras no ataca
   for(const p of G.pets) if(p.exhaustedT<=0 && (p.z < 6 || PET_ART[p.def.id].fly) && !(p.def.stealth && p.state!=='engage')) t.push(p);   // las voladoras también son objetivo
+  if(G.remote) for(const r of G.remote) if(!r.dead && !r.hidden && !(r.invisT > 0)) t.push(r);   // cooperativo: los compañeros también son objetivo
   return t;
 }
 function updateMonster(m, dt){
@@ -802,6 +804,7 @@ function updateMonster(m, dt){
 function hitMonster(m, dmg, o){
   if(m.dying || m.downT > 0) return;
   if(m.affixes.includes('imparable')) o = Object.assign({}, o, {stun:0, slow:0, freeze:0, fear:0, k:0});
+  mods: { if(o.pre) break mods;   // golpe de un compañero: los modificadores ya los aplicó él
   if(o.src==='pet' && o.pet && o.pet.def.affixes.includes('valiente') && m.rarity!=='normal') dmg *= 1.4;
   if(m.markT > 0) dmg *= 1.25;
   if(m.exposedT > 0) dmg *= 1.1;   // presa fácil
@@ -814,7 +817,9 @@ function hitMonster(m, dmg, o){
   if(o.src==='player' && P.weakT > 0) dmg *= .6;   // debilitado por los rayos del brujo élfico
   if(MONSTERS[m.type].guard && o.nx && Math.sign(-o.nx) === m.face && m.stunT <= 0){ dmg *= .4; addText(m.x, m.y-m.r*2-20, 'Bloqueo', '#c8d0e0', 6, -20); }
   if(m.affixes.includes('acorazado')) dmg *= .75;
+  }
   dmg = Math.max(1, Math.round(dmg));
+  if(NET.role === 'guest' && G.mp && m.id > 0 && !o.pre){ coopSendHit(m, dmg, o); return; }   // el anfitrión es quien aplica el daño
   let shown = dmg;
   if(m.shield > 0){
     const ab = Math.min(m.shield, dmg); m.shield -= ab; dmg -= ab;
@@ -849,10 +854,10 @@ function hitMonster(m, dmg, o){
   burst(hx, hy, o.crit ? 12 : 7, [monCols(m)[2], '#fff7d6'], [80,240], [.2,.45]);
   if(m.hp <= 0){ if(o.src==='player' && legendOn('alphahorn')) for(const p of G.pets) p.packArmed = true; killMonster(m); }
 }
-function killMonster(m){
+function killMonster(m, net){
   if(m.dying) return;
-  if(monAffixBeforeDeath(m)) return;
-  monAffixDeath(m);
+  if(!net && monAffixBeforeDeath(m)) return;   // net: la muerte ya la decidió el anfitrión
+  if(!net) monAffixDeath(m);
   m.dying = .001; G.kills++; sfx({skeleton:'breakItem', ghost:'lanternOut'}[m.art] || 'slimeDie');
   if(!m.summoner) addXP(m.xp);                       // los invocados no dan experiencia
   burst(m.x, m.y-m.r*.6, 18, monCols(m), [60,220], [.4,.8], m.ai==='float' ? -40 : 400, [2,4]);
@@ -872,9 +877,9 @@ function killMonster(m){
   if(m.legendMark && m.markT > 0){ const e = wpick(lootFor(LOOT.monsterTable, lvl)); dropItem(m.x + rand(-8,8), m.y, mkItem(e.id, e.n ? randi(e.n[0], e.n[1]) : 1, lvl, 0)); addText(m.x, m.y-m.r*2-34, '¡Presa!', '#a8ffb8', 7, -20); }   // trébol de la suerte y pata de conejo
   if(MONSTERS[m.type].mine && !m.summoner && !m.small) gemDrop(m);   // gemas: solo en la mina   // los elfos oscuros llevan equipo élfico
   // Divisor y Explosivo
-  if(m.affixes.includes('divisor') && !m.small)
+  if(m.affixes.includes('divisor') && !m.small && !net)
     for(let i=0;i<2;i++){ const s = mkMonster(m.type, 'normal', m.x+rand(-10,10), m.y+rand(-10,10), {small:true, affixes:[], instant:true, name:'Fragmento'}); s.aggro = true; s.vx = rand(-150,150); s.vy = rand(-150,150); G.mons.push(s); }
-  if(m.affixes.includes('explosivo')) G.hazards.push({type:'boom', x:m.x, y:m.y, r:44, life:1, max:1, dmg:18});
+  if(m.affixes.includes('explosivo') && !net) G.hazards.push({type:'boom', x:m.x, y:m.y, r:44, life:1, max:1, dmg:18});
   if(MONSTERS[m.type].boss){
     G.bossFight = null; G.save.bossKills = (G.save.bossKills||0) + 1;
     toast(`¡Has derrotado a ${MONSTERS[m.type].name}!`, 4); G.flash = {x:m.x, y:m.y-30, t:.6}; G.shake = 10;
@@ -992,6 +997,7 @@ function bossCast(m){
     sfx('summon');
   } else if(m.cast==='claw'){
     if(Math.hypot(P.x-m.x, P.y-m.y) < 64) damagePlayer(dmg*1.2, m);
+    coopHitAv(m, dmg*1.2, r => Math.hypot(r.x-m.x, r.y-m.y) < 64);
     burst(m.x + m.face*20, m.y-20, 10, ['#eae4ff','#ff60c0'], [60,160], [.2,.4], 0);
   }
 }
@@ -1025,6 +1031,7 @@ function updateUrr(m, dt){
     const bx = m.x, by = m.y; moveCircle(sc, m, ch.dx*440*dt, ch.dy*440*dt);
     if(Math.hypot(m.x-bx, m.y-by) < 440*dt*.4){ ch.t = 0; G.shake = Math.max(G.shake, 6); sfx('stoneHit'); }   // se choca con un muro
     if(!ch.hit && d < m.r + P.r + 10){ ch.hit = true; damagePlayer((m.curDmg||m.dmg)*1.4, m); }
+    ch.hitR ??= new Set(); coopHitAv(m, (m.curDmg||m.dmg)*1.4, r => !ch.hitR.has(r.id) && Math.hypot(r.x-m.x, r.y-m.y) < m.r + 17 && ch.hitR.add(r.id));
     if(Math.random() < .6) G.parts.push({x:m.x+rand(-8,8), y:m.y, vx:rand(-20,20), vy:-20, life:.4, max:.4, size:rand(2,3), col:'#8a7a68'});
     if(ch.t <= 0){ m.charge = null; m.dizzy = 1; }
     return;
@@ -1056,6 +1063,7 @@ function urrCast(m){
     G.hazards.push({type:'slam', x:sx, y:sy, r:56, life:.3, max:.3});
     G.shake = Math.max(G.shake, 6); sfx('boom'); burst(sx, sy-6, 16, ['#8a7a68','#c8b898'], [60,180], [.3,.6], 200);
     if(Math.hypot(P.x-sx, (P.y-sy)*1.2) < 58) damagePlayer(dmg*1.3, m);
+    coopHitAv(m, dmg*1.3, r => Math.hypot(r.x-sx, (r.y-sy)*1.2) < 58);
     for(const p of G.pets) if(Math.hypot(p.x-sx, p.y-sy) < 58) damagePet(p, dmg*.8, m);
   } else if(m.cast==='charge'){
     m.charge = {dx:m.cdx, dy:m.cdy, t:.6};
@@ -1195,6 +1203,7 @@ function petStrike(p, m, mult=1, extra={}){
   G.hitstop = Math.max(G.hitstop, .02);
 }
 function damagePet(p, dmg, m, silent, ranged){
+  if(p.netId != null){ coopHurt(p, dmg, m, ranged); return; }   // compañero del cooperativo: el daño lo aplica su dueño
   const fly = PET_ART[p.def.id].fly;
   if(p.exhaustedT > 0 || (p.z > 6 && !fly) || p.stoneT > 0) return;
   if(fly && !ranged) dmg *= .5;   // las voladoras reciben la mitad del daño cuerpo a cuerpo; los proyectiles les hacen el daño completo

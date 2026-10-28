@@ -856,6 +856,7 @@ function drawMapView(x, y, size, view, big, layer){
   for(const p of sc.portals){ if(!p.seen && !mmSeen(p.x, p.y)) continue; const [px, py] = toS(p.x, p.y); ctx.beginPath(); ctx.arc(px, py, 4*ms*pulse, 0, Math.PI*2); ctx.fillStyle = '#9a7aff'; ctx.fill(); ctx.strokeStyle = '#e0d8ff'; ctx.lineWidth = 1.5; ctx.stroke(); }
   if(sc.horse){ dot(sc.horse.x, sc.horse.y, '#e0a060', 3.5*ms); }
   for(const p of G.pets) dot(p.x, p.y, RARITY[p.def.rarity].col, 1.5*ms);
+  for(const r of G.remote || []) if(!r.dead && !r.hidden) dot(r.x, r.y, r.col, 6*ms);   // compañeros del cooperativo
   // héroe: flecha en la dirección en la que mira
   const [hx, hy] = toS(P.x, P.y), a = P.face, L = (big ? 8 : 7)*ms;
   if(big){ ctx.beginPath(); ctx.arc(hx, hy, L*1.5 + Math.sin(G.t*5)*1.5, 0, Math.PI*2); ctx.strokeStyle = '#0c0a0e'; ctx.lineWidth = 5; ctx.stroke(); ctx.strokeStyle = '#ffe070'; ctx.lineWidth = 2.5; ctx.stroke(); }   // anillo para distinguir bien al jugador
@@ -1172,9 +1173,12 @@ UI.renderMapInfo = function(id){
      ${e.boss ? bossInfoHTML(e) : ''}
      ${e.hidden ? '<button disabled>Solo se puede acceder a través del portal del tiempo de Rolecs</button>' : lk ? `<button disabled>${blockQuest(e) && (G.save.maxExp||0) >= e.lvl - 1 ? 'Completa la misión «' + blockQuest(e).title + '» para desbloquearla' : blockBoss(e) && (G.save.maxExp||0) >= e.lvl - 1 ? 'Derrota a ' + MONSTERS[blockBoss(e).boss].name + ' para desbloquearla' : 'Supera la Expedición ' + (e.lvl-1) + ' para desbloquearla'}</button>` : e.needKey && !G.inv.bag.some(o => o && o.id==='minekey') ? '<button disabled>Necesitas una llave de la mina en la mochila</button>' : e.id==='dragonbridge' && !G.save.bridgeOpen && !G.inv.bag.some(o => o && o.id==='dragonkey') ? '<button disabled>Necesitas la llave mágica del puente de los dragones (solo la primera vez)</button>' : sel ? '<button id="mapGo">Viajar' + (e.needKey ? ' (gasta 1 llave de la mina)' : e.id==='dragonbridge' && !G.save.bridgeOpen ? ' (gasta la llave, abre el puente para siempre)' : '') + '</button>' : '<p class="sub">Haz clic para seleccionarla</p>'}`;
   const go = $('mapGo'); if(go) go.onclick = () => {
+    const party = NET.role && NET.count() > 1;
+    if(party && NET.role === 'guest'){ toast('Solo el anfitrión elige la expedición', 3); return; }
     if(e.needKey){ const ix = G.inv.bag.findIndex(o => o && o.id==='minekey'); if(ix < 0){ toast('Necesitas una llave de la mina'); return; } if(--G.inv.bag[ix].n <= 0) G.inv.bag[ix] = null; }
     if(e.id==='dragonbridge' && !G.save.bridgeOpen){ const ix = G.inv.bag.findIndex(o => o && o.id==='dragonkey'); if(ix < 0){ toast('Necesitas la llave mágica del puente de los dragones'); return; } G.inv.bag[ix] = null; G.save.bridgeOpen = true; toast('La llave se consume: el puente queda abierto para siempre', 4); }
-    this.closeRaidMap(); startRaid(e.id);
+    this.closeRaidMap();
+    if(party){ LOBBY.expId = e.id; LOBBY.start(); } else { G.mp = false; startRaid(e.id); }
   };
   bindMapTips();
 };
