@@ -34,7 +34,7 @@ LOBBY.render = function(){
       <button id="lbHost">Crear sala</button> <button id="lbJoinB">Unirme a una sala</button>
       <div id="lbJoinBox" style="display:${LOBBY.joining ? 'block' : 'none'};margin-top:10px"><p class="sub">Escribe el código de la sala:</p>
       <input id="lbCode" maxlength="6" autocomplete="off" style="width:9em;font-size:22px;letter-spacing:4px;text-transform:uppercase;text-align:center"> <button id="lbConn">Conectar</button></div>
-      <p class="sub" id="lbMsg">${LOBBY.msg || ''}</p>`;
+      <p class="sub" id="lbMsg">${LOBBY.msg || ''}</p><button id="lbDiag">Diagnóstico de conexión</button><pre id="lbDiagOut" style="white-space:pre-wrap;font-size:12px;text-align:left;margin:8px 0 0">${LOBBY.diag || ''}</pre>`;
   }else{
     h += `<div style="margin:8px 0"><b>Jugadores (${NET.count()}/${NET.MAX}):</b><br>${LOBBY.players().map(p => '· ' + p.name).join('<br>')}</div>`;
     if(role === 'host'){
@@ -62,6 +62,7 @@ LOBBY.render = function(){
   };
   if($q('lbConn')) $q('lbConn').onclick = conn;
   if($q('lbCode')) $q('lbCode').onkeydown = ev => { if(ev.key === 'Enter') conn(); };
+  if($q('lbDiag')) $q('lbDiag').onclick = async () => { LOBBY.diag = 'Comprobando…'; $q('lbDiagOut').textContent = LOBBY.diag; LOBBY.diag = await NET.diagnose(); if(LOBBY.el) LOBBY.render(); };
   if($q('lbCopy')) $q('lbCopy').onclick = () => { try { navigator.clipboard.writeText(NET.code); toast('Código copiado', 1.4); } catch(err){} };
 };
 LOBBY.start = function(){
