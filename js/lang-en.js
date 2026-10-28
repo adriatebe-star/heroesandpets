@@ -2324,4 +2324,8 @@ Object.assign(LANG_EN,{
   "Escribe el código de la sala": "Type the room code",
   "No se pudo contactar con el servicio de salas": "Couldn't reach the room service",
 });
+Object.assign(LANG_EN,{
+  "Partida recuperada": "Game recovered",
+  "El juego se cerró de forma inesperada durante la expedición. Se ha restaurado tu equipo, tu mochila y tus mascotas tal y como estaban hace unos segundos.": "The game closed unexpectedly during the expedition. Your gear, backpack and pets have been restored as they were a few seconds ago.",
+});
 LANG.load(LANG_EN);

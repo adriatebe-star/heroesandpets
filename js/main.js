@@ -32,6 +32,23 @@ function defaultSave(){
 function saveGame(){
   try { G.save.inv = {equip:G.inv.equip, bag:G.inv.bag}; if(G.slot) localStorage.setItem(slotKey(G.slot), JSON.stringify(G.save)); } catch(e){}
 }
+// ---------- recuperación tras un cierre inesperado ----------
+// En expedición se guarda cada 10 s una copia del equipo y la mochila. Si el juego se cuelga o se cierra solo (no por recargar o cerrar a propósito: eso cuenta como abandonar, norma 10), al volver a abrir la partida se restaura la copia.
+const snapKey = n => 'heroes-pets-snap-slot' + n, SNAP_MAX = 15*60*1000;
+function snapSave(){ try { if(G.slot && G.save.inRaid && G.sc.kind === 'raid'){ localStorage.setItem(snapKey(G.slot), JSON.stringify({inv:{equip:G.inv.equip, bag:G.inv.bag}, gold:G.raidGold || 0, t:Date.now()})); localStorage.removeItem('heroes-pets-clean'); } } catch(e){} }
+function snapClear(n){ try { localStorage.removeItem(snapKey(n || G.slot)); localStorage.removeItem('heroes-pets-clean'); localStorage.removeItem('heroes-pets-crash'); } catch(e){} }
+function crashNote(msg){ try { if(G.save && G.save.inRaid) localStorage.setItem('heroes-pets-crash', JSON.stringify({slot:G.slot, msg:String(msg).slice(0, 200), t:Date.now()})); } catch(e){} }
+addEventListener('error', e => { if(!e.filename || e.filename.includes('/js/')) crashNote(e.message); });
+addEventListener('unhandledrejection', e => crashNote((e.reason && e.reason.message) || e.reason));
+addEventListener('beforeunload', () => { try { if(G.save && G.save.inRaid) localStorage.setItem('heroes-pets-clean', '1'); } catch(e){} });   // recargar o cerrar a propósito: no se recupera
+function snapRead(slot){
+  try {
+    const sn = JSON.parse(localStorage.getItem(snapKey(slot))); if(!sn || Date.now() - sn.t > SNAP_MAX) return null;
+    const cr = JSON.parse(localStorage.getItem('heroes-pets-crash') || 'null'), crashed = cr && cr.slot === slot && Date.now() - cr.t < SNAP_MAX;
+    if(localStorage.getItem('heroes-pets-clean') && !crashed) return null;
+    return sn;
+  } catch(e){ return null; }
+}
 function loadGame(slot){
   let s = null;
   try { s = JSON.parse(localStorage.getItem(slotKey(slot))); } catch(e){}
@@ -156,7 +173,7 @@ function startRaidInner(expId, seed){
   if(sc.bossSpawn){ const bo = mkMonster(exp.boss || 'countess', 'boss', sc.bossSpawn.x, sc.bossSpawn.y, {affixes:[]}); bo.spawnIn = 1; G.mons.push(bo); for(const eb of (sc.extraBosses || [])){ const b2 = mkMonster(eb.type, 'boss', eb.x, eb.y, {affixes:[]}); b2.spawnIn = 1; G.mons.push(b2); } }
   placeQuestStuff(G.sc, expId);
   P.oil = oilMax(); P.lantern = !!G.inv.equip.lantern; G.raidGold = 0; G.rescued = 0; G.rescuedNames = []; G.rescuedIds = []; G.kills = 0;
-  G.save.inRaid = true; G.save.runs++; if(G.save.quest !== 'done'){ G.save.quest = 'done'; toast('Misión cumplida: ¡la primera expedición comienza!', 3.4); } saveGame();
+  G.save.inRaid = true; snapSave(); G.save.runs++; if(G.save.quest !== 'done'){ G.save.quest = 'done'; toast('Misión cumplida: ¡la primera expedición comienza!', 3.4); } saveGame();
   mmBuild(G.sc);
   playMusic('raid'); sfx('horse');
   toast(`Expedición ${exp.lvl}: ${exp.name}`, 3);
@@ -164,7 +181,7 @@ function startRaidInner(expId, seed){
 }
 function extract(how){
   G.save.wallet += G.raidGold;
-  G.save.inRaid = false; G.save.shopBought = {}; G.save.extracts = (G.save.extracts||0) + 1;
+  G.save.inRaid = false; G.save.shopBought = {}; G.save.extracts = (G.save.extracts||0) + 1; snapClear();
   if(!G.sc.noRank) G.save.maxExp = Math.max(G.save.maxExp||0, G.sc.lvl||1);
   if((G.raidT||0) >= SPECIALS_MIN_RAID) rollShopSpecials();   // las ofertas solo cambian si pasaste al menos 2 min dentro
   const pets = G.rescuedNames.length ? G.rescuedNames.join(', ') : 'ninguna';
@@ -188,7 +205,7 @@ function extract(how){
 function dropRaidLoss(){
   // las mascotas que llevabas caen contigo: el druida solo podrá revivir las que ya conocían la guarida
   for(const it of G.inv.equip.pet.concat(G.inv.bag, G.inv.equip.pbag || [])) if(it && it.id==='pet' && it.homed) G.save.fallen.push({pet:it.pet, shiny:!!it.shiny});
-  clearGear(); G.raidGold = 0; G.save.inRaid = false; G.save.shopBought = {};
+  clearGear(); G.raidGold = 0; G.save.inRaid = false; G.save.shopBought = {}; snapClear();
 }
 function loseEverything(){
   dropRaidLoss();
@@ -478,6 +495,7 @@ function updatePortals(dt){
 // ---------- actualización ----------
 function update(dt){
   G.t += dt;
+  if(G.sc.kind === 'raid' && (G.snapT = (G.snapT || 0) + dt) > 10){ G.snapT = 0; snapSave(); }
   if(G.sc.kind==='raid' && !G.paused) G.raidT = (G.raidT||0) + dt;   // cronómetro de la expedición
   if(NET.role) coopUpdate(dt);
   for(const t of toasts) t.t -= dt;
@@ -516,6 +534,7 @@ function update(dt){
   updateProjs(dt); updateHazards(dt); updateTraps(dt); updateLoot(dt);
   for(const p of G.parts){ p.life -= dt; if(p.vx !== undefined){ p.x += p.vx*dt; p.y += p.vy*dt; p.vx *= .93; p.vy = p.vy*.93 + (p.grav||0)*dt; } }
   G.parts = G.parts.filter(p => p.life > 0);
+  if(G.parts.length > 2500) G.parts.splice(0, G.parts.length - 2500);   // tope: en combates enormes las partículas podían colgar el juego
   for(const t of G.texts){ t.life -= dt; t.y += t.vy*dt; t.vy *= .94; }
   G.texts = G.texts.filter(t => t.life > 0);
   if(G.flash){ G.flash.t -= dt; if(G.flash.t <= 0) G.flash = null; }
@@ -685,7 +704,15 @@ function startGame(slot, fresh){
   G.inv.equip = emptyEquip(); G.inv.bag = Array(20).fill(null);
   if(G.save.inv){ G.inv.equip = Object.assign(emptyEquip(), G.save.inv.equip); while(G.inv.equip.pet.length < 4) G.inv.equip.pet.push(null); G.inv.bag = G.save.inv.bag; while(G.inv.bag.length < 20) G.inv.bag.push(null); }
   let lostOnLoad = false;
-  if(G.save.inRaid){ dropRaidLoss(); lostOnLoad = true; }   // abandonar o desconectarse en una expedición: se pierde todo, pero las mascotas que ya conocían la guarida quedan como caídas (Chemma las puede resucitar)
+  let recovered = false;
+  if(G.save.inRaid){
+    const sn = snapRead(slot);
+    if(sn){   // cierre inesperado: se restaura la última copia de la expedición
+      G.inv.equip = Object.assign(emptyEquip(), sn.inv.equip); while(G.inv.equip.pet.length < 4) G.inv.equip.pet.push(null);
+      G.inv.bag = sn.inv.bag; while(G.inv.bag.length < 20) G.inv.bag.push(null);
+      G.save.wallet += sn.gold || 0; G.save.inRaid = false; G.save.shopBought = {}; snapClear(slot); saveGame(); recovered = true;
+    } else { dropRaidLoss(); lostOnLoad = true; }
+  }   // abandonar o desconectarse en una expedición: se pierde todo, pero las mascotas que ya conocían la guarida quedan como caídas (Chemma las puede resucitar)
   if(!G.save.petRecover){   // una sola vez: devuelve como caídas las mascotas ya conocidas que se perdieron por desconexión
     G.save.petRecover = true;
     const have = new Set(), fl = new Set(G.save.fallen.map(e => e.pet + (e.shiny ? 's' : '')));
@@ -705,6 +732,7 @@ function startGame(slot, fresh){
   TUT.lx = null; TUT.dist = 0; TUT.runT = 0; TUT.gave = false; TUT.invSeen = false; TUT.flash = 0;
   const coopOpen = MENU.coopPending; MENU.coopPending = false; const intro = !G.save.introDone;
   if(intro){ G.save.introDone = true; saveGame(); UI.showIntro(() => { toast('Tutorial: sigue las instrucciones de la pantalla', 3.4); if(coopOpen) LOBBY.openDen(); }); }
+  else if(recovered) UI.showScreen('<h1>Partida recuperada</h1><p>El juego se cerró de forma inesperada durante la expedición. Se ha restaurado tu equipo, tu mochila y tus mascotas tal y como estaban hace unos segundos.</p>', 'Continuar');
   else if(lostOnLoad) UI.showScreen('<h1 class="red">Expedición abandonada</h1><p>Abandonaste la última expedición sin volver: perdiste lo que llevabas.</p>', 'Continuar');
   else if(G.save.name) toast('Bienvenido de nuevo, ' + G.save.name, 2.6);
   if(coopOpen && !intro) setTimeout(() => LOBBY.openDen(), 50);
