@@ -2310,4 +2310,18 @@ Object.assign(LANG_EN,{
 Object.assign(LANG_EN,{
   "⚠ Tu mapa no coincide con el del anfitrión (¿versión distinta?)": "⚠ Your map doesn't match the host's (different version?)",
 });
+Object.assign(LANG_EN,{
+  "Juega con hasta 4 amigos. Uno crea la sala y los demás se unen con su código de 5 letras.": "Play with up to 4 friends. One creates the room and the others join with its 5-letter code.",
+  "Escribe el código de la sala:": "Type the room code:",
+  "Creando la sala…": "Creating the room…",
+  "Conectando…": "Connecting…",
+  "Código de la sala (díselo a tus amigos):": "Room code (tell your friends):",
+  "Copiar código": "Copy code",
+  "Código copiado": "Code copied",
+  "Hace falta conexión a internet": "An internet connection is needed",
+  "No existe esa sala": "That room doesn't exist",
+  "La sala está llena": "The room is full",
+  "Escribe el código de la sala": "Type the room code",
+  "No se pudo contactar con el servicio de salas": "Couldn't reach the room service",
+});
 LANG.load(LANG_EN);

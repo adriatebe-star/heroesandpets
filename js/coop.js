@@ -220,7 +220,13 @@ function coopScaleBosses(){
 // =====================================================================
 //  Fase 5: cofres y jaulas compartidos y chat
 // =====================================================================
-function coopOpened(kind, c){}   // cofres y jaulas son individuales: cada jugador abre su propia copia
+// cofres compartidos: al abrirlo uno se abre para todos, pero cada uno tira y ve su propio botín; las jaulas son individuales
+function coopOpened(kind, c){ if(kind === 'chest' && NET.role && G.mp && !COOP.remoteOpen) NET.send('opn', {x:Math.round(c.x), y:Math.round(c.y)}, undefined, true); }
+NET.on('opn', d => {
+  if(!G.mp || G.sc.kind !== 'raid') return;
+  const c = G.sc.chests.find(q => !q.open && Math.abs(q.x - d.x) < 6 && Math.abs(q.y - d.y) < 6); if(!c) return;
+  COOP.remoteOpen = true; try { openChest(c); } finally { COOP.remoteOpen = false; }
+});
 NET.on('chat', t => { if(G.mp) chatSay(t, '#9ad8ff'); });
 
 // =====================================================================

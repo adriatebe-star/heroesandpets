@@ -398,6 +398,7 @@ function updateChannel(dt){
   if(c.t >= c.dur){ G.channel = null; c.fn(); }
 }
 function openChest(c){
+  if(c.open) return;
   c.open = true; sfx('chest'); coopOpened('chest', c);
   if(c.legend){ openLegendChest(c); return; }
   const T = c.rare ? LOOT.chestRare : LOOT.chestNormal, n = randi(T.rolls[0], T.rolls[1]), lvl = G.sc.lvl || 1;
