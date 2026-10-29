@@ -46,6 +46,7 @@ NET.hostRoom = function(){
   if(NET.role === 'host' && NET.code) return Promise.resolve(NET.code);
   return new Promise((res, rej) => {
     let tries = 0;
+    setTimeout(() => { if(!NET.code) rej(new Error('No se pudo crear la sala (tiempo agotado). Pulsa «Diagnóstico de conexión»')); }, 15000);
     const open = () => {
       const code = netCode(), hub = new Peer(NET.PREFIX + code, {debug:0});
       hub.on('open', () => { NET.role = 'host'; NET.myId = 0; NET.hub = hub; NET.code = code; res(code); });
@@ -120,6 +121,18 @@ NET.diagnose = async function(){
     const r = await fetch('https://0.peerjs.com/peerjs/id', {signal:c.signal, cache:'no-store'}); clearTimeout(tm);
     L.push('Servicio de salas (0.peerjs.com): responde ' + r.status + ' en ' + Math.round(performance.now() - t0) + ' ms');
   } catch(e){ L.push('Servicio de salas (0.peerjs.com): NO se alcanza (' + (e.name === 'AbortError' ? 'tiempo agotado' : e.message) + ')'); }
+  await new Promise(done => {   // el servicio de salas usa un WebSocket: se prueba aparte
+    const t1 = performance.now(); let ws, fin = false;
+    const end = m => { if(fin) return; fin = true; clearTimeout(tm); try { ws.close(); } catch(e){} L.push('Canal en tiempo real (WebSocket): ' + m); done(); };
+    const tm = setTimeout(() => end('NO conecta (tiempo agotado: lo bloquea tu red, antivirus o cortafuegos)'), 8000);
+    try {
+      ws = new WebSocket('wss://0.peerjs.com/peerjs?key=peerjs&id=diag' + Math.random().toString(36).slice(2, 8) + '&token=' + Math.random().toString(36).slice(2, 8));
+      ws.onmessage = () => end('OK en ' + Math.round(performance.now() - t1) + ' ms');
+      ws.onerror = () => end('ERROR (bloqueado)');
+      ws.onclose = () => end('se cerró enseguida (bloqueado o rechazado)');
+    } catch(e){ end('NO disponible (' + e.message + ')'); }
+  });
+  L.push('Estado: ' + (NET.role || 'sin sala'));
   if(NET.role === 'host' && NET.hub) L.push('Tu sala ' + NET.code + ': ' + (NET.hub.disconnected ? 'DESCONECTADA del servicio (nadie puede unirse)' : 'registrada y visible'));
   if(NET.lastErr) L.push('Último error de PeerJS: ' + NET.lastErr);
   return L.join('\n');

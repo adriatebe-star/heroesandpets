@@ -505,6 +505,7 @@ function update(dt){
   updateTutorial(dt);
   if(!UI.dlg && !UI.screen && !G.paused && pressed.KeyI) UI.toggleInv(UI.invOpen ? UI.mode : false);
   if(!UI.dlg && !UI.screen && !G.paused && pressed.Tab){ G.bigMap = !G.bigMap; sfx('ui'); }
+  if(typeof tradeUpdate === 'function') tradeUpdate();
   if(pressed.Escape && UI.oluafOpen){ UI.closeOluaf(); pressed.Escape = false; }
   if(pressed.Escape && UI.slotsOpen){ if(!SL.spinning) UI.closeSlots(); pressed.Escape = false; }
   if(pressed.Escape && UI.rouletteOpen){ if(!UI.rouletteSpinning) UI.closeRoulette(); pressed.Escape = false; }

@@ -93,6 +93,7 @@ function coopDrawNames(){
     if(r.dead || r.hidden) continue;
     const sx = (r.x + G.ox)*PX, sy = (r.y - 48 - (r.jumpZ || 0) + G.oy)*PX;
     textO(r.name, sx, sy, r.col);
+    if(typeof TRADE !== 'undefined' && TRADE.hoverR === r){ ctx.font = `${5*S}px ${FONT}`; textO(tr('Clic derecho: intercambiar'), sx, sy - 7*S, '#fff'); ctx.font = `${6*S}px ${FONT}`; }
   }
   ctx.restore();
 }
